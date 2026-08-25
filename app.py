@@ -1718,6 +1718,29 @@ with st.sidebar:
 
     _company_bottom = st.session_state.get("auth_company") or {}
 
+    # Keep the saved organization profile visible, not only buried as default
+    # values inside the edit form below. This also makes it obvious when a
+    # field has not been filled in yet.
+    with st.expander("🏢 Company details"):
+        if _company_bottom.get("logo_base64"):
+            try:
+                st.image(base64.b64decode(_company_bottom["logo_base64"]), width=72)
+            except Exception:
+                st.caption("The saved company logo could not be displayed.")
+        st.markdown(f"**{_company_bottom.get('name') or 'Organization name not set'}**")
+        _detail_rows = [
+            ("Industry", _company_bottom.get("industry")),
+            ("Company size", _company_bottom.get("company_size")),
+        ]
+        for _detail_label, _detail_value in _detail_rows:
+            st.caption(f"{_detail_label}: {_detail_value or 'Not provided'}")
+        _company_website = (_company_bottom.get("website") or "").strip()
+        if _company_website:
+            _website_url = _company_website if _company_website.startswith(("http://", "https://")) else f"https://{_company_website}"
+            st.link_button("Visit official website", _website_url, width="stretch")
+        else:
+            st.caption("Website: Not provided")
+
     if _company_bottom.get("access_code"):
         with st.expander("🔑 Access code"):
             st.markdown(f"""
