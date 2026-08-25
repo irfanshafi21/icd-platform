@@ -391,6 +391,27 @@ def render_candidate_output_details(candidate: dict) -> None:
                 st.write(f"- {value}")
 
 
+@st.dialog("Candidate details", width="large")
+def show_candidate_details_dialog(candidate: dict) -> None:
+    """Show full candidate output without constraining it to a grid column."""
+    st.subheader(candidate.get("name") or "Unknown candidate")
+    st.caption(f"Overall match score: {(candidate.get('score') or {}).get('overall_score', 0)}/100")
+    with st.container(horizontal=True):
+        if components.styled_button(
+            "Mark selected", key=f"dialog_select_{candidate.get('id')}",
+            variant="success", width="content",
+        ):
+            update_candidate_record(candidate["id"], {"status": "Selected"})
+            st.rerun()
+        if components.styled_button(
+            "Mark rejected", key=f"dialog_reject_{candidate.get('id')}",
+            variant="danger", width="content",
+        ):
+            update_candidate_record(candidate["id"], {"status": "Rejected"})
+            st.rerun()
+    render_candidate_output_details(candidate)
+
+
 # ----------------------------- INTERVIEWS storage (Supabase-backed, session-local fallback) -----------------------------
 
 def get_interviews() -> list[dict]:
@@ -891,6 +912,53 @@ st.markdown("""
         .candidate-card { grid-template-columns: auto minmax(0, 1fr); padding: 18px; gap: 14px; }
         .candidate-card-metrics { grid-column: 1 / -1; justify-content: flex-start; max-width: none; }
     }
+    .role-heading {
+        display: flex; align-items: center; gap: 12px; margin: 8px 0 18px;
+        color: var(--ink); font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.7rem; font-weight: 800;
+    }
+    .role-heading-icon {
+        width: 44px; height: 44px; border-radius: 13px; display: flex;
+        align-items: center; justify-content: center; color: #fff;
+        background: var(--role-color); box-shadow: 0 5px 14px color-mix(in srgb, var(--role-color) 30%, transparent);
+    }
+    .role-heading-count { color: #8A98A8; font-size: 0.92rem; font-weight: 600; }
+    .candidate-grid-card {
+        min-height: 330px; height: 100%; background: #fff;
+        border: 1px solid #D7E0EA; border-top: 4px solid var(--role-color);
+        border-radius: 16px; padding: 20px; box-shadow: 0 3px 12px rgba(15,45,75,0.06);
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .candidate-grid-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15,45,75,0.12); }
+    .candidate-grid-top { display: flex; align-items: center; gap: 13px; }
+    .candidate-initial {
+        width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(145deg, color-mix(in srgb, var(--role-color) 78%, white), var(--role-color));
+        color: #fff; font-size: 1.2rem; font-weight: 800;
+        box-shadow: 0 4px 10px color-mix(in srgb, var(--role-color) 28%, transparent);
+    }
+    .candidate-grid-name { color: var(--ink); font-size: 1.08rem; line-height: 1.2; font-weight: 800; }
+    .candidate-grid-meta { color: #66778A; font-size: .82rem; margin-top: 4px; }
+    .candidate-grid-rank { margin-left: auto; color: var(--role-color); font-size: .72rem; font-weight: 800; }
+    .candidate-fit-row { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 8px; }
+    .candidate-fit-badge { border-radius: 999px; padding: 5px 11px; font-size: .78rem; font-weight: 800; }
+    .candidate-grid-score { color: var(--ink); font-size: 1.25rem; font-weight: 850; }
+    .candidate-grid-score small { color: #6C7887; font-size: .68rem; font-weight: 600; }
+    .candidate-score-track { height: 7px; background: #E9EFF5; border-radius: 999px; overflow: hidden; }
+    .candidate-score-fill { height: 100%; border-radius: inherit; }
+    .candidate-education {
+        min-height: 48px; margin: 15px 0 13px; color: #657487;
+        font-size: .83rem; line-height: 1.45;
+    }
+    .candidate-grid-skills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .candidate-grid-skill {
+        padding: 4px 9px; border-radius: 999px;
+        background: color-mix(in srgb, var(--role-color) 10%, white);
+        border: 1px solid color-mix(in srgb, var(--role-color) 22%, white);
+        color: var(--role-color); font-size: .72rem; font-weight: 750;
+    }
+    .candidate-grid-footer { margin-top: 15px; color: #758395; font-size: .72rem; font-weight: 650; }
     .skill-chip {
         display: inline-block;
         background: var(--secondary);
@@ -2507,10 +2575,23 @@ if page == "📤 Resume Screening":
     _valid_for_ranking = [c for c in st.session_state.candidates if not (c.get("score") or {}).get("error")]
     if _valid_for_ranking:
         st.divider()
-        page_header("🏆", f"Top Candidates — Top {st.session_state.top_n}")
-        st.caption("Ranked using your priority weighting — not a flat average. Mark candidates Selected or Rejected to track hiring decisions.")
-
         _ranked = sorted(_valid_for_ranking, key=smart_rank_key, reverse=True)
+        _role_palette = [
+            ("#2563EB", "#EFF6FF"), ("#7C3AED", "#F5F3FF"),
+            ("#0891B2", "#ECFEFF"), ("#059669", "#ECFDF5"),
+            ("#D97706", "#FFFBEB"), ("#DB2777", "#FDF2F8"),
+        ]
+        _role_color, _role_tint = _role_palette[
+            sum(ord(ch) for ch in job_role.strip().lower()) % len(_role_palette)
+        ]
+        _safe_job_role = html.escape(job_role.strip() or "Selected role")
+        st.html(
+            f'<div class="role-heading" style="--role-color:{_role_color};">'
+            f'<span class="role-heading-icon">&#128188;</span>'
+            f'<span>{_safe_job_role} <span class="role-heading-count">Top {st.session_state.top_n}</span></span>'
+            f'</div>'
+        )
+        st.caption("Role colors remain consistent for the same job. Fit colors show strong, potential, or low alignment.")
 
         filter_col, sort_col = st.columns([2, 1])
         with filter_col:
@@ -2531,74 +2612,60 @@ if page == "📤 Resume Screening":
             ranked_filtered = _ranked
 
         shortlist = ranked_filtered[: st.session_state.top_n]
-        for idx, c in enumerate(shortlist, start=1):
-            score = c["score"].get("overall_score", 0)
-            if score < min_score:
-                continue
+        visible_shortlist = [
+            (idx, candidate) for idx, candidate in enumerate(shortlist, start=1)
+            if (candidate.get("score") or {}).get("overall_score", 0) >= min_score
+        ]
 
-            color = "#1e8e3e" if score >= 75 else ("#b8860b" if score >= 50 else "#c0392b")
-            bg = "#e6f4ea" if score >= 75 else ("#fdf3e2" if score >= 50 else "#fdecea")
+        for row_start in range(0, len(visible_shortlist), 3):
+            grid_columns = st.columns(3, gap="medium")
+            for column, (idx, c) in zip(grid_columns, visible_shortlist[row_start:row_start + 3]):
+                with column:
+                    score_data = c.get("score") or {}
+                    profile = c.get("profile") or {}
+                    score = int(score_data.get("overall_score", 0) or 0)
+                    if score >= 75:
+                        fit_label, fit_color, fit_bg = "Strong fit", "#15803D", "#DCFCE7"
+                    elif score >= 50:
+                        fit_label, fit_color, fit_bg = "Potential fit", "#A16207", "#FEF3C7"
+                    else:
+                        fit_label, fit_color, fit_bg = "Low fit", "#B91C1C", "#FEE2E2"
 
-            if idx == 1:
-                avatar_bg, avatar_text = "linear-gradient(135deg,#FFD54F,#F9A825)", "🏆"
-            elif idx == 2:
-                avatar_bg, avatar_text = "linear-gradient(135deg,#CFD8DC,#90A4AE)", "🥈"
-            elif idx == 3:
-                avatar_bg, avatar_text = "linear-gradient(135deg,#D7B08C,#A9714F)", "🥉"
-            else:
-                avatar_bg, avatar_text = "linear-gradient(135deg,#378ADD,#185FA5)", str(idx)
+                    candidate_name = html.escape(str(c.get("name") or "Unknown candidate"))
+                    initial = html.escape((str(c.get("name") or "?").strip()[:1] or "?").upper())
+                    experience = html.escape(str(profile.get("years_experience") or "Experience not specified"))
+                    education = html.escape(str(profile.get("education") or "Education not specified"))
+                    matched_skills = score_data.get("matched_skills") or []
+                    skill_html = "".join(
+                        f'<span class="candidate-grid-skill">{html.escape(str(skill))}</span>'
+                        for skill in matched_skills[:4]
+                    ) or '<span class="candidate-grid-skill">No matched skills listed</span>'
+                    status_label = html.escape(str(c.get("status") or "Waiting"))
 
-            status_label = c.get("status", "Waiting")
-            status_html = components.status_chip_html(status_label)
-            profile = c.get("profile") or {}
-            score_data = c.get("score") or {}
-            candidate_name = html.escape(str(c.get("name") or "Unknown candidate"))
-            role = html.escape(str(profile.get("current_role") or "Role not specified"))
-            experience = html.escape(str(profile.get("years_experience") or "Experience not specified"))
-            matched_skills = score_data.get("matched_skills") or []
-            gaps = score_data.get("gaps") or []
-            skill_html = "".join(
-                f'<span class="candidate-card-skill">{html.escape(str(skill))}</span>'
-                for skill in matched_skills[:4]
-            ) or '<span class="candidate-card-skill">No matched skills listed</span>'
-
-            with st.container():
-                review_html = (
-                    '<span class="score-pill" style="background:#FEF3C7;color:#92400E;'
-                    'font-size:0.78rem;padding:6px 10px;">Review</span>'
-                    if profile.get("extraction_flags") else ""
-                )
-                card_html = (
-                    f'<div class="candidate-card">'
-                    f'<div class="candidate-avatar" style="background:{avatar_bg};"><span>{avatar_text}</span></div>'
-                    f'<div class="candidate-info">'
-                    f'<div class="candidate-rank-label">Rank #{idx}</div>'
-                    f'<div class="candidate-name">{candidate_name}</div>'
-                    f'<div class="candidate-subtitle">{role} · {experience}</div>'
-                    f'<div class="candidate-card-skills">{skill_html}</div>'
-                    f'</div>'
-                    f'<div class="candidate-card-metrics">'
-                    f'{status_html}'
-                    f'<span class="candidate-mini-stat">{len(matched_skills)} matches</span>'
-                    f'<span class="candidate-mini-stat">{len(gaps)} gaps</span>'
-                    f'<span class="score-pill" style="background:{bg};color:{color};">{score}/100</span>'
-                    f'{review_html}'
-                    f'</div>'
-                    f'</div>'
-                )
-                st.html(card_html)
-
-                with st.expander(f"View candidate details — {c['name']}", icon=":material/person_search:"):
-                    dec1, dec2, dec3 = st.columns([1, 1, 2])
-                    with dec1:
-                        if components.styled_button("✅ Mark Selected", key=f"screen_select_{idx}_{c.get('filename','')}", variant="success", width="stretch"):
-                            update_candidate_record(c["id"], {"status": "Selected"})
-                            st.rerun()
-                    with dec2:
-                        if components.styled_button("❌ Mark Rejected", key=f"screen_reject_{idx}_{c.get('filename','')}", variant="danger", width="stretch"):
-                            update_candidate_record(c["id"], {"status": "Rejected"})
-                            st.rerun()
-                    render_candidate_output_details(c)
+                    card_html = (
+                        f'<div class="candidate-grid-card" style="--role-color:{_role_color};background:{_role_tint};">'
+                        f'<div class="candidate-grid-top">'
+                        f'<div class="candidate-initial">{initial}</div>'
+                        f'<div><div class="candidate-grid-name">{candidate_name}</div>'
+                        f'<div class="candidate-grid-meta">{experience}</div></div>'
+                        f'<div class="candidate-grid-rank">#{idx}</div></div>'
+                        f'<div class="candidate-fit-row">'
+                        f'<span class="candidate-fit-badge" style="color:{fit_color};background:{fit_bg};">{fit_label}</span>'
+                        f'<span class="candidate-grid-score">{score}<small>/100</small></span></div>'
+                        f'<div class="candidate-score-track"><div class="candidate-score-fill" '
+                        f'style="width:{max(0, min(score, 100))}%;background:{fit_color};"></div></div>'
+                        f'<div class="candidate-education">{education}</div>'
+                        f'<div class="candidate-grid-skills">{skill_html}</div>'
+                        f'<div class="candidate-grid-footer">{status_label} · {len(matched_skills)} matched skills · '
+                        f'{len(score_data.get("gaps") or [])} gaps</div>'
+                        f'</div>'
+                    )
+                    st.html(card_html)
+                    if st.button(
+                        "View candidate details", key=f"grid_details_{c.get('id')}_{idx}",
+                        icon=":material/person_search:", width="stretch",
+                    ):
+                        show_candidate_details_dialog(c)
 
 # ============================================================
 # PAGE — JOBS (Phase 5)
