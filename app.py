@@ -38,6 +38,7 @@ import logging
 # that context), but it clutters the terminal, so it's silenced here.
 logging.getLogger("streamlit.runtime.scriptrunner_utils.script_run_context").setLevel(logging.ERROR)
 import json
+import html
 import time
 import random
 import base64
@@ -814,17 +815,18 @@ st.markdown("""
 
     /* ---- Candidate cards ---- */
     .candidate-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-left: 4px solid var(--primary);
+        background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+        border: 1px solid #DCE7F2;
+        border-left: 5px solid var(--primary);
         border-radius: var(--radius-lg);
-        padding: 22px 28px;
-        margin-bottom: 16px;
+        padding: 22px 24px;
+        margin-bottom: 10px;
         box-shadow: var(--shadow-1);
         transition: transform 0.15s ease, box-shadow 0.15s ease;
-        display: flex;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
-        gap: 18px;
+        gap: 20px;
     }
     .candidate-card:hover {
         transform: translateY(-2px);
@@ -838,7 +840,7 @@ st.markdown("""
         font-size: 1.3rem; font-weight: 800; color: #ffffff;
         box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
-    .candidate-info { flex-grow: 1; }
+    .candidate-info { min-width: 0; }
     .candidate-name { font-size: 1.28rem; font-weight: 800; color: var(--ink); line-height: 1.2; }
     .candidate-rank-label {
         font-size: 0.72rem; font-weight: 700; color: var(--sky-dark);
@@ -862,6 +864,27 @@ st.markdown("""
         padding: 8px 18px;
         font-size: 1.15rem;
         flex-shrink: 0;
+    }
+    .candidate-subtitle {
+        margin-top: 5px; color: #587086; font-size: 0.88rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .candidate-card-skills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .candidate-card-skill {
+        background: #E8F3FF; color: #185FA5; border: 1px solid #CDE5FA;
+        border-radius: 999px; padding: 3px 9px; font-size: 0.75rem; font-weight: 700;
+    }
+    .candidate-card-metrics {
+        display: flex; align-items: center; justify-content: flex-end;
+        flex-wrap: wrap; gap: 8px; max-width: 310px;
+    }
+    .candidate-mini-stat {
+        background: #F2F6FA; color: #486276; border-radius: 9px;
+        padding: 6px 9px; font-size: 0.76rem; font-weight: 700;
+    }
+    @media (max-width: 700px) {
+        .candidate-card { grid-template-columns: auto minmax(0, 1fr); padding: 18px; gap: 14px; }
+        .candidate-card-metrics { grid-column: 1 / -1; justify-content: flex-start; max-width: none; }
     }
     .skill-chip {
         display: inline-block;
@@ -2475,28 +2498,6 @@ if page == "📤 Resume Screening":
         else:
             st.warning("No files were recognized as resumes — nothing to screen. Check the excluded list above.")
 
-    # Quick preview list
-    if st.session_state.candidates:
-        st.divider()
-        st.markdown(f"#### Candidate screening output ({len(st.session_state.candidates)})")
-        st.caption("Open any candidate to see the complete stored result. Viewing details does not make another AI call.")
-        _session_ranked = sorted(
-            st.session_state.candidates,
-            key=smart_rank_key,
-            reverse=True,
-        )
-        for output_rank, c in enumerate(_session_ranked, start=1):
-            score_data = c.get("score") or {}
-            err = score_data.get("error")
-            if err:
-                st.warning(f"**{c.get('filename', 'Unknown file')}** — failed to process: {err}")
-            else:
-                output_score = score_data.get("overall_score", "—")
-                with st.expander(
-                    f"#{output_rank} · {c.get('name', 'Unknown candidate')} · {output_score}/100"
-                ):
-                    render_candidate_output_details(c)
-
     # ---- Top Candidates (ranked shortlist, moved here from Home) ----
     _valid_for_ranking = [c for c in st.session_state.candidates if not (c.get("score") or {}).get("error")]
     if _valid_for_ranking:
@@ -2527,7 +2528,6 @@ if page == "📤 Resume Screening":
         shortlist = ranked_filtered[: st.session_state.top_n]
         for idx, c in enumerate(shortlist, start=1):
             score = c["score"].get("overall_score", 0)
-            ai_score = c["score"].get("ai_overall_score", score)
             if score < min_score:
                 continue
 
@@ -2545,6 +2545,17 @@ if page == "📤 Resume Screening":
 
             status_label = c.get("status", "Waiting")
             status_html = components.status_chip_html(status_label)
+            profile = c.get("profile") or {}
+            score_data = c.get("score") or {}
+            candidate_name = html.escape(str(c.get("name") or "Unknown candidate"))
+            role = html.escape(str(profile.get("current_role") or "Role not specified"))
+            experience = html.escape(str(profile.get("years_experience") or "Experience not specified"))
+            matched_skills = score_data.get("matched_skills") or []
+            gaps = score_data.get("gaps") or []
+            skill_html = "".join(
+                f'<span class="candidate-card-skill">{html.escape(str(skill))}</span>'
+                for skill in matched_skills[:4]
+            ) or '<span class="candidate-card-skill">No matched skills listed</span>'
 
             with st.container():
                 st.markdown(f"""
@@ -2552,22 +2563,21 @@ if page == "📤 Resume Screening":
                     <div class="candidate-avatar" style="background:{avatar_bg};">{avatar_text}</div>
                     <div class="candidate-info">
                         <div class="candidate-rank-label">Rank #{idx}</div>
-                        <div class="candidate-name">{c['name']}</div>
+                        <div class="candidate-name">{candidate_name}</div>
+                        <div class="candidate-subtitle">{role} · {experience}</div>
+                        <div class="candidate-card-skills">{skill_html}</div>
                     </div>
-                    {status_html}
-                    <span class="score-pill" style="background:{bg}; color:{color};">{score}/100</span>
-                    {'<span class="score-pill" style="background:#FEF3C7; color:#92400E;">⚠️ Review</span>' if c["profile"].get("extraction_flags") else ''}
+                    <div class="candidate-card-metrics">
+                        {status_html}
+                        <span class="candidate-mini-stat">{len(matched_skills)} matches</span>
+                        <span class="candidate-mini-stat">{len(gaps)} gaps</span>
+                        <span class="score-pill" style="background:{bg}; color:{color};">{score}/100</span>
+                        {'<span class="score-pill" style="background:#FEF3C7; color:#92400E; font-size:0.78rem; padding:6px 10px;">Review</span>' if profile.get("extraction_flags") else ''}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                with st.expander(f"View details — {c['name']}"):
-                    profile = c["profile"]
-                    score_data = c["score"]
-
-                    if profile.get("extraction_flags"):
-                        st.warning("**Extraction flags — worth a manual double-check:**\n\n" +
-                                   "\n".join(f"- {flag}" for flag in profile["extraction_flags"]))
-
+                with st.expander(f"View candidate details — {c['name']}", icon=":material/person_search:"):
                     dec1, dec2, dec3 = st.columns([1, 1, 2])
                     with dec1:
                         if components.styled_button("✅ Mark Selected", key=f"screen_select_{idx}_{c.get('filename','')}", variant="success", width="stretch"):
@@ -2577,35 +2587,7 @@ if page == "📤 Resume Screening":
                         if components.styled_button("❌ Mark Rejected", key=f"screen_reject_{idx}_{c.get('filename','')}", variant="danger", width="stretch"):
                             update_candidate_record(c["id"], {"status": "Rejected"})
                             st.rerun()
-
-                    cc1, cc2 = st.columns([1, 1])
-                    with cc1:
-                        st.markdown("**Summary**")
-                        st.write(score_data.get("summary", "—"))
-                        if abs(score - ai_score) >= 3:
-                            st.caption(f"Priority-weighted score: {score}/100 · AI's unweighted baseline: {ai_score}/100")
-
-                        st.markdown("**Matched Skills**")
-                        components.chip_list(score_data.get("matched_skills", []), variant="skill", empty_text="None identified")
-
-                        st.markdown("**Gaps**")
-                        components.chip_list(score_data.get("gaps", []), variant="gap", empty_text="No significant gaps identified")
-
-                    with cc2:
-                        st.markdown("**Score Breakdown**")
-                        breakdown = score_data.get("breakdown", {})
-                        for k, v in breakdown.items():
-                            st.write(f"{k.replace('_', ' ').title()}")
-                            st.progress(min(max(v, 0), 100) / 100)
-
-                        st.markdown("**Experience**")
-                        st.write(profile.get("years_experience", "—"))
-
-                        st.markdown("**Education**")
-                        st.write(profile.get("education", "—"))
-
-                    st.markdown("**Contact**")
-                    st.write(f"{profile.get('email', '—')} | {profile.get('phone', '—')}")
+                    render_candidate_output_details(c)
 
 # ============================================================
 # PAGE — JOBS (Phase 5)
