@@ -958,41 +958,41 @@ st.markdown("""
     }
     .role-heading-count { color: #8A98A8; font-size: 0.92rem; font-weight: 600; }
     .candidate-grid-card {
-        min-height: 330px; height: 100%; background: #fff;
-        border: 1px solid #D7E0EA; border-top: 4px solid var(--role-color);
-        border-radius: 16px; padding: 20px; box-shadow: 0 3px 12px rgba(15,45,75,0.06);
+        min-height: 330px; height: 100%;
+        background: linear-gradient(145deg, var(--role-color), color-mix(in srgb, var(--role-color) 78%, #08182B));
+        border: 1px solid color-mix(in srgb, var(--role-color) 70%, white);
+        border-radius: 16px; padding: 20px; box-shadow: 0 7px 20px color-mix(in srgb, var(--role-color) 24%, transparent);
         transition: transform .15s ease, box-shadow .15s ease;
     }
-    .candidate-grid-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(15,45,75,0.12); }
+    .candidate-grid-card:hover { transform: translateY(-3px); box-shadow: 0 13px 28px color-mix(in srgb, var(--role-color) 34%, transparent); }
     .candidate-grid-top { display: flex; align-items: center; gap: 13px; }
     .candidate-initial {
         width: 54px; height: 54px; flex: 0 0 54px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        background: linear-gradient(145deg, color-mix(in srgb, var(--role-color) 78%, white), var(--role-color));
+        background: rgba(255,255,255,.20); border: 1px solid rgba(255,255,255,.32);
         color: #fff; font-size: 1.2rem; font-weight: 800;
-        box-shadow: 0 4px 10px color-mix(in srgb, var(--role-color) 28%, transparent);
+        box-shadow: 0 4px 10px rgba(0,0,0,.14);
     }
-    .candidate-grid-name { color: var(--ink); font-size: 1.08rem; line-height: 1.2; font-weight: 800; }
-    .candidate-grid-meta { color: #66778A; font-size: .82rem; margin-top: 4px; }
-    .candidate-grid-rank { margin-left: auto; color: var(--role-color); font-size: .72rem; font-weight: 800; }
+    .candidate-grid-name { color: #fff; font-size: 1.08rem; line-height: 1.2; font-weight: 800; }
+    .candidate-grid-meta { color: rgba(255,255,255,.78); font-size: .82rem; margin-top: 4px; }
+    .candidate-grid-rank { margin-left: auto; color: rgba(255,255,255,.82); font-size: .72rem; font-weight: 800; }
     .candidate-fit-row { display: flex; align-items: center; justify-content: space-between; margin: 20px 0 8px; }
     .candidate-fit-badge { border-radius: 999px; padding: 5px 11px; font-size: .78rem; font-weight: 800; }
-    .candidate-grid-score { color: var(--ink); font-size: 1.25rem; font-weight: 850; }
-    .candidate-grid-score small { color: #6C7887; font-size: .68rem; font-weight: 600; }
-    .candidate-score-track { height: 7px; background: #E9EFF5; border-radius: 999px; overflow: hidden; }
+    .candidate-grid-score { color: #fff; font-size: 1.25rem; font-weight: 850; }
+    .candidate-grid-score small { color: rgba(255,255,255,.72); font-size: .68rem; font-weight: 600; }
+    .candidate-score-track { height: 7px; background: rgba(255,255,255,.22); border-radius: 999px; overflow: hidden; }
     .candidate-score-fill { height: 100%; border-radius: inherit; }
     .candidate-education {
-        min-height: 48px; margin: 15px 0 13px; color: #657487;
+        min-height: 48px; margin: 15px 0 13px; color: rgba(255,255,255,.86);
         font-size: .83rem; line-height: 1.45;
     }
     .candidate-grid-skills { display: flex; gap: 6px; flex-wrap: wrap; }
     .candidate-grid-skill {
         padding: 4px 9px; border-radius: 999px;
-        background: color-mix(in srgb, var(--role-color) 10%, white);
-        border: 1px solid color-mix(in srgb, var(--role-color) 22%, white);
-        color: var(--role-color); font-size: .72rem; font-weight: 750;
+        background: rgba(255,255,255,.17); border: 1px solid rgba(255,255,255,.28);
+        color: #fff; font-size: .72rem; font-weight: 750;
     }
-    .candidate-grid-footer { margin-top: 15px; color: #758395; font-size: .72rem; font-weight: 650; }
+    .candidate-grid-footer { margin-top: 15px; color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 650; }
     .skill-chip {
         display: inline-block;
         background: var(--secondary);
@@ -2610,7 +2610,7 @@ if page == "📤 Resume Screening":
     if _valid_for_ranking:
         st.divider()
         _ranked = sorted(_valid_for_ranking, key=smart_rank_key, reverse=True)
-        _role_color, _role_tint = job_role_theme(job_role)
+        _role_color, _ = job_role_theme(job_role)
         _safe_job_role = html.escape(job_role.strip() or "Selected role")
         st.html(
             f'<div class="role-heading" style="--role-color:{_role_color};">'
@@ -2670,7 +2670,7 @@ if page == "📤 Resume Screening":
                     status_label = html.escape(str(c.get("status") or "Waiting"))
 
                     card_html = (
-                        f'<div class="candidate-grid-card" style="--role-color:{_role_color};background:{_role_tint};">'
+                        f'<div class="candidate-grid-card" style="--role-color:{_role_color};">'
                         f'<div class="candidate-grid-top">'
                         f'<div class="candidate-initial">{initial}</div>'
                         f'<div><div class="candidate-grid-name">{candidate_name}</div>'
