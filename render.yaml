@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: icd-platform
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true
