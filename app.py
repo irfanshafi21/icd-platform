@@ -1725,9 +1725,11 @@ with st.sidebar:
     with st.expander("🔗 LinkedIn"):
         import linkedin_integration
         if not linkedin_integration.is_configured():
+            _li_missing = linkedin_integration.missing_config()
             st.caption(
-                "Not set up yet. Add `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` to secrets.toml "
-                "(see the setup instructions at the top of linkedin_integration.py) to enable posting jobs to LinkedIn."
+                f"Not fully set up yet — missing: `{'`, `'.join(_li_missing)}`. "
+                "Add these to your environment/secrets (see the setup instructions at the top of "
+                "linkedin_integration.py), then redeploy before connecting."
             )
         elif linkedin_integration.is_connected():
             _li_conn = linkedin_integration.get_connection()
@@ -1738,8 +1740,11 @@ with st.sidebar:
                 st.rerun()
         else:
             st.caption("Connect a personal LinkedIn account to post job openings to its feed directly from this app.")
-            auth_url = linkedin_integration.build_authorization_url()
-            st.link_button("Connect LinkedIn", auth_url, type="primary", width="stretch")
+            try:
+                auth_url = linkedin_integration.build_authorization_url()
+                st.link_button("Connect LinkedIn", auth_url, type="primary", width="stretch")
+            except RuntimeError as _li_err:
+                st.error(str(_li_err))
 
     with st.expander("⚙️ Company Settings"):
         with st.form("company_settings_form"):
@@ -2054,15 +2059,15 @@ if page == "📤 Resume Screening":
 
     with tab_files:
         files = st.file_uploader(
-            "PDF, DOCX, or a photo/scan of a resume (JPG/PNG) — upload as many as you like",
-            type=["pdf", "docx", "jpg", "jpeg", "png"],
+            "Text-based PDF or DOCX resumes — upload as many as you like",
+            type=["pdf", "docx"],
             accept_multiple_files=True,
             label_visibility="collapsed",
             key="individual_files",
         )
 
     with tab_zip:
-        st.caption("Zip your resumes folder and upload it here — mixed PDF/DOCX/image files are fine. "
+        st.caption("Zip your text-based PDF/DOCX resumes and upload the folder here. "
                     "Non-resume files (certificates, cover letters, random documents) are detected and skipped automatically.")
         zip_file = st.file_uploader(
             "Upload a .zip of resumes",
@@ -2088,10 +2093,6 @@ if page == "📤 Resume Screening":
 
     if raw_items:
         st.caption(f"{len(raw_items)} file(s) ready to process")
-        n_images = sum(1 for name, _ in raw_items if name.lower().endswith((".jpg", ".jpeg", ".png")))
-        if n_images:
-            st.caption(f"📷 {n_images} image resume(s) will be read via OCR — clearer scans work best.")
-
         # Exact-duplicate detection — hash raw file bytes, no AI involved, so
         # this is instant. Catches two cases:
         #  1. The same file appears twice in this upload (e.g. once as a
@@ -2175,15 +2176,9 @@ if page == "📤 Resume Screening":
                 })
 
         # Step 1.5: "is this actually a resume?" filter — local heuristic only
-        # (section keywords + contact info), no AI verification call. This
-        # used to have a second-pass AI check for files that failed the free
-        # heuristic, to avoid dropping unusually-formatted resumes — but that
-        # cost a real API call per borderline file before screening could even
-        # start. Removed for speed: anything that doesn't look like a resume
-        # by the heuristic is now excluded outright rather than getting an AI
-        # second opinion. If a legitimate resume with an unusual layout gets
-        # excluded, it'll show up in the excluded-files list below and can be
-        # re-uploaded after checking why.
+        # (section keywords + contact info), no AI verification call. Anything
+        # that does not look like a resume by the heuristic is excluded locally
+        # so the batch never spends an extra API call on a non-resume file.
         confirmed_texts = {}
         for name, text in file_texts.items():
             if not text:
@@ -2201,7 +2196,7 @@ if page == "📤 Resume Screening":
             with st.expander(f"⚠️ {len(st.session_state.excluded_files)} file(s) excluded — not recognized as resumes", expanded=True):
                 for ex in st.session_state.excluded_files:
                     st.write(f"**{ex['filename']}** — {ex['reason']}")
-                st.caption("Each of these was checked twice (a fast local pass, then an AI confirmation) before being excluded.")
+                st.caption("These files were excluded by the fast local resume check and were not sent to the AI provider.")
 
         eta_ph = st.empty()
 
@@ -2251,9 +2246,9 @@ if page == "📤 Resume Screening":
             # save step that's fast relative to the AI call anyway.
             return candidate
 
-        # Step 2: parse + score all confirmed resumes concurrently — each
-        # candidate is independent, so there's no need to wait for one before
-        # starting the next. Capped at 5 workers to stay within free-tier RPM limits.
+        # Step 2: parse + score all confirmed resumes concurrently. Keep the
+        # worker count modest so free-tier providers do not receive a burst of
+        # requests that triggers throttling and makes the batch slower overall.
         valid_items = list(confirmed_texts.items())
         total = len(raw_items)  # includes excluded/failed files in the progress denominator
         completed = total - len(valid_items)  # extraction failures + excluded non-resumes already "done"
@@ -2269,7 +2264,7 @@ if page == "📤 Resume Screening":
         if valid_items:
             eta_ph.markdown("⏱️ Estimated time remaining: **calculating...**")
 
-        with ThreadPoolExecutor(max_workers=min(12, max(1, len(valid_items)))) as executor:
+        with ThreadPoolExecutor(max_workers=min(5, max(1, len(valid_items)))) as executor:
             futures = {
                 executor.submit(process_one, name, text): name
                 for name, text in valid_items

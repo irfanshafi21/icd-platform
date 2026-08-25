@@ -1,0 +1,14 @@
+# Secrets — never commit real API keys
+.streamlit/secrets.toml
+.local_settings.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

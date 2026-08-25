@@ -59,7 +59,23 @@ def _get_secret(name: str) -> str | None:
 
 
 def is_configured() -> bool:
-    return bool(_get_secret("LINKEDIN_CLIENT_ID") and _get_secret("LINKEDIN_CLIENT_SECRET"))
+    return bool(_get_secret("LINKEDIN_CLIENT_ID") and _get_secret("LINKEDIN_CLIENT_SECRET") and _get_secret("APP_BASE_URL"))
+
+
+def missing_config() -> list[str]:
+    """Which required settings are missing, so the UI can say exactly what
+    to fix instead of a generic 'not configured' — this is what causes
+    LinkedIn's "You need to pass the redirect_uri parameter" error: it means
+    APP_BASE_URL specifically wasn't set/read, so the redirect_uri sent to
+    LinkedIn came through empty."""
+    missing = []
+    if not _get_secret("LINKEDIN_CLIENT_ID"):
+        missing.append("LINKEDIN_CLIENT_ID")
+    if not _get_secret("LINKEDIN_CLIENT_SECRET"):
+        missing.append("LINKEDIN_CLIENT_SECRET")
+    if not _get_secret("APP_BASE_URL"):
+        missing.append("APP_BASE_URL")
+    return missing
 
 
 def _redirect_uri() -> str:
@@ -80,10 +96,15 @@ def build_authorization_url() -> str:
     stashed in session_state to be checked on callback (CSRF protection —
     without this, a malicious link could trick the app into linking an
     attacker's authorization code to this session)."""
+    redirect_uri = _redirect_uri()
+    if not redirect_uri:
+        raise RuntimeError(
+            "APP_BASE_URL isn't set (or wasn't picked up after redeploying) — "
+            "LinkedIn needs a real redirect_uri, so the connect link can't be built yet."
+        )
     state = _secrets_module.token_urlsafe(24)
     st.session_state["linkedin_oauth_state"] = state
     client_id = _get_secret("LINKEDIN_CLIENT_ID")
-    redirect_uri = _redirect_uri()
     return (
         f"{_AUTH_URL}?response_type=code&client_id={client_id}"
         f"&redirect_uri={requests.utils.quote(redirect_uri, safe='')}"

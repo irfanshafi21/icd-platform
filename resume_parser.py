@@ -1,37 +1,21 @@
 """
-Resume text extraction — handles PDF, DOCX, image (JPG/PNG), and ZIP-folder
-uploads from Streamlit's file_uploader. Image resumes are read via OCR.
+Resume text extraction — handles PDF, DOCX, and ZIP-folder uploads
+from Streamlit's file_uploader.
 """
 
 import io
 import os
 import re
-import platform
 import zipfile
 from pypdf import PdfReader
 import docx
-from PIL import Image
-import pytesseract
-
-# Windows often doesn't add Tesseract to PATH automatically after install.
-# Check the default install locations so OCR works without manual PATH setup.
-if platform.system() == "Windows":
-    _default_paths = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-    ]
-    for _p in _default_paths:
-        if os.path.exists(_p):
-            pytesseract.pytesseract.tesseract_cmd = _p
-            break
-
-SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".png", ".jpg", ".jpeg")
+SUPPORTED_EXTENSIONS = (".pdf", ".docx")
 _IGNORE_MARKERS = ("__MACOSX", ".DS_Store", "Thumbs.db")
 
 
 def extract_text_from_file(uploaded_file) -> str:
     """
-    Extract raw text from a Streamlit UploadedFile (PDF, DOCX, or image).
+    Extract raw text from a Streamlit UploadedFile (PDF or DOCX).
     """
     name = uploaded_file.name.lower()
     data = uploaded_file.read()
@@ -47,15 +31,13 @@ def extract_text_from_bytes(name: str, data: bytes) -> str:
         return _extract_pdf_text(data)
     elif name.endswith(".docx"):
         return _extract_docx_text(data)
-    elif name.endswith((".png", ".jpg", ".jpeg")):
-        return _extract_image_text(data)
     else:
         raise ValueError(f"Unsupported file type: {name}")
 
 
 def extract_files_from_zip(uploaded_zip) -> list[tuple[str, bytes]]:
     """
-    Extract all supported resume-type files (pdf/docx/png/jpg/jpeg) from an uploaded ZIP
+    Extract all supported resume-type files (PDF/DOCX) from an uploaded ZIP
     folder. Skips subfolders' junk files (__MACOSX, .DS_Store), and any file
     with an unsupported extension.
     """
@@ -97,16 +79,16 @@ def assess_extraction_confidence(profile: dict, raw_text: str) -> list[str]:
     Sanity-checks an AI-extracted profile against the raw resume text and
     returns a list of specific, human-readable concerns — empty list means
     nothing looked off. This catches the class of error where the AI extraction
-    silently gets a field wrong or misses it (unusual PDF layout, scanned
-    image, non-standard resume structure) with no other signal to the
+    silently gets a field wrong or misses it (unusual PDF layout or
+    non-standard resume structure) with no other signal to the
     recruiter that something needs a second look.
     """
     concerns = []
     text = raw_text or ""
 
     if len(text.strip()) < 200:
-        concerns.append("Extracted resume text is unusually short — the file may be a scanned image "
-                         "or have an unusual layout that parsing struggled with.")
+        concerns.append("Extracted resume text is unusually short — the file may have an unusual "
+                         "layout that parsing struggled with.")
 
     email_in_text = bool(_EMAIL_RE.search(text))
     email_in_profile = bool((profile.get("email") or "").strip())
@@ -155,7 +137,7 @@ def heuristic_resume_check(text: str) -> dict:
 
     # Clearly a resume: multiple section signals AND contact info present.
     strong_pass = section_hits >= 2 and has_contact_info
-    # Reasonably confident even without contact info (e.g. OCR missed it).
+    # Reasonably confident even without contact info (e.g. extraction missed it).
     medium_pass = section_hits >= 3
 
     looks_like_resume = strong_pass or medium_pass
@@ -175,7 +157,7 @@ def compute_local_ats_metrics(text: str) -> dict:
     properties of the text itself (not job-fit, which is handled elsewhere):
 
     - structure_score: how many standard resume sections are present
-    - formatting_score: bullet-point usage and absence of OCR/parsing noise
+    - formatting_score: bullet-point usage and absence of parsing noise
     - readability_score: sentence length and overall resume length in a
       reasonable range (proxy for how easily an ATS/human parses it)
 
@@ -199,7 +181,7 @@ def compute_local_ats_metrics(text: str) -> dict:
     bullet_lines = sum(1 for l in lines if l.strip().startswith(("-", "•", "*", "◦", "▪")) or
                         (len(l.strip()) > 1 and l.strip()[0].isdigit() and l.strip()[1] in ".)"))
     bullet_ratio = bullet_lines / max(len(lines), 1)
-    # OCR/parsing noise proxy: fraction of characters that are neither alnum, space, nor common punctuation
+    # Parsing-noise proxy: fraction of characters that are neither alnum, space, nor common punctuation
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 \n\t.,;:!?()/@-–—&%+#'\"")
     noisy_chars = sum(1 for ch in text if ch not in allowed)
     noise_ratio = noisy_chars / max(len(text), 1)
@@ -225,27 +207,6 @@ def compute_local_ats_metrics(text: str) -> dict:
     }
 
 
-def _extract_image_text(data: bytes) -> str:
-    """OCR a resume that was uploaded as a photo or screenshot."""
-    image = Image.open(io.BytesIO(data))
-    if image.mode != "RGB":
-        image = image.convert("RGB")
-    try:
-        text = pytesseract.image_to_string(image).strip()
-    except pytesseract.TesseractNotFoundError:
-        raise RuntimeError(
-            "Tesseract OCR engine isn't installed or wasn't found on this machine. "
-            "Install it from https://github.com/UB-Mannheim/tesseract/wiki (Windows) "
-            "and restart the app. See README.md for details."
-        )
-    if not text or len(text) < 20:
-        raise ValueError(
-            "Could not read enough text from this image — try a clearer, "
-            "higher-resolution photo or scan of the resume."
-        )
-    return text
-
-
 def _extract_pdf_text(data: bytes) -> str:
     reader = PdfReader(io.BytesIO(data))
     text_parts = []
@@ -253,7 +214,7 @@ def _extract_pdf_text(data: bytes) -> str:
         text_parts.append(page.extract_text() or "")
     text = "\n".join(text_parts).strip()
     if not text:
-        raise ValueError("Could not extract text — this PDF may be a scanned image without OCR.")
+        raise ValueError("Could not extract text from this PDF. Upload a text-based PDF or DOCX file.")
     return text
 
 

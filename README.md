@@ -3,7 +3,7 @@
 AI-powered resume screening and candidate ranking, built with Streamlit and Google Gemini.
 
 ## Features
-- Upload multiple resumes (PDF/DOCX)
+- Upload multiple text-based resumes (PDF/DOCX)
 - Paste a job description
 - AI parses each resume into a structured profile (skills, experience, education)
 - AI scores each candidate against the JD (0-100, with a breakdown by skills/experience/education)
@@ -51,8 +51,8 @@ streamlit run app.py
 
 ## 3. Deploy for free on Render
 
-This project is configured for Render and includes a `Dockerfile`, `render_start.sh`,
-and `render.yaml`.
+This project is configured for Render and includes a lightweight `Dockerfile`, `render_start.sh`,
+and `render.yaml`. The fast build accepts text-based PDF and DOCX resumes only; image/OCR processing is intentionally disabled to reduce startup and screening time.
 
 1. Push this folder to a GitHub repository.
 2. In Render, create a **New → Web Service** and connect the GitHub repository.
@@ -70,8 +70,7 @@ The included `render_start.sh` copies Render's secret file into
 `.streamlit/secrets.toml` at runtime, so the existing `st.secrets[...]` code
 continues to work. The app listens on Render's `$PORT` automatically.
 
-The Docker image also installs Tesseract OCR, which is required for image/scanned
-resume extraction.
+The Docker image does not install Tesseract because image/OCR resume processing is disabled. Upload text-based PDFs or DOCX files for the fastest and most reliable screening path.
 
 For integrations that use environment variables, the application already falls
 back from `st.secrets` to `os.environ`.
@@ -87,5 +86,5 @@ icd_app/
 ```
 
 ## Notes
-- Scanned/image-only PDFs won't extract text (no OCR yet) — use text-based resumes for now.
+- Image resumes and scanned/image-only PDFs are not supported in the fast build; use text-based PDFs or DOCX files.
 - Gemini's free tier has daily rate limits; if you hit them, wait a bit or upgrade to a paid tier.

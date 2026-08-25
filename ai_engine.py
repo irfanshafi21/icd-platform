@@ -765,31 +765,6 @@ Return ONLY valid JSON with this exact schema:
     return _call_json(prompt)
 
 
-def is_resume_ai_check(text: str) -> dict:
-    """
-    Second-pass, AI-based check for whether a document is actually a resume/CV.
-    Only called for files that failed the fast local heuristic check — this
-    is the "check twice before excluding" safety net, so an unusually
-    formatted real resume doesn't get silently dropped.
-    """
-    prompt = f"""Determine whether the text below is a resume/CV (a document describing a
-person's work experience, education, and skills for a job application) or something else
-entirely (e.g. a cover letter, certificate, random document, ID card, receipt, unrelated image).
-
-Return ONLY valid JSON with this schema:
-{{
-  "is_resume": true or false,
-  "reason": "one short sentence explaining why"
-}}
-
-TEXT (may be partial or OCR'd, so tolerate minor noise):
----
-{text[:3000]}
----
-"""
-    return _call_json(prompt)
-
-
 def generate_interview_questions(profile: dict, score_data: dict, job_description: str) -> dict:
     """
     Generate role- and candidate-specific interview questions, grouped by
@@ -841,10 +816,9 @@ candidate ranking app. Its features:
 
 - Resume Screening: enter a job title + key requirements, set priority weighting (how much
   Skills/Experience/Education matter for ranking), set "Top N" (how many candidates to shortlist),
-  then upload resumes as individual files (PDF/DOCX/JPG/PNG, image resumes are read via OCR) or as
+  then upload text-based resumes as individual PDF/DOCX files or as
   a ZIP folder. Non-resume files (invoices, certificates, random documents) are auto-detected and
-  excluded via a two-pass check (a fast local keyword/contact-info check, then an AI confirmation
-  before final exclusion) — nothing gets dropped on a single weak signal.
+  excluded immediately by one fast local keyword/contact-info check, without an extra AI request.
 - Home: the command center and landing page. Shows live recruitment stats (resumes uploaded/analyzed,
   shortlisted/selected/rejected counts, interviews pending/completed, candidates awaiting an interview
   decision, active job openings, completed recruitments, average ATS score, hiring success rate), a
