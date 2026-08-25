@@ -578,7 +578,10 @@ def _call_json(prompt: str) -> dict:
     """
     fast_providers = []
     if _get_groq_key():
-        fast_providers.append(("Groq", _call_groq, _GROQ_LIMITER, _GROQ_TPM_LIMITER))
+        # Do not hold a screening worker for up to 60 seconds in the global
+        # TPM limiter. Groq already rotates configured keys and fails fast on
+        # a per-minute 429; _call_json can then use Cerebras/Gemini immediately.
+        fast_providers.append(("Groq", _call_groq, _GROQ_LIMITER, None))
     if _get_cerebras_key():
         fast_providers.append(("Cerebras", _call_cerebras, _CEREBRAS_LIMITER, None))
     gemini_key = _get_gemini_key()

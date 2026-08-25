@@ -12,6 +12,8 @@ class ScreeningPipelineTests(unittest.TestCase):
         self.assertNotEqual(cache_key("resume-a", "jd"), cache_key("resume-b", "jd"))
 
     def test_worker_count_is_bounded(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(worker_count(20), 5)
         with patch.dict(os.environ, {"SCREENING_MAX_WORKERS": "99"}):
             self.assertEqual(worker_count(20), 5)
         with patch.dict(os.environ, {"SCREENING_MAX_WORKERS": "2"}):

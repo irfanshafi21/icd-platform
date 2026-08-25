@@ -2397,7 +2397,10 @@ if page == "📤 Resume Screening":
                 if db.is_configured() else []
             )
             if len(saved_batch) == len(completed_candidates):
-                st.session_state.candidates.extend(saved_batch)
+                # Batch inserts return raw screening_history rows. Normalize
+                # them to the same nested candidate shape used everywhere
+                # else before rendering the results.
+                st.session_state.candidates.extend(_row_to_candidate(row) for row in saved_batch)
             else:
                 for result in completed_candidates:
                     st.session_state.candidates.append(
@@ -2419,14 +2422,15 @@ if page == "📤 Resume Screening":
         st.divider()
         st.markdown("#### Processed this session")
         for c in st.session_state.candidates:
-            err = c["score"].get("error")
+            score_data = c.get("score") or {}
+            err = score_data.get("error")
             if err:
-                st.warning(f"**{c['filename']}** — failed to process: {err}")
+                st.warning(f"**{c.get('filename', 'Unknown file')}** — failed to process: {err}")
             else:
-                st.write(f"✅ **{c['name']}** — overall score: {c['score'].get('overall_score', '—')}/100")
+                st.write(f"✅ **{c.get('name', 'Unknown candidate')}** — overall score: {score_data.get('overall_score', '—')}/100")
 
     # ---- Top Candidates (ranked shortlist, moved here from Home) ----
-    _valid_for_ranking = [c for c in st.session_state.candidates if not c["score"].get("error")]
+    _valid_for_ranking = [c for c in st.session_state.candidates if not (c.get("score") or {}).get("error")]
     if _valid_for_ranking:
         st.divider()
         page_header("🏆", f"Top Candidates — Top {st.session_state.top_n}")

@@ -23,11 +23,11 @@ def cache_key(resume_hash: str, jd_hash: str) -> str:
 
 
 def worker_count(item_count: int) -> int:
-    """Default to three workers and never exceed five, even if misconfigured."""
+    """Default to five workers and never exceed five, even if misconfigured."""
     try:
-        configured = int(os.environ.get("SCREENING_MAX_WORKERS", "3"))
+        configured = int(os.environ.get("SCREENING_MAX_WORKERS", "5"))
     except (TypeError, ValueError):
-        configured = 3
+        configured = 5
     return min(max(1, item_count), max(1, min(configured, 5)))
 
 
