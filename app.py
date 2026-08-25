@@ -838,7 +838,12 @@ st.markdown("""
         border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         font-size: 1.3rem; font-weight: 800; color: #ffffff;
+        line-height: 1; text-align: center;
         box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .candidate-avatar > span {
+        display: flex; align-items: center; justify-content: center;
+        width: 100%; height: 100%; line-height: 1;
     }
     .candidate-info { min-width: 0; }
     .candidate-name { font-size: 1.28rem; font-weight: 800; color: var(--ink); line-height: 1.2; }
@@ -2558,24 +2563,30 @@ if page == "📤 Resume Screening":
             ) or '<span class="candidate-card-skill">No matched skills listed</span>'
 
             with st.container():
-                st.markdown(f"""
-                <div class="candidate-card">
-                    <div class="candidate-avatar" style="background:{avatar_bg};">{avatar_text}</div>
-                    <div class="candidate-info">
-                        <div class="candidate-rank-label">Rank #{idx}</div>
-                        <div class="candidate-name">{candidate_name}</div>
-                        <div class="candidate-subtitle">{role} · {experience}</div>
-                        <div class="candidate-card-skills">{skill_html}</div>
-                    </div>
-                    <div class="candidate-card-metrics">
-                        {status_html}
-                        <span class="candidate-mini-stat">{len(matched_skills)} matches</span>
-                        <span class="candidate-mini-stat">{len(gaps)} gaps</span>
-                        <span class="score-pill" style="background:{bg}; color:{color};">{score}/100</span>
-                        {'<span class="score-pill" style="background:#FEF3C7; color:#92400E; font-size:0.78rem; padding:6px 10px;">Review</span>' if profile.get("extraction_flags") else ''}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                review_html = (
+                    '<span class="score-pill" style="background:#FEF3C7;color:#92400E;'
+                    'font-size:0.78rem;padding:6px 10px;">Review</span>'
+                    if profile.get("extraction_flags") else ""
+                )
+                card_html = (
+                    f'<div class="candidate-card">'
+                    f'<div class="candidate-avatar" style="background:{avatar_bg};"><span>{avatar_text}</span></div>'
+                    f'<div class="candidate-info">'
+                    f'<div class="candidate-rank-label">Rank #{idx}</div>'
+                    f'<div class="candidate-name">{candidate_name}</div>'
+                    f'<div class="candidate-subtitle">{role} · {experience}</div>'
+                    f'<div class="candidate-card-skills">{skill_html}</div>'
+                    f'</div>'
+                    f'<div class="candidate-card-metrics">'
+                    f'{status_html}'
+                    f'<span class="candidate-mini-stat">{len(matched_skills)} matches</span>'
+                    f'<span class="candidate-mini-stat">{len(gaps)} gaps</span>'
+                    f'<span class="score-pill" style="background:{bg};color:{color};">{score}/100</span>'
+                    f'{review_html}'
+                    f'</div>'
+                    f'</div>'
+                )
+                st.html(card_html)
 
                 with st.expander(f"View candidate details — {c['name']}", icon=":material/person_search:"):
                     dec1, dec2, dec3 = st.columns([1, 1, 2])
