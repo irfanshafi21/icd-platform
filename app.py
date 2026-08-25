@@ -47,9 +47,15 @@ from datetime import datetime, timedelta, time as dt_time
 from contextlib import contextmanager
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import hashlib
 import io
 import threading
+from screening_pipeline import (
+    cache_key as screening_cache_key,
+    cached_ai_result,
+    content_hash,
+    job_description_hash,
+    worker_count,
+)
 
 _local_candidate_id_lock = threading.Lock()
 from resume_parser import (
@@ -2122,11 +2128,24 @@ if page == "📤 Resume Screening":
         #     direct upload and once inside the ZIP, or picked twice by hand).
         #  2. The exact same file was already screened for this job earlier
         #     in this session (tracked in st.session_state.screened_file_hashes,
-        #     keyed by job_id) — so re-running "Screen Candidates" after adding
+        #     keyed by normalized JD hash) — so re-running after adding
         #     a few more resumes doesn't re-screen ones you already did.
-        _file_hash = lambda data: hashlib.md5(data).hexdigest()
-        _job_key = st.session_state.get("selected_job_id") or "_no_job_"
-        _already_screened_hashes = st.session_state.setdefault("screened_file_hashes", {}).get(_job_key, set())
+        _file_hash = content_hash
+        _jd_hash = job_description_hash(
+            f"Job Role: {job_role}\n\nKey Requirements:\n{job_details}".strip()
+        )
+        # Include records restored from Supabase. The metadata is nested in
+        # profile_json, so persistence needs no database schema migration.
+        _persisted_hashes = {
+            c.get("profile", {}).get("_screening_resume_hash")
+            for c in st.session_state.get("candidates", [])
+            if c.get("profile", {}).get("_screening_jd_hash") == _jd_hash
+        }
+        _persisted_hashes.discard(None)
+        _already_screened_hashes = (
+            st.session_state.setdefault("screened_file_hashes", {}).get(_jd_hash, set())
+            | _persisted_hashes
+        )
 
         seen_in_batch = {}  # hash -> first filename with that hash
         deduped_items = []
@@ -2167,6 +2186,7 @@ if page == "📤 Resume Screening":
         st.info("Upload at least one resume (or a ZIP folder) to get started.")
 
     if run:
+        _previous_candidates = list(st.session_state.get("candidates", []))
         st.session_state.candidates = []
         st.session_state.excluded_files = []
         _screen_logo_ph = st.empty()
@@ -2234,9 +2254,30 @@ if page == "📤 Resume Screening":
         }
 
         _job_id_snapshot = st.session_state.selected_job_id
+        _result_cache = st.session_state.setdefault("screening_result_cache", {})
+        # Warm this session's cache from previously persisted screenings.
+        for existing in _previous_candidates:
+            ep = existing.get("profile", {})
+            er, ej = ep.get("_screening_resume_hash"), ep.get("_screening_jd_hash")
+            reusable = cached_ai_result(existing)
+            if er and ej and reusable:
+                _result_cache.setdefault(screening_cache_key(er, ej), reusable)
 
         def process_one(name, raw_text):
-            profile, score_result = parse_and_score(raw_text, jd)
+            resume_hash = name_to_hash[name]
+            result_key = screening_cache_key(resume_hash, _jd_hash)
+            cached = _result_cache.get(result_key)
+            if cached:
+                reusable = cached_ai_result({"profile": cached[0], "score": cached[1]})
+                if reusable:
+                    profile, score_result = reusable
+                else:
+                    profile, score_result = parse_and_score(raw_text, jd)
+            else:
+                profile, score_result = parse_and_score(raw_text, jd)
+            reusable = cached_ai_result({"profile": profile, "score": score_result})
+            if reusable:
+                _result_cache[result_key] = reusable
             breakdown = score_result.get("breakdown", {})
             weighted = round(
                 breakdown.get("skills_match", 0) * w_norm["skills_match"]
@@ -2249,6 +2290,8 @@ if page == "📤 Resume Screening":
             # travels automatically through profile_json on save/reload — no
             # schema change needed.
             profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
+            profile["_screening_resume_hash"] = resume_hash
+            profile["_screening_jd_hash"] = _jd_hash
             candidate = {
                 "filename": name,
                 "name": profile.get("name") or name,
@@ -2289,7 +2332,7 @@ if page == "📤 Resume Screening":
 
         completed_candidates = []
         failed_candidates = []
-        with ThreadPoolExecutor(max_workers=min(5, max(1, len(valid_items)))) as executor:
+        with ThreadPoolExecutor(max_workers=worker_count(len(valid_items))) as executor:
             futures = {
                 executor.submit(process_one, name, text): name
                 for name, text in valid_items
@@ -2303,7 +2346,7 @@ if page == "📤 Resume Screening":
                     # later in the same session won't send the same file to the AI again.
                     h = name_to_hash.get(name)
                     if h:
-                        st.session_state.screened_file_hashes.setdefault(_job_key, set()).add(h)
+                        st.session_state.screened_file_hashes.setdefault(_jd_hash, set()).add(h)
                 except Exception as e:
                     failed_candidates.append({
                         "filename": name, "name": name, "raw_text": "",
