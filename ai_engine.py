@@ -241,8 +241,8 @@ def _extract_retry_seconds(msg: str, attempt: int) -> int:
 # real cause of things feeling "slow" independent of usage volume. Updated to
 # Groq's current recommended replacements (openai/gpt-oss-*, qwen3.6-27b).
 GROQ_FALLBACK_MODELS = [
-    "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b",
     "qwen/qwen3.6-27b",
 ]
 
@@ -254,7 +254,7 @@ GROQ_CHAT_MODELS = [
 ]
 
 
-def _call_groq(prompt: str, max_attempts: int = 3) -> dict:
+def _call_groq(prompt: str, max_attempts: int = 1) -> dict:
     from groq import Groq
 
     all_keys = _collect_keys("GROQ_API_KEY")
@@ -295,9 +295,7 @@ def _call_groq(prompt: str, max_attempts: int = 3) -> dict:
                             _GROQ_KEY_POOL.mark_exhausted(api_key, msg)
                             key_exhausted = True
                             break
-                        if attempt < max_attempts - 1:
-                            time.sleep(_extract_retry_seconds(msg, attempt))
-                            continue
+                        # Fail fast: let _call_json switch provider immediately.
                         break  # exhausted retries on this model, try next model
                     if "404" in msg or "decommissioned" in msg.lower() or "not found" in msg.lower():
                         break  # model retired, try next model in the list
@@ -321,7 +319,7 @@ CEREBRAS_FALLBACK_MODELS = ["gpt-oss-120b", "zai-glm-4.7"]
 CEREBRAS_CHAT_MODELS = ["gpt-oss-120b", "zai-glm-4.7"]
 
 
-def _call_cerebras(prompt: str, max_attempts: int = 3) -> dict:
+def _call_cerebras(prompt: str, max_attempts: int = 1) -> dict:
     from cerebras.cloud.sdk import Cerebras
 
     all_keys = _collect_keys("CEREBRAS_API_KEY")
@@ -359,9 +357,7 @@ def _call_cerebras(prompt: str, max_attempts: int = 3) -> dict:
                             _CEREBRAS_KEY_POOL.mark_exhausted(api_key, msg)
                             key_exhausted = True
                             break
-                        if attempt < max_attempts - 1:
-                            time.sleep(_extract_retry_seconds(msg, attempt))
-                            continue
+                        # Fail fast: let _call_json switch provider immediately.
                         break
                     if "404" in msg or "not found" in msg.lower() or "does not exist" in msg.lower():
                         break  # model unavailable, try next model in the list
@@ -419,7 +415,7 @@ def _call_cerebras_text(prompt: str, max_attempts: int = 1) -> str:
 GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-flash-latest"]
 
 
-def _call_gemini(prompt: str, max_attempts: int = 3) -> dict:
+def _call_gemini(prompt: str, max_attempts: int = 1) -> dict:
     from google import genai
     from google.genai import types as genai_types
 
@@ -459,9 +455,7 @@ def _call_gemini(prompt: str, max_attempts: int = 3) -> dict:
                             _GEMINI_KEY_POOL.mark_exhausted(api_key, msg)
                             key_exhausted = True
                             break
-                        if attempt < max_attempts - 1:
-                            time.sleep(_extract_retry_seconds(msg, attempt))
-                            continue
+                        # Fail fast: let _call_json switch provider immediately.
                         break
                     if "404" in msg or "no longer available" in msg.lower() or "not found" in msg.lower():
                         break
