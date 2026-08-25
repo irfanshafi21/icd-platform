@@ -332,6 +332,64 @@ def render_interview_prep(candidate: dict, key_prefix: str) -> None:
                     st.write("")
 
 
+def render_candidate_output_details(candidate: dict) -> None:
+    """Render the complete stored screening output without another AI call."""
+    profile = candidate.get("profile") or {}
+    score_data = candidate.get("score") or {}
+    score = score_data.get("overall_score", 0)
+    ai_score = score_data.get("ai_overall_score", score)
+
+    if profile.get("extraction_flags"):
+        st.warning("**Extraction flags — worth a manual double-check:**\n\n" +
+                   "\n".join(f"- {flag}" for flag in profile["extraction_flags"]))
+
+    overview, evidence = st.columns(2)
+    with overview:
+        st.markdown("**Recruiter verdict**")
+        st.write(score_data.get("summary") or "—")
+        if abs(score - ai_score) >= 3:
+            st.caption(f"Priority-weighted score: {score}/100 · AI baseline: {ai_score}/100")
+
+        st.markdown("**Candidate profile**")
+        st.write(profile.get("summary") or "—")
+        st.write(f"**Current role:** {profile.get('current_role') or '—'}")
+        st.write(f"**Experience:** {profile.get('years_experience') or '—'}")
+        st.write(f"**Education:** {profile.get('education') or '—'}")
+        st.write(f"**Location:** {profile.get('location') or '—'}")
+        st.write(f"**Email:** {profile.get('email') or '—'}")
+        st.write(f"**Phone:** {profile.get('phone') or '—'}")
+
+        st.markdown("**Skills found in resume**")
+        components.chip_list(profile.get("skills", []), variant="skill", empty_text="None identified")
+
+    with evidence:
+        st.markdown("**Score breakdown**")
+        breakdown = score_data.get("breakdown") or {}
+        if breakdown:
+            for label, value in breakdown.items():
+                st.write(label.replace("_", " ").title())
+                st.progress(min(max(value, 0), 100) / 100, text=f"{value}/100")
+        else:
+            st.write("—")
+
+        st.markdown("**Matched requirements**")
+        components.chip_list(score_data.get("matched_skills", []), variant="skill", empty_text="None identified")
+        st.markdown("**Gaps and risks**")
+        components.chip_list(score_data.get("gaps", []), variant="gap", empty_text="No significant gaps identified")
+
+    detail_groups = [
+        ("Role history", profile.get("past_roles")),
+        ("Notable projects", profile.get("projects")),
+        ("Certifications", profile.get("certifications")),
+        ("Languages", profile.get("languages")),
+    ]
+    for heading, values in detail_groups:
+        if values:
+            st.markdown(f"**{heading}**")
+            for value in values:
+                st.write(f"- {value}")
+
+
 # ----------------------------- INTERVIEWS storage (Supabase-backed, session-local fallback) -----------------------------
 
 def get_interviews() -> list[dict]:
@@ -2420,14 +2478,24 @@ if page == "📤 Resume Screening":
     # Quick preview list
     if st.session_state.candidates:
         st.divider()
-        st.markdown("#### Processed this session")
-        for c in st.session_state.candidates:
+        st.markdown(f"#### Candidate screening output ({len(st.session_state.candidates)})")
+        st.caption("Open any candidate to see the complete stored result. Viewing details does not make another AI call.")
+        _session_ranked = sorted(
+            st.session_state.candidates,
+            key=smart_rank_key,
+            reverse=True,
+        )
+        for output_rank, c in enumerate(_session_ranked, start=1):
             score_data = c.get("score") or {}
             err = score_data.get("error")
             if err:
                 st.warning(f"**{c.get('filename', 'Unknown file')}** — failed to process: {err}")
             else:
-                st.write(f"✅ **{c.get('name', 'Unknown candidate')}** — overall score: {score_data.get('overall_score', '—')}/100")
+                output_score = score_data.get("overall_score", "—")
+                with st.expander(
+                    f"#{output_rank} · {c.get('name', 'Unknown candidate')} · {output_score}/100"
+                ):
+                    render_candidate_output_details(c)
 
     # ---- Top Candidates (ranked shortlist, moved here from Home) ----
     _valid_for_ranking = [c for c in st.session_state.candidates if not (c.get("score") or {}).get("error")]

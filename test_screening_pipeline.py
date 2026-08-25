@@ -13,9 +13,9 @@ class ScreeningPipelineTests(unittest.TestCase):
 
     def test_worker_count_is_bounded(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(worker_count(20), 5)
+            self.assertEqual(worker_count(20), 10)
         with patch.dict(os.environ, {"SCREENING_MAX_WORKERS": "99"}):
-            self.assertEqual(worker_count(20), 5)
+            self.assertEqual(worker_count(20), 10)
         with patch.dict(os.environ, {"SCREENING_MAX_WORKERS": "2"}):
             self.assertEqual(worker_count(1), 1)
 

@@ -23,12 +23,16 @@ def cache_key(resume_hash: str, jd_hash: str) -> str:
 
 
 def worker_count(item_count: int) -> int:
-    """Default to five workers and never exceed five, even if misconfigured."""
+    """Use controlled concurrency for network-bound AI screening.
+
+    Ten workers lets a typical 20-resume upload finish in two waves while the
+    hard cap prevents accidental request storms on free-tier providers.
+    """
     try:
-        configured = int(os.environ.get("SCREENING_MAX_WORKERS", "5"))
+        configured = int(os.environ.get("SCREENING_MAX_WORKERS", "10"))
     except (TypeError, ValueError):
-        configured = 5
-    return min(max(1, item_count), max(1, min(configured, 5)))
+        configured = 10
+    return min(max(1, item_count), max(1, min(configured, 10)))
 
 
 def cached_ai_result(candidate: dict) -> tuple[dict, dict] | None:

@@ -651,12 +651,12 @@ evidence-based; judge substance over keywords alone; don't penalize non-traditio
 
 JOB DESCRIPTION:
 ---
-{job_description[:2500]}
+{job_description[:1800]}
 ---
 
 RESUME TEXT:
 ---
-{raw_text[:5000]}
+{raw_text[:4500]}
 ---
 
 Return ONLY valid JSON with this exact schema:
@@ -665,10 +665,15 @@ Return ONLY valid JSON with this exact schema:
     "name": "candidate full name",
     "email": "email or empty string",
     "phone": "phone or empty string",
+    "location": "city/country or empty string",
+    "current_role": "most recent role/title or empty string",
     "years_experience": "e.g. '3 years' or 'Fresher/Entry-level'",
     "education": "highest degree + institution, one line",
     "skills": ["skill1", "skill2", ...],
     "past_roles": ["role at company", ...],
+    "certifications": ["certification", ...],
+    "projects": ["notable project and brief evidence", ...],
+    "languages": ["language", ...],
     "summary": "2-sentence neutral summary of the candidate's background"
   }},
   "score": {{
