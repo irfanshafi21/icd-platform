@@ -69,6 +69,43 @@ def _current_company_id():
     return company.get("id") if company else None
 
 
+def _screening_row(candidate: dict, job_role: str, job_details: str, job_id=None,
+                   source: str = "Manual Upload") -> dict:
+    p, s = candidate["profile"], candidate["score"]
+    return {
+        "company_id": _current_company_id(),
+        "job_role": job_role,
+        "job_details": job_details,
+        "job_id": job_id,
+        "candidate_name": candidate.get("name"),
+        "filename": candidate.get("filename"),
+        "email": p.get("email"),
+        "phone": p.get("phone"),
+        "years_experience": p.get("years_experience"),
+        "education": p.get("education"),
+        "skills": json.dumps(p.get("skills", [])),
+        "past_roles": json.dumps(p.get("past_roles", [])),
+        "overall_score": s.get("overall_score"),
+        "skills_match": s.get("breakdown", {}).get("skills_match"),
+        "experience_fit": s.get("breakdown", {}).get("experience_fit"),
+        "education_fit": s.get("breakdown", {}).get("education_fit"),
+        "matched_skills": json.dumps(s.get("matched_skills", [])),
+        "gaps": json.dumps(s.get("gaps", [])),
+        "recruiter_summary": s.get("summary"),
+        "questions_json": json.dumps(candidate.get("questions", {}) or {}),
+        "raw_text": candidate.get("raw_text", ""),
+        "profile_json": json.dumps(p),
+        "score_json": json.dumps(s),
+        "screened_at": candidate.get("screened_at"),
+        "status": "active",
+        "decision_status": candidate.get("status", "Waiting"),
+        "bookmarked": False,
+        "interview_score": candidate.get("interview_score"),
+        "notes": candidate.get("notes", ""),
+        "source": source,
+    }
+
+
 def save_screening_record(candidate: dict, job_role: str, job_details: str, job_id=None,
                            source: str = "Manual Upload") -> dict | None:
     """
@@ -98,39 +135,7 @@ def save_screening_record(candidate: dict, job_role: str, job_details: str, job_
     if client is None:
         return None
     try:
-        p, s = candidate["profile"], candidate["score"]
-        row = {
-            "company_id": _current_company_id(),
-            "job_role": job_role,
-            "job_details": job_details,
-            "job_id": job_id,
-            "candidate_name": candidate.get("name"),
-            "filename": candidate.get("filename"),
-            "email": p.get("email"),
-            "phone": p.get("phone"),
-            "years_experience": p.get("years_experience"),
-            "education": p.get("education"),
-            "skills": json.dumps(p.get("skills", [])),
-            "past_roles": json.dumps(p.get("past_roles", [])),
-            "overall_score": s.get("overall_score"),
-            "skills_match": s.get("breakdown", {}).get("skills_match"),
-            "experience_fit": s.get("breakdown", {}).get("experience_fit"),
-            "education_fit": s.get("breakdown", {}).get("education_fit"),
-            "matched_skills": json.dumps(s.get("matched_skills", [])),
-            "gaps": json.dumps(s.get("gaps", [])),
-            "recruiter_summary": s.get("summary"),
-            "questions_json": json.dumps(candidate.get("questions", {}) or {}),
-            "raw_text": candidate.get("raw_text", ""),
-            "profile_json": json.dumps(p),
-            "score_json": json.dumps(s),
-            "screened_at": candidate.get("screened_at"),
-            "status": "active",
-            "decision_status": candidate.get("status", "Waiting"),
-            "bookmarked": False,
-            "interview_score": candidate.get("interview_score"),
-            "notes": candidate.get("notes", ""),
-            "source": source,
-        }
+        row = _screening_row(candidate, job_role, job_details, job_id=job_id, source=source)
         try:
             result = client.table("screening_history").insert(row).execute()
         except Exception as e:
@@ -147,6 +152,37 @@ def save_screening_record(candidate: dict, job_role: str, job_details: str, job_
     except Exception as e:
         _last_error = f"save_screening_record failed: {e}"
         return None
+
+
+def save_screening_records_batch(candidates: list[dict], job_role: str, job_details: str, job_id=None,
+                                  source: str = "Manual Upload") -> list[dict]:
+    """Persist a completed screening batch in one Supabase insert.
+
+    This avoids one network round trip per candidate. An empty return means the
+    batch insert failed; callers can fall back to session-local storage or retry
+    individual saves only on this exceptional path.
+    """
+    global _last_error
+    if not candidates:
+        return []
+    client = _get_client()
+    if client is None:
+        return []
+    rows = [_screening_row(c, job_role, job_details, job_id=job_id, source=source) for c in candidates]
+    try:
+        try:
+            result = client.table("screening_history").insert(rows).execute()
+        except Exception as e:
+            if "source" in str(e).lower() and "column" in str(e).lower():
+                rows_without_source = [{k: v for k, v in row.items() if k != "source"} for row in rows]
+                result = client.table("screening_history").insert(rows_without_source).execute()
+            else:
+                raise
+        _last_error = None
+        return [_parse_row_json_fields(row) for row in (result.data or [])]
+    except Exception as e:
+        _last_error = f"save_screening_records_batch failed: {e}"
+        return []
 
 
 def _parse_row_json_fields(row: dict) -> dict:

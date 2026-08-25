@@ -1722,6 +1722,29 @@ with st.sidebar:
             """, unsafe_allow_html=True)
             st.caption("Share this with teammates so they can find and unlock your organization at login.")
 
+        with st.expander("🔄 Change access code"):
+            st.warning("Changing the code immediately invalidates the old code for all teammates.")
+            with st.form("change_access_code_form"):
+                new_access_code = st.text_input(
+                    "New 4-digit access code", type="password", max_chars=4,
+                    placeholder="Enter exactly 4 digits"
+                )
+                confirm_access_code = st.text_input(
+                    "Confirm new access code", type="password", max_chars=4,
+                    placeholder="Repeat the new code"
+                )
+                change_code_submitted = st.form_submit_button("Change access code", type="primary", width="stretch")
+            if change_code_submitted:
+                if new_access_code != confirm_access_code:
+                    st.error("The two access codes do not match.")
+                else:
+                    ok, msg = auth.change_access_code(_company_bottom.get("id"), new_access_code)
+                    if ok:
+                        st.success("Access code changed. Share the new code with your teammates.")
+                        st.rerun()
+                    else:
+                        st.error(msg)
+
     with st.expander("🔗 LinkedIn"):
         import linkedin_integration
         if not linkedin_integration.is_configured():
@@ -2264,6 +2287,8 @@ if page == "📤 Resume Screening":
         if valid_items:
             eta_ph.markdown("⏱️ Estimated time remaining: **calculating...**")
 
+        completed_candidates = []
+        failed_candidates = []
         with ThreadPoolExecutor(max_workers=min(5, max(1, len(valid_items)))) as executor:
             futures = {
                 executor.submit(process_one, name, text): name
@@ -2273,19 +2298,14 @@ if page == "📤 Resume Screening":
                 name = futures[future]
                 try:
                     result = future.result()
-                    # Persist here, on the main thread — safe access to
-                    # st.session_state (auth company scoping, cached Supabase
-                    # client, local fallback list) all require this.
-                    saved = add_candidate_record(result, job_role, job_details, job_id=_job_id_snapshot)
-                    st.session_state.candidates.append(saved)
+                    completed_candidates.append(result)
                     # Record this file's hash so re-running "Screen Candidates"
-                    # later in the same session (e.g. after adding more resumes)
-                    # won't re-screen this exact file again.
+                    # later in the same session won't send the same file to the AI again.
                     h = name_to_hash.get(name)
                     if h:
                         st.session_state.screened_file_hashes.setdefault(_job_key, set()).add(h)
                 except Exception as e:
-                    st.session_state.candidates.append({
+                    failed_candidates.append({
                         "filename": name, "name": name, "raw_text": "",
                         "profile": {}, "score": {"overall_score": 0, "error": str(e)},
                         "screened_at": datetime.now().isoformat(), "status": "Waiting",
@@ -2300,6 +2320,24 @@ if page == "📤 Resume Screening":
                 elif remaining_items <= 0:
                     eta_ph.markdown("⏱️ Estimated time remaining: **0s** ✅")
                 progress.progress(completed / max(total, 1), text=f"Screened {completed}/{total}...")
+
+        # Persist successful results in one request instead of one Supabase
+        # round-trip per candidate. If the batch insert fails, fall back to the
+        # existing individual-save path so a temporary backend issue does not
+        # discard the screening results.
+        if completed_candidates:
+            saved_batch = (
+                db.save_screening_records_batch(completed_candidates, job_role, job_details, job_id=_job_id_snapshot)
+                if db.is_configured() else []
+            )
+            if len(saved_batch) == len(completed_candidates):
+                st.session_state.candidates.extend(saved_batch)
+            else:
+                for result in completed_candidates:
+                    st.session_state.candidates.append(
+                        add_candidate_record(result, job_role, job_details, job_id=_job_id_snapshot)
+                    )
+        st.session_state.candidates.extend(failed_candidates)
 
         progress.empty()
         _screen_logo_ph.empty()

@@ -247,6 +247,21 @@ def update_company(company_id, updates: dict) -> tuple[bool, str]:
         return False, f"Couldn't save changes: {e}"
 
 
+def change_access_code(company_id, new_code: str) -> tuple[bool, str]:
+    """Replace the current organization's four-digit access code.
+
+    The caller must already be authenticated for the company; Supabase RLS
+    remains the final authorization boundary. Changing the code immediately
+    invalidates the old code for teammates.
+    """
+    normalized = str(new_code or "").strip()
+    if len(normalized) != 4 or not normalized.isdigit():
+        return False, "The new access code must contain exactly 4 digits."
+    if not company_id or not is_logged_in():
+        return False, "Not logged in."
+    return update_company(company_id, {"access_code": normalized})
+
+
 def get_company_for_current_user() -> dict | None:
     """Fetches (and caches in session_state) the company row for whoever is
     currently logged in. Returns None if not logged in or no company yet."""
