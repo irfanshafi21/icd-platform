@@ -213,6 +213,40 @@ def smart_rank_key(c: dict) -> tuple:
     )
 
 
+def job_role_theme(job_role: str) -> tuple[str, str]:
+    """Return a semantic accent and tint for a job family.
+
+    Matching by role keywords makes colors predictable across sessions and
+    organizations instead of assigning a seemingly random palette position.
+    """
+    role = (job_role or "").strip().lower()
+    role_themes = [
+        (("machine learning", "ml engineer", "artificial intelligence", "ai engineer"), ("#7C3AED", "#F5F3FF")),
+        (("data scientist", "data analyst", "business intelligence", "analytics"), ("#0891B2", "#ECFEFF")),
+        (("frontend", "front end", "ui developer", "react", "angular"), ("#EA580C", "#FFF7ED")),
+        (("full stack", "fullstack"), ("#DB2777", "#FDF2F8")),
+        (("backend", "back end", "api developer"), ("#059669", "#ECFDF5")),
+        (("devops", "site reliability", "sre", "cloud engineer"), ("#0F766E", "#F0FDFA")),
+        (("cybersecurity", "security engineer", "security analyst"), ("#DC2626", "#FEF2F2")),
+        (("java", "spring boot"), ("#B91C1C", "#FEF2F2")),
+        (("python", "django", "fastapi", "flask"), ("#2563EB", "#EFF6FF")),
+        (("mobile", "android", "ios", "flutter", "react native"), ("#9333EA", "#FAF5FF")),
+        (("product manager", "project manager", "scrum master"), ("#D97706", "#FFFBEB")),
+        (("designer", "ux", "ui/ux"), ("#C026D3", "#FDF4FF")),
+        (("qa", "quality assurance", "test engineer", "automation tester"), ("#4F46E5", "#EEF2FF")),
+    ]
+    for keywords, theme in role_themes:
+        if any(keyword in role for keyword in keywords):
+            return theme
+
+    fallback = [
+        ("#2563EB", "#EFF6FF"), ("#7C3AED", "#F5F3FF"),
+        ("#0891B2", "#ECFEFF"), ("#059669", "#ECFDF5"),
+        ("#D97706", "#FFFBEB"), ("#DB2777", "#FDF2F8"),
+    ]
+    return fallback[sum(ord(ch) for ch in role) % len(fallback)]
+
+
 def get_candidates() -> list[dict]:
     """All persisted, non-cleared candidates, merged from Supabase and any
     session-local fallback rows that failed to save remotely."""
@@ -2576,14 +2610,7 @@ if page == "📤 Resume Screening":
     if _valid_for_ranking:
         st.divider()
         _ranked = sorted(_valid_for_ranking, key=smart_rank_key, reverse=True)
-        _role_palette = [
-            ("#2563EB", "#EFF6FF"), ("#7C3AED", "#F5F3FF"),
-            ("#0891B2", "#ECFEFF"), ("#059669", "#ECFDF5"),
-            ("#D97706", "#FFFBEB"), ("#DB2777", "#FDF2F8"),
-        ]
-        _role_color, _role_tint = _role_palette[
-            sum(ord(ch) for ch in job_role.strip().lower()) % len(_role_palette)
-        ]
+        _role_color, _role_tint = job_role_theme(job_role)
         _safe_job_role = html.escape(job_role.strip() or "Selected role")
         st.html(
             f'<div class="role-heading" style="--role-color:{_role_color};">'
