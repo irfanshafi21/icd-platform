@@ -81,7 +81,7 @@ def _auth_panel() -> dict | None:
     user = _current_candidate()
     if user:
         return user
-    st.html('<div class="auth-panel"><div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Enter your email address. We will send a secure six-digit verification code.</p></div>')
+    st.html('<div class="auth-panel"><div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Enter your email address. We will send a secure verification code.</p></div>')
     email = st.text_input("Email address", value=st.session_state.get("candidate_email", ""), placeholder="you@example.com").strip().lower()
     if not st.session_state.get("candidate_otp_sent"):
         if st.button("Email verification code", type="primary", icon=":material/mail:", width="stretch"):
@@ -100,10 +100,13 @@ def _auth_panel() -> dict | None:
             st.session_state.pop("entry_role", None)
             st.rerun()
         return None
-    st.caption(f"A six-digit code was sent to {st.session_state.get('candidate_email', email)}. Check your inbox and spam folder.")
-    code = st.text_input("Verification code", max_chars=6, placeholder="000000")
+    st.caption(f"A verification code was sent to {st.session_state.get('candidate_email', email)}. Check your inbox and spam folder.")
+    code = st.text_input("Verification code", max_chars=10, placeholder="Enter the code from your email")
     left, right = st.columns(2)
     if left.button("Verify and continue", type="primary", width="stretch"):
+        if not code.strip().isdigit() or not 6 <= len(code.strip()) <= 10:
+            st.error("Enter the complete numeric verification code from your email.")
+            return None
         try:
             response = db._get_client().auth.verify_otp({"email": st.session_state.get("candidate_email", email), "token": code.strip(), "type": "email"})
             if getattr(response, "user", None):
