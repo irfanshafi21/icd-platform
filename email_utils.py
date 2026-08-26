@@ -343,6 +343,16 @@ def _resolve_host_port(provider: str) -> tuple[str, int]:
     return host, port
 
 
+def _provider_for_sender(sender_email: str | None) -> str:
+    """Infer a safe SMTP preset for automatic messages from the sender domain."""
+    domain = (sender_email or "").rsplit("@", 1)[-1].lower()
+    if domain in {"outlook.com", "hotmail.com", "live.com", "office365.com"}:
+        return "Outlook / Office 365"
+    if domain in {"yahoo.com", "yahoo.co.in", "ymail.com"}:
+        return "Yahoo"
+    return "Gmail"
+
+
 SSL_PORTS = {
     "Gmail": 465,
     "Outlook / Office 365": 587,  # Outlook doesn't support SSL-on-connect the same way; STARTTLS only
@@ -419,6 +429,7 @@ def send_plain_email(to_email: str, subject: str, body_text: str, from_email: st
     Platform branding). Both optional; omit either or both for a plain-text
     email exactly like before.
     """
+    gas_error = None
     if is_gas_configured():
         webhook_url = _get_secret("GAS_WEBHOOK_URL")
         secret = _get_secret("GAS_SECRET") or ""
@@ -448,13 +459,15 @@ def send_plain_email(to_email: str, subject: str, body_text: str, from_email: st
                 data = {}
             if resp.status_code == 200 and data.get("ok"):
                 return True, f"Sent to {to_email}."
-            return False, f"Google Apps Script error: {data.get('error') or resp.text[:200] or f'HTTP {resp.status_code}'}"
+            gas_error = f"Google Apps Script error: {data.get('error') or resp.text[:200] or f'HTTP {resp.status_code}'}"
         except Exception as e:
-            return False, f"Couldn't send via Google Apps Script: {e}"
+            gas_error = f"Couldn't send via Google Apps Script: {e}"
 
     sender_email = _get_secret("SMTP_EMAIL")
     sender_password = _get_secret("SMTP_APP_PASSWORD")
     if not sender_email or not sender_password:
+        if gas_error:
+            return False, f"{gas_error}. SMTP fallback is not configured."
         return False, ("Email sending isn't configured. Add GAS_WEBHOOK_URL/GAS_SECRET (sends via your real "
                         "Gmail) or SMTP_EMAIL/SMTP_APP_PASSWORD to .streamlit/secrets.toml.")
     try:
@@ -490,14 +503,17 @@ def send_plain_email(to_email: str, subject: str, body_text: str, from_email: st
             msg.attach(alternative)
         else:
             msg.attach(MIMEText(body_text, "plain"))
-        host, port = _resolve_host_port("Gmail")
+        provider = _provider_for_sender(sender_email)
+        host, port = _resolve_host_port(provider)
         with smtplib.SMTP(host, port, timeout=15) as server:
             server.starttls()
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, [to_email], msg.as_string())
-        return True, f"Sent to {to_email}."
+        suffix = " via SMTP fallback" if gas_error else ""
+        return True, f"Sent to {to_email}{suffix}."
     except Exception as e:
-        return False, f"Couldn't send email: {e}"
+        prefix = f"{gas_error}; " if gas_error else ""
+        return False, f"{prefix}Couldn't send email via SMTP: {e}"
 
 
 def send_email_with_pdf(
@@ -524,15 +540,23 @@ def send_email_with_pdf(
     message; when both are omitted, it's a plain-text email exactly like
     before, so this feature is fully optional per-send.
     """
+    gas_error = None
     if is_gas_configured():
-        return _send_via_google_apps_script(to_email, subject, body_text, pdf_bytes, pdf_filename,
-                                             logo_bytes=logo_bytes, company_name=company_name, badge_text=badge_text)
+        gas_ok, gas_message = _send_via_google_apps_script(
+            to_email, subject, body_text, pdf_bytes, pdf_filename,
+            logo_bytes=logo_bytes, company_name=company_name, badge_text=badge_text,
+        )
+        if gas_ok:
+            return True, gas_message
+        gas_error = gas_message
 
     import socket
 
     sender_email = _get_secret("SMTP_EMAIL")
     sender_password = _get_secret("SMTP_APP_PASSWORD")
     if not sender_email or not sender_password:
+        if gas_error:
+            return False, f"{gas_error}. SMTP fallback is not configured."
         return False, ("Email sending isn't configured yet. Add GAS_WEBHOOK_URL/GAS_SECRET (sends via your "
                         "real Gmail) or SMTP_EMAIL and SMTP_APP_PASSWORD to .streamlit/secrets.toml.")
 
@@ -557,7 +581,8 @@ def send_email_with_pdf(
 
     try:
         _try_starttls()
-        return True, f"Sent to {to_email}."
+        suffix = " via SMTP fallback" if gas_error else ""
+        return True, f"Sent to {to_email}{suffix}."
     except smtplib.SMTPAuthenticationError:
         return False, ("Authentication failed — check SMTP_EMAIL/SMTP_APP_PASSWORD in secrets.toml. "
                         "Make sure you're using an app password, not your regular account password.")
@@ -567,14 +592,16 @@ def send_email_with_pdf(
         if provider in SSL_PORTS:
             try:
                 _try_ssl()
-                return True, f"Sent to {to_email}."
+                suffix = " via SMTP fallback" if gas_error else ""
+                return True, f"Sent to {to_email}{suffix}."
             except smtplib.SMTPAuthenticationError:
                 return False, ("Authentication failed — check SMTP_EMAIL/SMTP_APP_PASSWORD in secrets.toml. "
                                 "Make sure you're using an app password, not your regular account password.")
             except Exception:
                 pass  # fall through to the timeout message below
 
-        return False, (
+        gas_prefix = f"Primary relay failed ({gas_error}). " if gas_error else ""
+        return False, gas_prefix + (
             "Couldn't connect to the email server — this is almost always a network/firewall issue, "
             "not a problem with your credentials. A few things to check:\n\n"
             "- Your network, VPN, antivirus, or ISP may be blocking outbound SMTP ports (587/465) — "
@@ -585,4 +612,5 @@ def send_email_with_pdf(
             f"Technical detail: {first_err}"
         )
     except Exception as e:
-        return False, f"Couldn't send the email: {e}"
+        prefix = f"Primary relay failed ({gas_error}). " if gas_error else ""
+        return False, f"{prefix}Couldn't send the email: {e}"

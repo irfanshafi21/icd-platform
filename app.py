@@ -3619,7 +3619,7 @@ elif page == "👥 Candidates":
             </style>
             """, unsafe_allow_html=True)
 
-            def _render_candidate_grid(cand_list):
+            def _render_candidate_grid(cand_list, group_color):
                 n_cols = 3
                 rows = [cand_list[i:i+n_cols] for i in range(0, len(cand_list), n_cols)]
                 for row in rows:
@@ -3632,9 +3632,40 @@ elif page == "👥 Candidates":
                         is_bookmarked = bool(c.get("bookmarked"))
                         is_rejected = c.get("status") == "Rejected"
                         is_in_compare = key in st.session_state.compare_list
+                        _card_slug = "".join(ch if ch.isalnum() else "_" for ch in str(key)).strip("_") or "candidate"
+                        _card_key = f"candidate_role_card_{_card_slug}"
+                        _card_class = f"st-key-{_card_key}"
 
                         with col:
-                            with st.container(border=True):
+                            st.html(f"""
+                            <style>
+                            .{_card_class},
+                            .{_card_class}[data-testid="stVerticalBlockBorderWrapper"],
+                            div[data-testid="stVerticalBlockBorderWrapper"]:has(.{_card_class}) {{
+                                background: linear-gradient(145deg, {group_color}, color-mix(in srgb, {group_color} 78%, #08182B)) !important;
+                                border-color: color-mix(in srgb, {group_color} 65%, white) !important;
+                                box-shadow: 0 8px 22px color-mix(in srgb, {group_color} 25%, transparent) !important;
+                            }}
+                            .{_card_class} .candidate-list-name,
+                            .{_card_class} .candidate-list-score,
+                            .{_card_class} label p,
+                            .{_card_class} [data-testid="stCaptionContainer"] p {{ color:#fff !important; }}
+                            .{_card_class} .candidate-list-experience,
+                            .{_card_class} .candidate-list-score span {{ color:rgba(255,255,255,.76) !important; }}
+                            .{_card_class} .candidate-list-avatar {{
+                                background:rgba(255,255,255,.20) !important;
+                                border:1px solid rgba(255,255,255,.32);
+                            }}
+                            .{_card_class} .candidate-list-score-track {{ background:rgba(255,255,255,.20) !important; }}
+                            .{_card_class} .candidate-list-score-fill {{ background:rgba(255,255,255,.90) !important; }}
+                            .{_card_class} .skill-chip {{
+                                background:rgba(255,255,255,.18) !important;
+                                border:1px solid rgba(255,255,255,.28) !important;
+                                color:#fff !important;
+                            }}
+                            </style>
+                            """)
+                            with st.container(border=True, key=_card_key):
                                 st.markdown(f"""
                                 <div style="display:flex; align-items:center; gap:12px;">
                                     <div class="candidate-list-avatar" style="width:46px; height:46px; border-radius:50%; background:linear-gradient(135deg,#378ADD,#185FA5);
@@ -3805,7 +3836,7 @@ elif page == "👥 Candidates":
                             f"#### 💼 {_job_name} <span style='color:{_group_color}; font-weight:500; font-size:0.9rem;'>({len(_group_cands)})</span>",
                             unsafe_allow_html=True,
                         )
-                        _render_candidate_grid(_group_cands)
+                        _render_candidate_grid(_group_cands, _group_color)
 
 
 
