@@ -340,6 +340,77 @@ def fetch_jobs(include_archived: bool = True) -> list[dict]:
         return []
 
 
+def fetch_published_jobs(limit: int = 200) -> list[dict]:
+    """Return only active jobs deliberately published to the candidate portal."""
+    global _last_error
+    client = _get_client()
+    if client is None:
+        return []
+    try:
+        from datetime import date
+        result = (client.table("jobs")
+                  .select("id,title,department,location,experience_level,employment_type,description,required_skills,deadline,company_id")
+                  .eq("published_to_portal", True)
+                  .eq("status", "active")
+                  .order("created_at", desc=True)
+                  .limit(limit).execute())
+        rows = result.data or []
+        company_ids = sorted({str(row.get("company_id")) for row in rows if row.get("company_id")})
+        companies = {}
+        if company_ids:
+            company_result = client.table("companies_public").select("id,name,logo_base64,industry").in_("id", company_ids).execute()
+            companies = {str(company["id"]): company for company in (company_result.data or [])}
+        for row in rows:
+            row["companies"] = companies.get(str(row.get("company_id")), {})
+        today = date.today().isoformat()
+        _last_error = None
+        return [row for row in rows if not row.get("deadline") or str(row["deadline"])[:10] >= today]
+    except Exception as e:
+        _last_error = f"fetch_published_jobs failed: {e}"
+        return []
+
+
+def fetch_candidate_profile(user_id: str) -> dict | None:
+    client = _get_client()
+    if client is None or not user_id:
+        return None
+    try:
+        result = client.table("candidate_profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        return (result.data or [None])[0]
+    except Exception:
+        return None
+
+
+def save_candidate_profile(profile: dict) -> dict | None:
+    global _last_error
+    client = _get_client()
+    if client is None:
+        return None
+    try:
+        result = client.table("candidate_profiles").insert(profile).execute()
+        _last_error = None
+        return (result.data or [profile])[0]
+    except Exception as e:
+        _last_error = f"save_candidate_profile failed: {e}"
+        return None
+
+
+def fetch_candidate_applications(user_id: str, limit: int = 100) -> list[dict]:
+    """Load only the signed-in candidate's application timeline."""
+    client = _get_client()
+    if client is None or not user_id:
+        return []
+    try:
+        result = (client.table("public_applications")
+                  .select("id,status,applied_at,resume_filename,job_id,jobs(title,location,employment_type)")
+                  .eq("candidate_user_id", user_id)
+                  .order("applied_at", desc=True)
+                  .limit(limit).execute())
+        return result.data or []
+    except Exception:
+        return []
+
+
 # ============================================================
 # INTERVIEWS — Phase 6
 # ============================================================
@@ -449,7 +520,17 @@ def save_public_application(application: dict) -> dict | None:
             job_row = client.table("jobs").select("company_id").eq("id", job_id).limit(1).execute()
             if job_row.data:
                 company_id = job_row.data[0].get("company_id")
-        row = {**application, "company_id": company_id, "status": "Submitted"}
+        current_user = None
+        try:
+            current_user = client.auth.get_user().user
+        except Exception:
+            pass
+        row = {
+            **application,
+            "company_id": company_id,
+            "candidate_user_id": getattr(current_user, "id", None),
+            "status": "Submitted",
+        }
         # Public applicants may INSERT but must never be able to SELECT other
         # candidates' contact details or resume data. Asking PostgREST for no
         # representation keeps the successful response compatible with that

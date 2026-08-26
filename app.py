@@ -909,6 +909,10 @@ elif "portal" in _qp:
     import public_portal
     public_portal.render_status_page()
     st.stop()
+elif "candidate" in _qp:
+    import candidate_portal
+    candidate_portal.render_candidate_portal()
+    st.stop()
 
 # ----------------------------- PAGE CONFIG -----------------------------
 st.set_page_config(
@@ -1494,6 +1498,10 @@ def _render_auth_gate():
     if not db.is_configured():
         return  # no backend configured — skip auth entirely, behave as before
 
+    if not auth.is_logged_in() and st.session_state.get("entry_role") != "recruiter":
+        _render_account_type_gate()
+        st.stop()
+
     if auth.is_logged_in():
         company = auth.get_company_for_current_user()
         if company and st.session_state.get("auth_screen") != "signup_success":
@@ -1505,6 +1513,31 @@ def _render_auth_gate():
     else:
         _render_auth_flow()
         st.stop()
+
+
+def _render_account_type_gate():
+    """Route candidates away from the private recruiter workspace."""
+    st.markdown('<div style="height:2rem"></div>', unsafe_allow_html=True)
+    st.markdown("## Welcome to ICD Platform", text_alignment="center")
+    st.caption("Choose how you want to continue.", text_alignment="center")
+    left, right = st.columns(2, gap="large")
+    with left:
+        with st.container(border=True, height="stretch"):
+            st.markdown(":material/person_search:")
+            st.subheader("I’m a candidate")
+            st.write("Discover published jobs, apply securely and follow your applications.")
+            if st.button("Continue as candidate", type="primary", icon=":material/arrow_forward:", width="stretch"):
+                st.query_params["candidate"] = "1"
+                st.rerun()
+    with right:
+        with st.container(border=True, height="stretch"):
+            st.markdown(":material/business_center:")
+            st.subheader("I’m a recruiter")
+            st.write("Select your organization and manage jobs, screening and hiring decisions.")
+            if st.button("Continue as recruiter", icon=":material/arrow_forward:", width="stretch"):
+                st.session_state.entry_role = "recruiter"
+                st.session_state.auth_screen = "choose_company"
+                st.rerun()
 
 
 _AUTH_CSS = "\n".join(line.strip() for line in """
@@ -3122,6 +3155,23 @@ elif page == "📋 Jobs":
                                     (st.success if ok else st.error)(msg)
                             elif linkedin_integration.is_configured():
                                 st.caption("Connect LinkedIn (sidebar) to post this job directly to your feed.")
+
+                            _published = bool(job.get("published_to_portal"))
+                            _portal_label = "Remove from candidate portal" if _published else "Publish to candidate portal"
+                            _portal_icon = ":material/visibility_off:" if _published else ":material/public:"
+                            if st.button(
+                                _portal_label,
+                                key=f"portal_publish_{job['id']}",
+                                icon=_portal_icon,
+                                type="secondary" if _published else "primary",
+                                width="stretch",
+                            ):
+                                if db.update_job(job["id"], {"published_to_portal": not _published}):
+                                    st.cache_data.clear()
+                                    st.toast("Candidate portal updated.", icon=":material/check_circle:")
+                                    st.rerun()
+                                else:
+                                    st.error("The portal publication setting could not be saved.")
 
                             applications = db.fetch_applications_by_job(job["id"])
                             st.caption(f"📥 {len(applications)} application(s) received via this link.")

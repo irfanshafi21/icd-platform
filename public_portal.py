@@ -233,11 +233,19 @@ def render_apply_page(job_id: str):
         with st.expander("About this role", expanded=False, icon=":material/description:"):
             st.write(job["description"])
 
+    candidate_profile = None
+    try:
+        current_user = db._get_client().auth.get_user().user
+        if current_user:
+            candidate_profile = db.fetch_candidate_profile(current_user.id)
+    except Exception:
+        pass
+
     with st.form("public_apply_form", clear_on_submit=False):
         st.html('<div class="apply-form-heading">Your application</div><div class="apply-form-note">Fields marked with * are required. Your resume is shared only with the hiring organization.</div>')
-        name = st.text_input("Full name *")
-        email = st.text_input("Email *")
-        phone = st.text_input("Phone number")
+        name = st.text_input("Full name *", value=(candidate_profile or {}).get("full_name", ""))
+        email = st.text_input("Email *", value=(candidate_profile or {}).get("email", ""))
+        phone = st.text_input("Phone number", value=(candidate_profile or {}).get("phone", ""))
         resume_file = st.file_uploader("Resume (PDF or DOCX) *", type=["pdf", "docx"])
         submitted = st.form_submit_button("Submit application", type="primary", width="stretch", icon=":material/send:")
 
