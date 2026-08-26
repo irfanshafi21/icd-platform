@@ -35,6 +35,7 @@ token.
 
 import os
 import time
+import threading
 import secrets as _secrets_module
 import requests
 import streamlit as st
@@ -47,6 +48,43 @@ _USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
 _UGC_POST_URL = "https://api.linkedin.com/v2/ugcPosts"
 
 _SCOPES = "openid profile w_member_social"
+
+# CSRF "state" values for the OAuth flow are stored here — at the server
+# process level, not in st.session_state — because navigating away to
+# LinkedIn's consent screen and being redirected back is a fresh HTTP
+# request that Streamlit treats as a brand-new session. Anything stashed in
+# st.session_state before the redirect is gone by the time the callback
+# arrives, which is exactly what caused the "state mismatch" error: it
+# wasn't really a security failure, it was session loss across the redirect.
+# This module-level dict survives that because it lives in the running
+# Python process, not tied to any one browser session.
+# NOTE: this only works correctly if the app runs as a single process/
+# instance (true for a typical single Render/Streamlit-Cloud web service).
+# If this app is ever horizontally scaled across multiple instances behind
+# a load balancer, move this to a shared store (e.g. a Supabase table with
+# an expiry column) instead, since each instance would otherwise have its
+# own separate copy of this dict.
+_pending_oauth_states: dict[str, float] = {}
+_pending_oauth_states_lock = threading.Lock()
+_OAUTH_STATE_TTL_SECONDS = 600  # 10 minutes — plenty of time to approve on LinkedIn's consent screen
+
+
+def _stash_oauth_state(state: str) -> None:
+    now = time.time()
+    with _pending_oauth_states_lock:
+        # Opportunistically clear expired entries so this dict doesn't grow
+        # unbounded if some connect attempts never complete.
+        for k in [k for k, exp in _pending_oauth_states.items() if exp <= now]:
+            del _pending_oauth_states[k]
+        _pending_oauth_states[state] = now + _OAUTH_STATE_TTL_SECONDS
+
+
+def _consume_oauth_state(state: str) -> bool:
+    """Checks the state is one we actually issued and hasn't expired, and
+    removes it (single-use) so the same authorization link can't be reused."""
+    with _pending_oauth_states_lock:
+        expiry = _pending_oauth_states.pop(state, None)
+    return expiry is not None and expiry > time.time()
 
 
 def _get_secret(name: str) -> str | None:
@@ -93,9 +131,9 @@ def _redirect_uri() -> str:
 
 def build_authorization_url() -> str:
     """Generates the LinkedIn consent-screen URL, with a random `state` value
-    stashed in session_state to be checked on callback (CSRF protection —
-    without this, a malicious link could trick the app into linking an
-    attacker's authorization code to this session)."""
+    stashed for CSRF protection (see _stash_oauth_state — without this, a
+    malicious link could trick the app into linking an attacker's
+    authorization code to this session)."""
     redirect_uri = _redirect_uri()
     if not redirect_uri:
         raise RuntimeError(
@@ -103,7 +141,7 @@ def build_authorization_url() -> str:
             "LinkedIn needs a real redirect_uri, so the connect link can't be built yet."
         )
     state = _secrets_module.token_urlsafe(24)
-    st.session_state["linkedin_oauth_state"] = state
+    _stash_oauth_state(state)
     client_id = _get_secret("LINKEDIN_CLIENT_ID")
     return (
         f"{_AUTH_URL}?response_type=code&client_id={client_id}"
@@ -117,9 +155,11 @@ def handle_oauth_callback(code: str, state: str) -> tuple[bool, str]:
     """Call this when the app detects ?linkedin_callback=1&code=...&state=...
     in the query params. Exchanges the code for an access token, fetches the
     member's identity, and persists the connection. Returns (ok, message)."""
-    expected_state = st.session_state.pop("linkedin_oauth_state", None)
-    if not expected_state or state != expected_state:
-        return False, "Security check failed (state mismatch) — please try connecting again."
+    if not _consume_oauth_state(state):
+        return False, (
+            "This connection link expired or was already used — click "
+            "'Connect LinkedIn' again to get a fresh one."
+        )
 
     client_id = _get_secret("LINKEDIN_CLIENT_ID")
     client_secret = _get_secret("LINKEDIN_CLIENT_SECRET")
