@@ -247,6 +247,32 @@ def job_role_theme(job_role: str) -> tuple[str, str]:
     return fallback[sum(ord(ch) for ch in role) % len(fallback)]
 
 
+DASHBOARD_COLORS = {
+    "navy": "#12314A", "blue": "#2563EB", "cyan": "#0891B2",
+    "green": "#16A34A", "amber": "#D97706", "red": "#DC2626",
+    "violet": "#7C3AED", "pink": "#DB2777", "slate": "#64748B",
+    "grid": "#E2E8F0", "surface": "#FFFFFF", "muted": "#475569",
+}
+
+
+def style_dashboard_figure(fig, title: str, *, height: int = 320, horizontal_legend: bool = False):
+    """Apply one accessible visual system to Home and Reports charts."""
+    fig.update_layout(
+        title=dict(text=title, x=0.03, xanchor="left", font=dict(size=17, color=DASHBOARD_COLORS["navy"])),
+        height=height,
+        margin=dict(l=24, r=28, t=58, b=34),
+        paper_bgcolor=DASHBOARD_COLORS["surface"],
+        plot_bgcolor=DASHBOARD_COLORS["surface"],
+        font=dict(family="Inter, sans-serif", color=DASHBOARD_COLORS["muted"], size=12),
+        hoverlabel=dict(bgcolor=DASHBOARD_COLORS["navy"], font_color="#FFFFFF"),
+        legend=(dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                if horizontal_legend else dict(bgcolor="rgba(255,255,255,.85)")),
+    )
+    fig.update_xaxes(gridcolor=DASHBOARD_COLORS["grid"], zeroline=False, linecolor=DASHBOARD_COLORS["grid"])
+    fig.update_yaxes(gridcolor=DASHBOARD_COLORS["grid"], zeroline=False, linecolor=DASHBOARD_COLORS["grid"])
+    return fig
+
+
 def get_candidates() -> list[dict]:
     """All persisted, non-cleared candidates, merged from Supabase and any
     session-local fallback rows that failed to save remotely."""
@@ -3239,17 +3265,14 @@ elif page == "🏠 Home":
     if valid_candidates:
         _stage_names = [s[0] for s in _funnel_stages]
         _stage_counts = [s[1] for s in _funnel_stages]
-        _pipeline_fig = go.Figure(go.Bar(
-            x=_stage_counts, y=_stage_names, orientation="h",
-            marker=dict(color=["#0EA5E9", "#F59E0B", "#8B5CF6", "#22C55E"]),
-            text=_stage_counts, textposition="outside",
+        _pipeline_fig = go.Figure(go.Funnel(
+            x=_stage_counts, y=_stage_names,
+            marker=dict(color=[DASHBOARD_COLORS["blue"], DASHBOARD_COLORS["amber"],
+                               DASHBOARD_COLORS["violet"], DASHBOARD_COLORS["green"]]),
+            textinfo="value+percent initial",
+            connector=dict(line=dict(color=DASHBOARD_COLORS["grid"], width=2)),
         ))
-        _pipeline_fig.update_layout(
-            height=280, margin=dict(l=10, r=30, t=10, b=10),
-            plot_bgcolor="white", paper_bgcolor="white",
-            font=dict(family="Inter, sans-serif", color="#0F172A"),
-            xaxis=dict(title="Candidates"), yaxis=dict(autorange="reversed"),
-        )
+        style_dashboard_figure(_pipeline_fig, "Candidate conversion by hiring stage", height=330)
         st.plotly_chart(_pipeline_fig, width="stretch")
     else:
         st.info("Screen some resumes to see your hiring pipeline.")
@@ -3304,24 +3327,30 @@ elif page == "🏠 Home":
                     tiers["Good Fit (50-74)"] += 1
                 else:
                     tiers["Weak Fit (<50)"] += 1
-            fig_funnel = go.Figure(go.Bar(
-                x=list(tiers.values()), y=list(tiers.keys()), orientation="h",
-                marker={"color": ["#22C55E", "#F59E0B", "#EF4444"]},
-                text=list(tiers.values()), textposition="outside",
+            fig_funnel = go.Figure(go.Pie(
+                labels=list(tiers.keys()), values=list(tiers.values()), hole=.58,
+                marker={"colors": [DASHBOARD_COLORS["green"], DASHBOARD_COLORS["amber"], DASHBOARD_COLORS["red"]],
+                        "line": {"color": "#FFFFFF", "width": 3}},
+                textinfo="label+percent", textposition="outside",
             ))
-            fig_funnel.update_layout(title="Candidates by Fit Tier", height=280,
-                                      margin=dict(l=10, r=30, t=40, b=10),
-                                      plot_bgcolor="white", paper_bgcolor="white",
-                                      font=dict(family="Inter, sans-serif", color="#0F172A"),
-                                      yaxis=dict(autorange="reversed"))
+            style_dashboard_figure(fig_funnel, "Candidates by fit tier", height=330)
+            fig_funnel.update_layout(showlegend=False)
             st.plotly_chart(fig_funnel, width="stretch")
 
-            fig_hist = go.Figure(go.Histogram(x=scores, nbinsx=10, marker_color="#185FA5"))
-            fig_hist.update_layout(title="ATS Score Distribution", height=280,
-                                    margin=dict(l=10, r=10, t=40, b=10),
-                                    plot_bgcolor="white", paper_bgcolor="white",
-                                    font=dict(family="Inter, sans-serif", color="#0F172A"),
-                                    xaxis_title="Overall Score", yaxis_title="Candidates")
+            _score_bins = list(range(0, 100, 10))
+            _score_counts = [sum(start <= score <= (100 if start == 90 else start + 9) for score in scores)
+                             for start in _score_bins]
+            _score_colors = [DASHBOARD_COLORS["red"] if start < 50 else
+                             DASHBOARD_COLORS["amber"] if start < 70 else DASHBOARD_COLORS["green"]
+                             for start in _score_bins]
+            fig_hist = go.Figure(go.Bar(
+                x=[f"{start}–{100 if start == 90 else start + 9}" for start in _score_bins], y=_score_counts,
+                marker=dict(color=_score_colors, line=dict(color="#FFFFFF", width=1)),
+                text=_score_counts, textposition="outside", cliponaxis=False,
+            ))
+            style_dashboard_figure(fig_hist, "ATS score distribution", height=330)
+            fig_hist.update_xaxes(title="ATS score range")
+            fig_hist.update_yaxes(title="Candidates", dtick=1)
             st.plotly_chart(fig_hist, width="stretch")
 
     all_skills = []
@@ -3350,14 +3379,14 @@ elif page == "🏠 Home":
     chart_col2, chart_col3 = st.columns(2)
     with chart_col2:
         if top_skills:
+            _skill_counts = [cnt for _, cnt in top_skills][::-1]
             fig_skills = go.Figure(go.Bar(
-                x=[cnt for _, cnt in top_skills][::-1], y=[s for s, _ in top_skills][::-1],
-                orientation="h", marker_color="#378ADD",
+                x=_skill_counts, y=[s for s, _ in top_skills][::-1], orientation="h",
+                marker=dict(color=_skill_counts, colorscale=[[0, "#BFDBFE"], [1, DASHBOARD_COLORS["blue"]]], showscale=False),
+                text=_skill_counts, textposition="outside", cliponaxis=False,
             ))
-            fig_skills.update_layout(title="Top 10 Skills Across Candidates", height=320,
-                                      margin=dict(l=10, r=10, t=40, b=10),
-                                      plot_bgcolor="white", paper_bgcolor="white",
-                                      font=dict(family="Inter, sans-serif", color="#0F172A"))
+            style_dashboard_figure(fig_skills, "Most common candidate skills", height=360)
+            fig_skills.update_xaxes(title="Candidates", dtick=1)
             st.plotly_chart(fig_skills, width="stretch")
         elif valid_candidates:
             st.info("No skill data available yet.")
@@ -3374,12 +3403,10 @@ elif page == "🏠 Home":
                 marker_color=[_edu_palette.get(lvl, "#378ADD") for lvl, _ in top_edu],
                 text=[cnt for _, cnt in top_edu], textposition="outside", cliponaxis=False,
             ))
-            fig_edu.update_layout(title="Education Distribution", height=320,
-                                   margin=dict(l=10, r=45, t=40, b=10),
-                                   plot_bgcolor="white", paper_bgcolor="white",
-                                   font=dict(family="Inter, sans-serif", color="#0F172A"),
-                                   yaxis=dict(autorange="reversed"), xaxis_title="Candidates",
-                                   xaxis=dict(range=[0, max(cnt for _, cnt in top_edu) * 1.18]))
+            style_dashboard_figure(fig_edu, "Education profile", height=360)
+            fig_edu.update_yaxes(autorange="reversed")
+            fig_edu.update_xaxes(title="Candidates", dtick=1,
+                                 range=[0, max(cnt for _, cnt in top_edu) * 1.22])
             st.plotly_chart(fig_edu, width="stretch")
 
 
@@ -4661,12 +4688,12 @@ elif page == "📊 Reports":
     """, unsafe_allow_html=True)
 
     report_stat_cards = [
-        ("👥", "Candidates Screened", len(report_valid_candidates), None, "#185FA5"),
-        ("⭐", "Shortlisted (≥70)", len(_rep_shortlisted), None, "#F59E0B"),
-        ("🗣️", "Interviews Recorded", len(report_interviews), None, "#8B5CF6"),
-        ("✅", "Selected", len(_rep_selected), None, "#0F6E56"),
-        ("❌", "Rejected", len(_rep_rejected), None, "#A32D2D"),
-        ("🎯", "Avg ATS Score", f"{_rep_avg_ats}/100" if report_valid_candidates else "—", None, "#378ADD"),
+        ("👥", "Candidates Screened", len(report_valid_candidates), None, DASHBOARD_COLORS["blue"]),
+        ("⭐", "Shortlisted (≥70)", len(_rep_shortlisted), None, DASHBOARD_COLORS["amber"]),
+        ("🗣️", "Interviews Recorded", len(report_interviews), None, DASHBOARD_COLORS["violet"]),
+        ("✅", "Selected", len(_rep_selected), None, DASHBOARD_COLORS["green"]),
+        ("❌", "Rejected", len(_rep_rejected), None, DASHBOARD_COLORS["red"]),
+        ("🎯", "Avg ATS Score", f"{_rep_avg_ats}/100" if report_valid_candidates else "—", None, DASHBOARD_COLORS["cyan"]),
     ]
     _rep_cols = st.columns(3)
     for i, (icon, label, value, sub, color) in enumerate(report_stat_cards):
@@ -4684,15 +4711,23 @@ elif page == "📊 Reports":
     if not report_valid_candidates:
         st.info("Screen some resumes to see report charts here.")
     else:
+        _rep_scores = [c["score"].get("overall_score", 0) for c in report_valid_candidates]
+        _rep_score_bins = list(range(0, 100, 10))
+        _rep_score_counts = [sum(start <= score <= (100 if start == 90 else start + 9) for score in _rep_scores)
+                             for start in _rep_score_bins]
+        _rep_score_colors = [DASHBOARD_COLORS["red"] if start < 50 else
+                             DASHBOARD_COLORS["amber"] if start < 70 else DASHBOARD_COLORS["green"]
+                             for start in _rep_score_bins]
         rep_chart_col1, rep_chart_col2 = st.columns(2)
         with rep_chart_col1:
-            _rep_scores = [c["score"].get("overall_score", 0) for c in report_valid_candidates]
-            fig_rep_hist = go.Figure(go.Histogram(x=_rep_scores, nbinsx=10, marker_color="#185FA5"))
-            fig_rep_hist.update_layout(title="ATS Score Distribution", height=280,
-                                        margin=dict(l=10, r=10, t=40, b=10),
-                                        plot_bgcolor="white", paper_bgcolor="white",
-                                        font=dict(family="Inter, sans-serif", color="#131A2E"),
-                                        xaxis_title="Overall Score", yaxis_title="Candidates")
+            fig_rep_hist = go.Figure(go.Bar(
+                x=[f"{start}–{100 if start == 90 else start + 9}" for start in _rep_score_bins], y=_rep_score_counts,
+                marker=dict(color=_rep_score_colors, line=dict(color="#FFFFFF", width=1)),
+                text=_rep_score_counts, textposition="outside", cliponaxis=False,
+            ))
+            style_dashboard_figure(fig_rep_hist, "ATS score distribution", height=340)
+            fig_rep_hist.update_xaxes(title="ATS score range")
+            fig_rep_hist.update_yaxes(title="Candidates", dtick=1)
             st.plotly_chart(fig_rep_hist, width="stretch")
         with rep_chart_col2:
             _rep_tiers = {"Strong Fit (≥75)": 0, "Good Fit (50-74)": 0, "Weak Fit (<50)": 0}
@@ -4703,13 +4738,58 @@ elif page == "📊 Reports":
                     _rep_tiers["Good Fit (50-74)"] += 1
                 else:
                     _rep_tiers["Weak Fit (<50)"] += 1
-            fig_rep_tiers = go.Figure(go.Pie(labels=list(_rep_tiers.keys()), values=list(_rep_tiers.values()), hole=0.45,
-                                              marker=dict(colors=["#0F6E56", "#F59E0B", "#A32D2D"])))
-            fig_rep_tiers.update_layout(title="Candidates by Fit Tier", height=280,
-                                         margin=dict(l=10, r=10, t=40, b=10),
-                                         plot_bgcolor="white", paper_bgcolor="white",
-                                         font=dict(family="Inter, sans-serif", color="#131A2E"))
+            fig_rep_tiers = go.Figure(go.Pie(
+                labels=list(_rep_tiers.keys()), values=list(_rep_tiers.values()), hole=0.58,
+                marker=dict(colors=[DASHBOARD_COLORS["green"], DASHBOARD_COLORS["amber"], DASHBOARD_COLORS["red"]],
+                            line=dict(color="#FFFFFF", width=3)),
+                textinfo="label+percent", textposition="outside",
+            ))
+            style_dashboard_figure(fig_rep_tiers, "Candidate quality mix", height=340)
+            fig_rep_tiers.update_layout(showlegend=False)
             st.plotly_chart(fig_rep_tiers, width="stretch")
+
+        rep_chart_col3, rep_chart_col4 = st.columns(2)
+        with rep_chart_col3:
+            _pipeline_names = ["Screened", "Shortlisted", "Interviewed", "Selected"]
+            _pipeline_values = [len(report_valid_candidates), len(_rep_shortlisted), len(report_interviews), len(_rep_selected)]
+            fig_rep_pipeline = go.Figure(go.Funnel(
+                x=_pipeline_values, y=_pipeline_names,
+                marker=dict(color=[DASHBOARD_COLORS["blue"], DASHBOARD_COLORS["amber"],
+                                   DASHBOARD_COLORS["violet"], DASHBOARD_COLORS["green"]]),
+                textinfo="value+percent initial",
+                connector=dict(line=dict(color=DASHBOARD_COLORS["grid"], width=2)),
+            ))
+            style_dashboard_figure(fig_rep_pipeline, "Hiring funnel conversion", height=350)
+            st.plotly_chart(fig_rep_pipeline, width="stretch")
+
+        with rep_chart_col4:
+            _role_counts = Counter((c.get("job_role") or "Unspecified role") for c in report_valid_candidates)
+            _role_rows = _role_counts.most_common(8)[::-1]
+            _role_colors = [job_role_theme(role)[0] for role, _ in _role_rows]
+            fig_rep_roles = go.Figure(go.Bar(
+                x=[count for _, count in _role_rows], y=[role for role, _ in _role_rows],
+                orientation="h", marker=dict(color=_role_colors),
+                text=[count for _, count in _role_rows], textposition="outside", cliponaxis=False,
+            ))
+            style_dashboard_figure(fig_rep_roles, "Candidates by job role", height=350)
+            fig_rep_roles.update_xaxes(title="Candidates", dtick=1)
+            st.plotly_chart(fig_rep_roles, width="stretch")
+
+        _interview_statuses = Counter((interview.get("status") or "Unknown") for interview in report_interviews)
+        if _interview_statuses:
+            _status_palette = {
+                "Scheduled": DASHBOARD_COLORS["blue"], "Completed": DASHBOARD_COLORS["green"],
+                "Cancelled": DASHBOARD_COLORS["red"], "Unknown": DASHBOARD_COLORS["slate"],
+            }
+            fig_interview_status = go.Figure(go.Bar(
+                x=list(_interview_statuses.keys()), y=list(_interview_statuses.values()),
+                marker=dict(color=[_status_palette.get(status, DASHBOARD_COLORS["violet"])
+                                   for status in _interview_statuses]),
+                text=list(_interview_statuses.values()), textposition="outside", cliponaxis=False,
+            ))
+            style_dashboard_figure(fig_interview_status, "Interview status overview", height=310)
+            fig_interview_status.update_yaxes(title="Interviews", dtick=1)
+            st.plotly_chart(fig_interview_status, width="stretch")
 
     st.write("")
     st.divider()
