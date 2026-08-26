@@ -694,7 +694,11 @@ def _application_resume_items(applications: list[dict]) -> list[tuple[str, bytes
     return items
 
 
-def _select_job_for_screening(job: dict, resume_items: list[tuple[str, bytes]] | None = None) -> None:
+def _select_job_for_screening(
+    job: dict,
+    resume_items: list[tuple[str, bytes]] | None = None,
+    resume_zip: bytes | None = None,
+) -> None:
     """Prepare one saved job and optional application resumes for screening."""
     st.session_state.selected_job_id = job["id"]
     st.session_state.job_role = job["title"]
@@ -707,7 +711,28 @@ def _select_job_for_screening(job: dict, resume_items: list[tuple[str, bytes]] |
     if resume_items is not None:
         st.session_state.pending_application_resumes = resume_items
         st.session_state.pending_application_job_id = job["id"]
+        st.session_state.pending_application_zip = resume_zip or b""
+        st.session_state.pending_application_zip_name = f"{job['title'].replace(' ', '_')}_applications.zip"
     st.session_state.current_page = "📤 Resume Screening"
+
+
+@st.dialog("Screen job applications")
+def _confirm_application_screening(job: dict, applications: list[dict]) -> None:
+    """Require an explicit one-job confirmation before preparing screening."""
+    resume_items = _application_resume_items(applications)
+    st.markdown(f"### {job['title']}")
+    st.write(f"This will package **{len(resume_items)} résumé(s)** for this job role into one ZIP and open Resume Screening.")
+    st.info("Only this job role will be loaded. Finish screening it before preparing another role.")
+    if st.button(
+        "Prepare ZIP and continue",
+        type="primary",
+        icon=":material/folder_zip:",
+        width="stretch",
+        disabled=not resume_items,
+        key=f"confirm_application_screening_{job['id']}",
+    ):
+        _select_job_for_screening(job, resume_items, _build_applications_zip(applications))
+        st.rerun()
 
 
 def _render_applied_candidates_tab(jobs: list[dict]) -> None:
@@ -756,8 +781,7 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
             disabled=not resume_items,
             key=f"applications_screen_{selected_job['id']}",
         ):
-            _select_job_for_screening(selected_job, resume_items)
-            st.rerun()
+            _confirm_application_screening(selected_job, applications)
 
     for index, application in enumerate(applications):
         filename = application.get("resume_filename") or "Résumé unavailable"
@@ -1905,6 +1929,10 @@ if "pending_application_resumes" not in st.session_state:
     st.session_state.pending_application_resumes = []
 if "pending_application_job_id" not in st.session_state:
     st.session_state.pending_application_job_id = None
+if "pending_application_zip" not in st.session_state:
+    st.session_state.pending_application_zip = b""
+if "pending_application_zip_name" not in st.session_state:
+    st.session_state.pending_application_zip_name = "applications.zip"
 if "jobs_view" not in st.session_state:
     st.session_state.jobs_view = "list"  # "list" | "form"
 if "editing_job_id" not in st.session_state:
@@ -2426,11 +2454,15 @@ if page == "📤 Resume Screening":
     )
     if pending_application_items:
         st.success(
-            f"{len(pending_application_items)} application résumé(s) for **{job_role}** are ready. "
-            "Review the settings above, then select **Screen Candidates**.",
+            f"A ZIP containing {len(pending_application_items)} application résumé(s) for **{job_role}** is loaded. "
+            "Only this job role will be screened.",
             icon=":material/task_alt:",
         )
-    tab_files, tab_zip = st.tabs(["Individual files", "📁 Upload a folder (as .zip)"])
+    zip_tab_label = "Prepared applications ZIP" if pending_application_items else "📁 Upload a folder (as .zip)"
+    tab_files, tab_zip = st.tabs(
+        ["Individual files", zip_tab_label],
+        default=zip_tab_label if pending_application_items else "Individual files",
+    )
 
     with tab_files:
         files = st.file_uploader(
@@ -2442,15 +2474,30 @@ if page == "📤 Resume Screening":
         )
 
     with tab_zip:
-        st.caption("Zip your text-based PDF/DOCX resumes and upload the folder here. "
-                    "Non-resume files (certificates, cover letters, random documents) are detected and skipped automatically.")
-        zip_file = st.file_uploader(
-            "Upload a .zip of resumes",
-            type=["zip"],
-            accept_multiple_files=False,
-            label_visibility="collapsed",
-            key="zip_upload",
-        )
+        if pending_application_items:
+            with st.container(border=True):
+                st.markdown(f"**:material/folder_zip: {st.session_state.pending_application_zip_name}**")
+                st.caption(f"{len(pending_application_items)} stored résumé(s) · Job role: {job_role}")
+                st.download_button(
+                    "Download prepared ZIP",
+                    data=st.session_state.pending_application_zip,
+                    file_name=st.session_state.pending_application_zip_name,
+                    mime="application/zip",
+                    icon=":material/download:",
+                    on_click="ignore",
+                    key="prepared_applications_zip_download",
+                )
+            zip_file = None
+        else:
+            st.caption("Zip your text-based PDF/DOCX resumes and upload the folder here. "
+                        "Non-resume files (certificates, cover letters, random documents) are detected and skipped automatically.")
+            zip_file = st.file_uploader(
+                "Upload a .zip of resumes",
+                type=["zip"],
+                accept_multiple_files=False,
+                label_visibility="collapsed",
+                key="zip_upload",
+            )
 
     # Unify both sources into a single (name, bytes) list.
     raw_items = list(pending_application_items)  # list of (name, bytes)
@@ -2744,6 +2791,8 @@ if page == "📤 Resume Screening":
         if pending_application_items:
             st.session_state.pending_application_resumes = []
             st.session_state.pending_application_job_id = None
+            st.session_state.pending_application_zip = b""
+            st.session_state.pending_application_zip_name = "applications.zip"
         if valid_items:
             saved_note = " Saved to persistent history." if db.is_configured() else ""
             notify(f"Screened {len(valid_items)} candidate(s).{saved_note} See the Top Candidates section below.")
