@@ -712,7 +712,7 @@ def _select_job_for_screening(job: dict, resume_items: list[tuple[str, bytes]] |
 
 def _render_applied_candidates_tab(jobs: list[dict]) -> None:
     """Recruiter view of public applications, grouped by their saved job."""
-    st.subheader("Applied candidates", icon=":material/inbox:")
+    st.subheader(":material/inbox: Applied candidates")
     st.caption("Review applicant details, download individual résumés, or send every résumé for one role to screening.")
     if not jobs:
         st.info("Create a job first. Applications received through its public link will appear here.")
