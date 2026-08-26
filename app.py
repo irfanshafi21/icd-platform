@@ -666,6 +666,126 @@ def _build_applications_zip(applications: list[dict]) -> bytes:
     return buf.getvalue()
 
 
+def _application_resume_items(applications: list[dict]) -> list[tuple[str, bytes]]:
+    """Decode stored public-application resumes for download or screening."""
+    items = []
+    used_names = set()
+    for index, application in enumerate(applications, start=1):
+        encoded = application.get("resume_base64")
+        if not encoded:
+            continue
+        try:
+            resume_bytes = base64.b64decode(encoded, validate=True)
+        except Exception:
+            continue
+        original = os.path.basename(application.get("resume_filename") or f"resume_{index}.pdf")
+        applicant = "".join(
+            ch if ch.isalnum() or ch in "-_" else "_"
+            for ch in (application.get("applicant_name") or f"applicant_{index}").strip()
+        ).strip("_") or f"applicant_{index}"
+        filename = f"{applicant}_{original}"
+        stem, extension = os.path.splitext(filename)
+        suffix = 2
+        while filename.lower() in used_names:
+            filename = f"{stem}_{suffix}{extension}"
+            suffix += 1
+        used_names.add(filename.lower())
+        items.append((filename, resume_bytes))
+    return items
+
+
+def _select_job_for_screening(job: dict, resume_items: list[tuple[str, bytes]] | None = None) -> None:
+    """Prepare one saved job and optional application resumes for screening."""
+    st.session_state.selected_job_id = job["id"]
+    st.session_state.job_role = job["title"]
+    details_parts = [
+        job.get("description", ""),
+        ("Responsibilities: " + job["responsibilities"]) if job.get("responsibilities") else "",
+        ("Required skills: " + ", ".join(job.get("required_skills", []))) if job.get("required_skills") else "",
+    ]
+    st.session_state.job_details = "\n\n".join(part for part in details_parts if part)
+    if resume_items is not None:
+        st.session_state.pending_application_resumes = resume_items
+        st.session_state.pending_application_job_id = job["id"]
+    st.session_state.current_page = "📤 Resume Screening"
+
+
+def _render_applied_candidates_tab(jobs: list[dict]) -> None:
+    """Recruiter view of public applications, grouped by their saved job."""
+    st.subheader("Applied candidates", icon=":material/inbox:")
+    st.caption("Review applicant details, download individual résumés, or send every résumé for one role to screening.")
+    if not jobs:
+        st.info("Create a job first. Applications received through its public link will appear here.")
+        return
+
+    job_labels = {f"{job['title']} · {job['id']}": job for job in jobs}
+    selected_label = st.selectbox(
+        "Job role", list(job_labels), key="applications_job_filter",
+    )
+    selected_job = job_labels[selected_label]
+    applications = db.fetch_applications_by_job(selected_job["id"])
+    resume_items = _application_resume_items(applications)
+
+    summary_left, summary_middle, summary_right = st.columns(3)
+    summary_left.metric("Applications", len(applications))
+    summary_middle.metric("Résumés ready", len(resume_items))
+    summary_right.metric("Missing files", max(0, len(applications) - len(resume_items)))
+
+    if not applications:
+        st.info("No applications have been received for this job yet.")
+        return
+
+    action_download, action_screen = st.columns(2)
+    with action_download:
+        st.download_button(
+            "Download role résumés as ZIP",
+            data=_build_applications_zip(applications),
+            file_name=f"{selected_job['title'].replace(' ', '_')}_applications.zip",
+            mime="application/zip",
+            icon=":material/folder_zip:",
+            width="stretch",
+            disabled=not resume_items,
+            key=f"applications_zip_{selected_job['id']}",
+        )
+    with action_screen:
+        if st.button(
+            "Send all résumés to screening",
+            type="primary",
+            icon=":material/arrow_forward:",
+            width="stretch",
+            disabled=not resume_items,
+            key=f"applications_screen_{selected_job['id']}",
+        ):
+            _select_job_for_screening(selected_job, resume_items)
+            st.rerun()
+
+    for index, application in enumerate(applications):
+        filename = application.get("resume_filename") or "Résumé unavailable"
+        applied_at = str(application.get("applied_at") or "")[:16].replace("T", " ")
+        with st.container(border=True):
+            header, status = st.columns([4, 1], vertical_alignment="center")
+            with header:
+                st.markdown(f"#### {application.get('applicant_name') or 'Unnamed applicant'}")
+                st.caption(f"Applied {applied_at or 'recently'} · {filename}")
+            with status:
+                st.badge(application.get("status") or "Submitted", color="blue")
+            contact_left, contact_right = st.columns(2)
+            contact_left.markdown(f"**Email:** {application.get('applicant_email') or '—'}")
+            contact_right.markdown(f"**Phone:** {application.get('applicant_phone') or '—'}")
+            decoded = _application_resume_items([application])
+            if decoded:
+                resume_name, resume_bytes = decoded[0]
+                st.download_button(
+                    "Download résumé",
+                    data=resume_bytes,
+                    file_name=resume_name,
+                    mime=("application/pdf" if resume_name.lower().endswith(".pdf")
+                          else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+                    icon=":material/download:",
+                    key=f"application_resume_{application.get('id', index)}",
+                )
+
+
 # ----------------------------- PUBLIC ROUTES (no login) -----------------------------
 # Checked before st.set_page_config() below, since the public pages set their
 # own page config and then st.stop() — the rest of this file (the full
@@ -1781,6 +1901,10 @@ if "local_interviews" not in st.session_state:
     st.session_state.local_interviews = []  # session-only fallback
 if "selected_job_id" not in st.session_state:
     st.session_state.selected_job_id = None
+if "pending_application_resumes" not in st.session_state:
+    st.session_state.pending_application_resumes = []
+if "pending_application_job_id" not in st.session_state:
+    st.session_state.pending_application_job_id = None
 if "jobs_view" not in st.session_state:
     st.session_state.jobs_view = "list"  # "list" | "form"
 if "editing_job_id" not in st.session_state:
@@ -2295,6 +2419,17 @@ if page == "📤 Resume Screening":
     st.divider()
 
     st.markdown('<div class="panel-subhead">📤 Upload Resumes</div>', unsafe_allow_html=True)
+    pending_application_items = (
+        st.session_state.get("pending_application_resumes", [])
+        if st.session_state.get("pending_application_job_id") == st.session_state.selected_job_id
+        else []
+    )
+    if pending_application_items:
+        st.success(
+            f"{len(pending_application_items)} application résumé(s) for **{job_role}** are ready. "
+            "Review the settings above, then select **Screen Candidates**.",
+            icon=":material/task_alt:",
+        )
     tab_files, tab_zip = st.tabs(["Individual files", "📁 Upload a folder (as .zip)"])
 
     with tab_files:
@@ -2318,7 +2453,7 @@ if page == "📤 Resume Screening":
         )
 
     # Unify both sources into a single (name, bytes) list.
-    raw_items = []  # list of (name, bytes)
+    raw_items = list(pending_application_items)  # list of (name, bytes)
     if files:
         for f in files:
             raw_items.append((f.name, f.read()))
@@ -2397,6 +2532,7 @@ if page == "📤 Resume Screening":
         st.info("Upload at least one resume (or a ZIP folder) to get started.")
 
     if run:
+        _screening_source = "Public application" if pending_application_items else "Manual Upload"
         _previous_candidates = list(st.session_state.get("candidates", []))
         st.session_state.candidates = []
         st.session_state.excluded_files = []
@@ -2581,7 +2717,10 @@ if page == "📤 Resume Screening":
         # discard the screening results.
         if completed_candidates:
             saved_batch = (
-                db.save_screening_records_batch(completed_candidates, job_role, job_details, job_id=_job_id_snapshot)
+                db.save_screening_records_batch(
+                    completed_candidates, job_role, job_details,
+                    job_id=_job_id_snapshot, source=_screening_source,
+                )
                 if db.is_configured() else []
             )
             if len(saved_batch) == len(completed_candidates):
@@ -2592,13 +2731,19 @@ if page == "📤 Resume Screening":
             else:
                 for result in completed_candidates:
                     st.session_state.candidates.append(
-                        add_candidate_record(result, job_role, job_details, job_id=_job_id_snapshot)
+                        add_candidate_record(
+                            result, job_role, job_details,
+                            job_id=_job_id_snapshot, source=_screening_source,
+                        )
                     )
         st.session_state.candidates.extend(failed_candidates)
 
         progress.empty()
         _screen_logo_ph.empty()
         st.session_state.processed = True
+        if pending_application_items:
+            st.session_state.pending_application_resumes = []
+            st.session_state.pending_application_job_id = None
         if valid_items:
             saved_note = " Saved to persistent history." if db.is_configured() else ""
             notify(f"Screened {len(valid_items)} candidate(s).{saved_note} See the Top Candidates section below.")
@@ -2702,6 +2847,16 @@ elif page == "📋 Jobs":
     if not db.is_configured():
         st.caption("🗄️ Not connected to Supabase — jobs are saved for this session only. "
                     "Connect Supabase (sidebar) to keep job postings across sessions.")
+
+    postings_tab, applications_tab = st.tabs(
+        ["Job postings", "Applied candidates"],
+        key="jobs_section_tabs",
+        on_change="rerun",
+    )
+    if applications_tab.open:
+        with applications_tab:
+            _render_applied_candidates_tab(get_jobs(include_archived=True))
+        st.stop()
 
     if st.session_state.jobs_view == "list":
         top_l, top_r = st.columns([4, 1.3])
@@ -2808,15 +2963,7 @@ elif page == "📋 Jobs":
                             st.rerun()
 
                     if st.button("Use this job for screening →", key=f"use_job_{job['id']}"):
-                        st.session_state.selected_job_id = job["id"]
-                        st.session_state.job_role = job["title"]
-                        details_parts = [
-                            job.get("description", ""),
-                            ("Responsibilities: " + job["responsibilities"]) if job.get("responsibilities") else "",
-                            ("Required skills: " + ", ".join(job.get("required_skills", []))) if job.get("required_skills") else "",
-                        ]
-                        st.session_state.job_details = "\n\n".join(p for p in details_parts if p)
-                        st.session_state.current_page = "📤 Resume Screening"
+                        _select_job_for_screening(job)
                         st.rerun()
 
                     # ---- Public apply link / QR code / auto-zip-on-deadline ----
@@ -4311,8 +4458,8 @@ elif page == "⭐ Shortlisted":
             for i, c in enumerate(_group_rows):
                 score = c["score"].get("overall_score", 0)
                 combined = _combined_score(c)
-                color = "#1e8e3e" if score >= 75 else "#b8860b"
-                bg = "#e6f4ea" if score >= 75 else "#fdf3e2"
+                color = "#137333" if score >= 75 else "#7A3E00"
+                bg = "#DDF4E4" if score >= 75 else "#FFDFA3"
                 current_status = c.get("status", "Waiting")
                 iscore = c.get("interview_score")
                 iscore_pill = f'<span class="score-pill" style="background:#EDE9FE; color:#6D28D9;">Interview {iscore}/100</span>' if iscore is not None else ""
@@ -4347,11 +4494,26 @@ elif page == "⭐ Shortlisted":
                     background:{_role_color} !important;
                     box-shadow:0 4px 12px color-mix(in srgb,{_role_color} 24%,transparent) !important;
                 }}
+                .{_shortlist_class} .score-pill {{
+                    border:1px solid color-mix(in srgb,currentColor 28%,transparent) !important;
+                    box-shadow:0 2px 8px rgba(15,23,42,.08) !important;
+                }}
+                .{_shortlist_class} [class*="st-key-shortlist_select_"] button {{
+                    color:#FFFFFF !important;background:#0B5CAD !important;border-color:#0B5CAD !important;
+                    font-weight:750 !important;
+                }}
+                .{_shortlist_class} [class*="st-key-shortlist_select_"] button:hover {{
+                    background:#084A8C !important;border-color:#084A8C !important;
+                }}
                 .{_shortlist_class} [class*="st-key-shortlist_reject_"] button {{
-                    color:#B42318 !important;background:#FFF7F6 !important;border-color:#FECACA !important;
+                    color:#FFFFFF !important;background:#C62828 !important;border-color:#C62828 !important;
+                    font-weight:750 !important;
                 }}
                 .{_shortlist_class} [class*="st-key-shortlist_reject_"] button:hover {{
-                    background:#FEECEC !important;border-color:#FCA5A5 !important;
+                    background:#A91F1F !important;border-color:#A91F1F !important;
+                }}
+                .{_shortlist_class} button:disabled {{
+                    opacity:.72 !important;color:#FFFFFF !important;
                 }}
                 </style>
                 """)
