@@ -1,12 +1,10 @@
-"""Fast candidate-facing portal with phone OTP authentication."""
+"""Fast candidate-facing portal with passwordless email OTP authentication."""
 
 from __future__ import annotations
 
 import base64
 import html
 import os
-import re
-
 import streamlit as st
 
 import db
@@ -55,20 +53,15 @@ def _logo_data_uri() -> str:
         return ""
 
 
-def _normalize_phone(phone: str) -> str:
-    phone = re.sub(r"[^0-9+]", "", phone.strip())
-    return "+" + phone[2:] if phone.startswith("00") else phone
-
-
 def _current_candidate() -> dict | None:
     client = db._get_client()
     if client is None:
         return None
     try:
         user = client.auth.get_user().user
-        if not user or not getattr(user, "phone", None):
+        if not user or not getattr(user, "email", None):
             return None
-        return {"id": user.id, "phone": user.phone}
+        return {"id": user.id, "email": user.email}
     except Exception:
         return None
 
@@ -80,7 +73,7 @@ def _sign_out() -> None:
             client.auth.sign_out()
         except Exception:
             pass
-    st.session_state.pop("candidate_phone", None)
+    st.session_state.pop("candidate_email", None)
     st.session_state.pop("candidate_otp_sent", None)
 
 
@@ -88,31 +81,31 @@ def _auth_panel() -> dict | None:
     user = _current_candidate()
     if user:
         return user
-    st.html('<div class="auth-panel"><div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Enter your mobile number. We will send a secure one-time verification code.</p></div>')
-    phone = _normalize_phone(st.text_input("Mobile number", value=st.session_state.get("candidate_phone", "+91"), placeholder="+91 98765 43210"))
+    st.html('<div class="auth-panel"><div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Enter your email address. We will send a secure six-digit verification code.</p></div>')
+    email = st.text_input("Email address", value=st.session_state.get("candidate_email", ""), placeholder="you@example.com").strip().lower()
     if not st.session_state.get("candidate_otp_sent"):
-        if st.button("Send verification code", type="primary", icon=":material/sms:", width="stretch"):
-            if not re.fullmatch(r"\+[1-9]\d{7,14}", phone):
-                st.error("Enter the mobile number with country code, for example +91 98765 43210.")
+        if st.button("Email verification code", type="primary", icon=":material/mail:", width="stretch"):
+            if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+                st.error("Enter a valid email address.")
             else:
                 try:
-                    db._get_client().auth.sign_in_with_otp({"phone": phone})
-                    st.session_state.candidate_phone = phone
+                    db._get_client().auth.sign_in_with_otp({"email": email})
+                    st.session_state.candidate_email = email
                     st.session_state.candidate_otp_sent = True
                     st.rerun()
                 except Exception as exc:
-                    st.error(f"Could not send the code. Enable Phone Auth and an SMS provider in Supabase. ({exc})")
+                    st.error(f"Could not send the code. Confirm Email Auth is enabled in Supabase. ({exc})")
         if st.button("Back to account selection", icon=":material/arrow_back:", width="stretch"):
             st.query_params.clear()
             st.session_state.pop("entry_role", None)
             st.rerun()
         return None
-    st.caption(f"A six-digit code was sent to {st.session_state.get('candidate_phone', phone)}")
+    st.caption(f"A six-digit code was sent to {st.session_state.get('candidate_email', email)}. Check your inbox and spam folder.")
     code = st.text_input("Verification code", max_chars=6, placeholder="000000")
     left, right = st.columns(2)
     if left.button("Verify and continue", type="primary", width="stretch"):
         try:
-            response = db._get_client().auth.verify_otp({"phone": st.session_state.get("candidate_phone", phone), "token": code.strip(), "type": "sms"})
+            response = db._get_client().auth.verify_otp({"email": st.session_state.get("candidate_email", email), "token": code.strip(), "type": "email"})
             if getattr(response, "user", None):
                 st.session_state.candidate_otp_sent = False
                 st.rerun()
@@ -133,13 +126,14 @@ def _ensure_profile(user: dict) -> dict | None:
         st.subheader("Complete your profile")
         st.caption("This information will be reused when you apply for a job.")
         full_name = st.text_input("Full name")
-        email = st.text_input("Email address")
+        st.text_input("Verified email address", value=user["email"], disabled=True)
+        phone = st.text_input("Phone number (optional)", placeholder="+91 98765 43210")
         submitted = st.form_submit_button("Save profile", type="primary", icon=":material/save:")
     if submitted:
-        if not full_name.strip() or "@" not in email:
-            st.error("Enter your full name and a valid email address.")
+        if not full_name.strip():
+            st.error("Enter your full name.")
         else:
-            saved = db.save_candidate_profile({"user_id": user["id"], "full_name": full_name.strip(), "email": email.strip().lower(), "phone": user["phone"]})
+            saved = db.save_candidate_profile({"user_id": user["id"], "full_name": full_name.strip(), "email": user["email"], "phone": phone.strip()})
             if saved:
                 st.rerun()
             st.error(db.get_last_error() or "The profile could not be saved.")
