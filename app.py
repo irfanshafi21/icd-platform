@@ -3619,7 +3619,7 @@ elif page == "👥 Candidates":
             </style>
             """, unsafe_allow_html=True)
 
-            def _render_candidate_grid(cand_list, group_color):
+            def _render_candidate_grid(cand_list, group_color, group_tint):
                 n_cols = 3
                 rows = [cand_list[i:i+n_cols] for i in range(0, len(cand_list), n_cols)]
                 for row in rows:
@@ -3642,26 +3642,26 @@ elif page == "👥 Candidates":
                             .{_card_class},
                             .{_card_class}[data-testid="stVerticalBlockBorderWrapper"],
                             div[data-testid="stVerticalBlockBorderWrapper"]:has(.{_card_class}) {{
-                                background: linear-gradient(145deg, {group_color}, color-mix(in srgb, {group_color} 78%, #08182B)) !important;
-                                border-color: color-mix(in srgb, {group_color} 65%, white) !important;
-                                box-shadow: 0 8px 22px color-mix(in srgb, {group_color} 25%, transparent) !important;
+                                background: linear-gradient(145deg, {group_tint}, color-mix(in srgb, {group_tint} 48%, white)) !important;
+                                border-color: color-mix(in srgb, {group_color} 24%, #DCE4EE) !important;
+                                box-shadow: 0 8px 22px color-mix(in srgb, {group_color} 10%, transparent) !important;
                             }}
                             .{_card_class} .candidate-list-name,
                             .{_card_class} .candidate-list-score,
                             .{_card_class} label p,
-                            .{_card_class} [data-testid="stCaptionContainer"] p {{ color:#fff !important; }}
+                             .{_card_class} [data-testid="stCaptionContainer"] p {{ color:#17233C !important; }}
                             .{_card_class} .candidate-list-experience,
-                            .{_card_class} .candidate-list-score span {{ color:rgba(255,255,255,.76) !important; }}
+                             .{_card_class} .candidate-list-score span {{ color:#667085 !important; }}
                             .{_card_class} .candidate-list-avatar {{
-                                background:rgba(255,255,255,.20) !important;
-                                border:1px solid rgba(255,255,255,.32);
+                                 background:{group_color} !important;
+                                 border:1px solid color-mix(in srgb, {group_color} 72%, white);
                             }}
-                            .{_card_class} .candidate-list-score-track {{ background:rgba(255,255,255,.20) !important; }}
-                            .{_card_class} .candidate-list-score-fill {{ background:rgba(255,255,255,.90) !important; }}
+                             .{_card_class} .candidate-list-score-track {{ background:color-mix(in srgb, {group_color} 10%, white) !important; }}
+                             .{_card_class} .candidate-list-score-fill {{ background:{group_color} !important; }}
                             .{_card_class} .skill-chip {{
-                                background:rgba(255,255,255,.18) !important;
-                                border:1px solid rgba(255,255,255,.28) !important;
-                                color:#fff !important;
+                                 background:color-mix(in srgb, {group_color} 8%, white) !important;
+                                 border:1px solid color-mix(in srgb, {group_color} 16%, white) !important;
+                                 color:color-mix(in srgb, {group_color} 78%, #17233C) !important;
                             }}
                             </style>
                             """)
@@ -3794,49 +3794,73 @@ elif page == "👥 Candidates":
             with st.container(key="candidates_grid_area"):
                 for _gkey, _group_cands in _job_groups.items():
                     _job_name = _job_labels[_gkey]
-                    _group_color, _ = job_role_theme(_job_name)
+                    _group_color, _group_tint = job_role_theme(_job_name)
                     _group_slug = "".join(ch if ch.isalnum() else "_" for ch in str(_gkey)).strip("_") or "unspecified"
                     _group_class = f"st-key-job_group_{_group_slug}"
                     st.html(f"""
                     <style>
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] {{
-                        background: linear-gradient(145deg, {_group_color}, color-mix(in srgb, {_group_color} 78%, #08182B)) !important;
-                        border-color: color-mix(in srgb, {_group_color} 65%, white) !important;
-                        box-shadow: 0 8px 22px color-mix(in srgb, {_group_color} 25%, transparent) !important;
+                        background: linear-gradient(145deg, {_group_tint}, color-mix(in srgb, {_group_tint} 48%, white)) !important;
+                        border-color: color-mix(in srgb, {_group_color} 24%, #DCE4EE) !important;
+                        box-shadow: 0 8px 22px color-mix(in srgb, {_group_color} 10%, transparent) !important;
                     }}
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-name,
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-score,
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] label p,
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stCaptionContainer"] p {{
-                        color: #FFFFFF !important;
+                        color: #17233C !important;
                     }}
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-experience,
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-score span {{
-                        color: rgba(255,255,255,.76) !important;
+                        color: #667085 !important;
                     }}
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-avatar {{
-                        background: rgba(255,255,255,.20) !important;
-                        border: 1px solid rgba(255,255,255,.32);
+                        background: {_group_color} !important;
+                        border: 1px solid color-mix(in srgb, {_group_color} 72%, white);
                     }}
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-score-track {{
-                        background: rgba(255,255,255,.20) !important;
+                        background: color-mix(in srgb, {_group_color} 10%, white) !important;
                     }}
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .candidate-list-score-fill {{
-                        background: rgba(255,255,255,.90) !important;
+                        background: {_group_color} !important;
                     }}
                     .{_group_class} div[data-testid="stVerticalBlockBorderWrapper"] .skill-chip {{
-                        background: rgba(255,255,255,.18) !important;
-                        border: 1px solid rgba(255,255,255,.28) !important;
-                        color: #FFFFFF !important;
+                        background: color-mix(in srgb, {_group_color} 8%, white) !important;
+                        border: 1px solid color-mix(in srgb, {_group_color} 16%, white) !important;
+                        color: color-mix(in srgb, {_group_color} 78%, #17233C) !important;
+                    }}
+                    .{_group_class} .job-role-banner {{
+                        display:flex; align-items:center; gap:12px;
+                        margin:8px 0 20px; padding:14px 18px;
+                        border-radius:14px;
+                        background:linear-gradient(90deg, {_group_tint}, #FFFFFF 78%);
+                        border:1px solid color-mix(in srgb, {_group_color} 20%, #E5EAF1);
+                        border-left:6px solid {_group_color};
+                        box-shadow:0 5px 16px color-mix(in srgb, {_group_color} 9%, transparent);
+                    }}
+                    .{_group_class} .job-role-icon {{
+                        width:40px; height:40px; border-radius:12px;
+                        display:flex; align-items:center; justify-content:center;
+                        background:{_group_color}; color:#FFFFFF; font-size:1.15rem;
+                    }}
+                    .{_group_class} .job-role-name {{
+                        color:#17233C; font-size:1.45rem; font-weight:800; line-height:1.1;
+                    }}
+                    .{_group_class} .job-role-count {{
+                        margin-left:auto; padding:6px 11px; border-radius:999px;
+                        background:color-mix(in srgb, {_group_color} 10%, white);
+                        color:{_group_color}; font-size:.82rem; font-weight:750;
                     }}
                     </style>
                     """)
                     with st.container(key=f"job_group_{_group_slug}"):
                         st.markdown(
-                            f"#### 💼 {_job_name} <span style='color:{_group_color}; font-weight:500; font-size:0.9rem;'>({len(_group_cands)})</span>",
+                            f'<div class="job-role-banner"><span class="job-role-icon">💼</span>'
+                            f'<span class="job-role-name">{html.escape(_job_name)}</span>'
+                            f'<span class="job-role-count">{len(_group_cands)} candidates</span></div>',
                             unsafe_allow_html=True,
                         )
-                        _render_candidate_grid(_group_cands, _group_color)
+                        _render_candidate_grid(_group_cands, _group_color, _group_tint)
 
 
 

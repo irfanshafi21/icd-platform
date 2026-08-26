@@ -509,7 +509,7 @@ def update_application_status(application_id, status: str) -> bool:
 #
 #   create table linkedin_connections (
 #     id bigint generated always as identity primary key,
-#     company_id bigint unique,
+#     company_id uuid not null unique references companies(id) on delete cascade,
 #     access_token text,
 #     expires_at timestamptz,
 #     member_urn text,
@@ -519,8 +519,7 @@ def update_application_status(application_id, status: str) -> bool:
 #
 # One row per company_id — connecting again overwrites the previous
 # connection (e.g. if the token expires and needs re-authorizing).
-# If company scoping (auth.py) isn't in use, company_id is stored as NULL
-# and there's effectively one shared connection for the whole deployment.
+# Access is restricted by RLS to the signed-in owner of that company.
 
 def save_linkedin_connection(access_token: str, expires_at: str, member_urn: str, member_name: str = "") -> bool:
     client = _get_client()
