@@ -747,7 +747,7 @@ def _confirm_application_screening(job: dict, applications: list[dict]) -> None:
     """Require an explicit one-job confirmation before preparing screening."""
     resume_items = _application_resume_items(applications)
     st.markdown(f"### {job['title']}")
-    st.write(f"This will package **{len(resume_items)} résumé(s)** for this job role into one ZIP and open Resume Screening.")
+    st.write(f"This will package **{len(resume_items)} resume(s)** for this job role into one ZIP and open Resume Screening.")
     st.info("Only this job role will be loaded. Finish screening it before preparing another role.")
     if st.button(
         "Prepare ZIP and continue",
@@ -763,12 +763,12 @@ def _confirm_application_screening(job: dict, applications: list[dict]) -> None:
 
 @st.dialog("Remove application")
 def _confirm_application_removal(application: dict) -> None:
-    """Confirm permanent removal of an application and its stored résumé."""
+    """Confirm permanent removal of an application and its stored resume."""
     applicant_name = application.get("applicant_name") or "this candidate"
     st.warning("This action cannot be undone.", icon=":material/warning:")
     st.write(
         f"Remove **{applicant_name}** from Applied candidates? "
-        "Their contact details and stored résumé will be permanently deleted."
+        "Their contact details and stored resume will be permanently deleted."
     )
     actions = st.columns(2)
     with actions[0]:
@@ -791,7 +791,7 @@ def _confirm_application_removal(application: dict) -> None:
 def _render_applied_candidates_tab(jobs: list[dict]) -> None:
     """Recruiter view of public applications, grouped by their saved job."""
     st.subheader(":material/inbox: Applied candidates")
-    st.caption("Review applicant details, download individual résumés, or send every résumé for one role to screening.")
+    st.caption("Review applicant details, download individual resumes, or send every resume for one role to screening.")
     if st.session_state.get("application_removed_notice"):
         st.success(st.session_state.pop("application_removed_notice"), icon=":material/check_circle:")
     if not jobs:
@@ -808,7 +808,7 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
 
     summary_left, summary_middle, summary_right = st.columns(3)
     summary_left.metric("Applications", len(applications))
-    summary_middle.metric("Résumés ready", len(resume_items))
+    summary_middle.metric("Resumes ready", len(resume_items))
     summary_right.metric("Missing files", max(0, len(applications) - len(resume_items)))
 
     if not applications:
@@ -818,7 +818,7 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
     action_download, action_screen = st.columns(2)
     with action_download:
         st.download_button(
-            "Download role résumés as ZIP",
+            "Download role resumes as ZIP",
             data=_build_applications_zip(applications),
             file_name=f"{selected_job['title'].replace(' ', '_')}_applications.zip",
             mime="application/zip",
@@ -829,7 +829,7 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
         )
     with action_screen:
         if st.button(
-            "Send all résumés to screening",
+            "Send all resumes to screening",
             type="primary",
             icon=":material/arrow_forward:",
             width="stretch",
@@ -838,10 +838,33 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
         ):
             _confirm_application_screening(selected_job, applications)
 
+    st.html("""
+    <style>
+    [class*="st-key-application_card_"] {
+        font-family: "Inter", "Segoe UI", sans-serif;
+        background: #FFFFFF;
+        border-color: #D9E3EF !important;
+        box-shadow: 0 6px 18px rgba(15, 49, 74, .055);
+    }
+    [class*="st-key-application_card_"] h4 {
+        font-family: "Inter", "Segoe UI", sans-serif !important;
+        color: #102A43; font-size: 1.28rem; font-weight: 750;
+        letter-spacing: -.02em; margin-bottom: .25rem;
+    }
+    [class*="st-key-application_card_"] p,
+    [class*="st-key-application_card_"] button {
+        font-family: "Inter", "Segoe UI", sans-serif !important;
+    }
+    [class*="st-key-application_card_"] [data-testid="stCaptionContainer"] p {
+        color: #64748B; font-size: .84rem; line-height: 1.45;
+    }
+    </style>
+    """)
+
     for index, application in enumerate(applications):
-        filename = application.get("resume_filename") or "Résumé unavailable"
+        filename = application.get("resume_filename") or "Resume unavailable"
         applied_at = str(application.get("applied_at") or "")[:16].replace("T", " ")
-        with st.container(border=True):
+        with st.container(border=True, key=f"application_card_{application.get('id', index)}"):
             header, status = st.columns([4, 1], vertical_alignment="center")
             with header:
                 st.markdown(f"#### {application.get('applicant_name') or 'Unnamed applicant'}")
@@ -857,7 +880,7 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
                 if decoded:
                     resume_name, resume_bytes = decoded[0]
                     st.download_button(
-                        "Download résumé",
+                        "Download resume",
                         data=resume_bytes,
                         file_name=resume_name,
                         mime=("application/pdf" if resume_name.lower().endswith(".pdf")
@@ -2517,7 +2540,7 @@ if page == "📤 Resume Screening":
     )
     if pending_application_items:
         st.success(
-            f"A ZIP containing {len(pending_application_items)} application résumé(s) for **{job_role}** is loaded. "
+            f"A ZIP containing {len(pending_application_items)} application resume(s) for **{job_role}** is loaded. "
             "Only this job role will be screened.",
             icon=":material/task_alt:",
         )
@@ -2540,7 +2563,7 @@ if page == "📤 Resume Screening":
         if pending_application_items:
             with st.container(border=True):
                 st.markdown(f"**:material/folder_zip: {st.session_state.pending_application_zip_name}**")
-                st.caption(f"{len(pending_application_items)} stored résumé(s) · Job role: {job_role}")
+                st.caption(f"{len(pending_application_items)} stored resume(s) · Job role: {job_role}")
                 st.download_button(
                     "Download prepared ZIP",
                     data=st.session_state.pending_application_zip,

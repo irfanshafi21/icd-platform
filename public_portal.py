@@ -138,7 +138,7 @@ def _render_apply_header(job: dict) -> None:
     <section class="apply-hero">
         <div class="apply-eyebrow">Now hiring</div>
         <div class="apply-title">{title}</div>
-        <div class="apply-subtitle">Share your details and résumé securely. The hiring team will review your application and contact you about the next step.</div>
+        <div class="apply-subtitle">Share your details and resume securely. The hiring team will review your application and contact you about the next step.</div>
         <div class="apply-meta"><span>Secure application</span><span>PDF or DOCX</span>{deadline_html}</div>
     </section>
     """)
@@ -224,7 +224,7 @@ def render_apply_page(job_id: str):
         <div class="apply-success">
             <div class="apply-success-icon">✓</div>
             <div class="apply-success-title">Application received</div>
-            <div class="apply-success-copy">Your résumé and contact details were submitted successfully. Use the same email address on the <b>check my applications</b> page to follow your status.</div>
+            <div class="apply-success-copy">Your resume and contact details were submitted successfully. Use the same email address on the <b>check my applications</b> page to follow your status.</div>
         </div>
         """)
         return
@@ -234,7 +234,7 @@ def render_apply_page(job_id: str):
             st.write(job["description"])
 
     with st.form("public_apply_form", clear_on_submit=False):
-        st.html('<div class="apply-form-heading">Your application</div><div class="apply-form-note">Fields marked with * are required. Your résumé is shared only with the hiring organization.</div>')
+        st.html('<div class="apply-form-heading">Your application</div><div class="apply-form-note">Fields marked with * are required. Your resume is shared only with the hiring organization.</div>')
         name = st.text_input("Full name *")
         email = st.text_input("Email *")
         phone = st.text_input("Phone number")

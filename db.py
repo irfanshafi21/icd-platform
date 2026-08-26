@@ -510,7 +510,7 @@ def update_application_status(application_id, status: str) -> bool:
 
 
 def delete_public_application(application_id) -> bool:
-    """Permanently delete one public application and its stored résumé.
+    """Permanently delete one public application and its stored resume.
 
     The explicit company filter provides application-level defense in depth;
     the database RLS policy independently restricts deletes to the signed-in
