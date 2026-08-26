@@ -3254,8 +3254,8 @@ elif page == "🏠 Home":
 
     st.divider()
 
-    # ---- Hiring funnel: Screened -> Shortlisted -> Interviewed -> Selected ----
-    page_header("🔻", "Hiring Pipeline", "Where candidates are dropping off across the pipeline.")
+    # ---- Hiring stage progress: Screened -> Shortlisted -> Interviewed -> Selected ----
+    page_header("📶", "Hiring Pipeline", "Candidate volume and conversion at every hiring stage.")
     _funnel_stages = [
         ("Screened", len(valid_candidates)),
         ("Shortlisted (≥70)", len(shortlisted_candidates)),
@@ -3265,14 +3265,26 @@ elif page == "🏠 Home":
     if valid_candidates:
         _stage_names = [s[0] for s in _funnel_stages]
         _stage_counts = [s[1] for s in _funnel_stages]
-        _pipeline_fig = go.Figure(go.Funnel(
-            x=_stage_counts, y=_stage_names,
-            marker=dict(color=[DASHBOARD_COLORS["blue"], DASHBOARD_COLORS["amber"],
-                               DASHBOARD_COLORS["violet"], DASHBOARD_COLORS["green"]]),
-            textinfo="value+percent initial",
-            connector=dict(line=dict(color=DASHBOARD_COLORS["grid"], width=2)),
+        _screened_total = max(1, _stage_counts[0])
+        _stage_percentages = [round(count / _screened_total * 100) for count in _stage_counts]
+        _stage_labels = [f"{count} candidates · {pct}%" for count, pct in zip(_stage_counts, _stage_percentages)]
+        _pipeline_fig = go.Figure(go.Bar(
+            x=_stage_counts, y=_stage_names, orientation="h",
+            marker=dict(
+                color=[DASHBOARD_COLORS["blue"], DASHBOARD_COLORS["amber"],
+                       DASHBOARD_COLORS["violet"], DASHBOARD_COLORS["green"]],
+                line=dict(color="#FFFFFF", width=1),
+            ),
+            text=_stage_labels, textposition="outside", cliponaxis=False,
+            customdata=_stage_percentages,
+            hovertemplate="<b>%{y}</b><br>%{x} candidates<br>%{customdata}% of screened<extra></extra>",
         ))
-        style_dashboard_figure(_pipeline_fig, "Candidate conversion by hiring stage", height=330)
+        style_dashboard_figure(_pipeline_fig, "Hiring stage progress", height=330)
+        _pipeline_fig.update_yaxes(autorange="reversed")
+        _pipeline_fig.update_xaxes(
+            title="Candidates", dtick=1,
+            range=[0, max(_stage_counts) * 1.28 if max(_stage_counts) else 1],
+        )
         st.plotly_chart(_pipeline_fig, width="stretch")
     else:
         st.info("Screen some resumes to see your hiring pipeline.")
@@ -3398,15 +3410,26 @@ elif page == "🏠 Home":
                 "PhD / Doctorate": "#0C447C", "Master's Degree": "#185FA5", "Bachelor's Degree": "#378ADD",
                 "Diploma / Associate": "#85B7EB", "High School": "#F59E0B", "Other": "#94A3B8", "Not specified": "#CBD5E1",
             }
-            fig_edu = go.Figure(go.Bar(
-                x=[cnt for _, cnt in top_edu], y=[lvl for lvl, _ in top_edu], orientation="h",
-                marker_color=[_edu_palette.get(lvl, "#378ADD") for lvl, _ in top_edu],
-                text=[cnt for _, cnt in top_edu], textposition="outside", cliponaxis=False,
+            _edu_total = sum(cnt for _, cnt in top_edu)
+            fig_edu = go.Figure(go.Pie(
+                labels=[lvl for lvl, _ in top_edu], values=[cnt for _, cnt in top_edu],
+                hole=0.62,
+                marker=dict(
+                    colors=[_edu_palette.get(lvl, "#378ADD") for lvl, _ in top_edu],
+                    line=dict(color="#FFFFFF", width=3),
+                ),
+                textinfo="label+value", textposition="outside",
+                hovertemplate="<b>%{label}</b><br>%{value} candidates<br>%{percent}<extra></extra>",
             ))
             style_dashboard_figure(fig_edu, "Education profile", height=360)
-            fig_edu.update_yaxes(autorange="reversed")
-            fig_edu.update_xaxes(title="Candidates", dtick=1,
-                                 range=[0, max(cnt for _, cnt in top_edu) * 1.22])
+            fig_edu.update_layout(
+                showlegend=False,
+                annotations=[dict(
+                    text=f"<b>{_edu_total}</b><br><span style='font-size:12px'>candidates</span>",
+                    x=0.5, y=0.5, showarrow=False,
+                    font=dict(size=20, color=DASHBOARD_COLORS["navy"]),
+                )],
+            )
             st.plotly_chart(fig_edu, width="stretch")
 
 
@@ -4752,14 +4775,26 @@ elif page == "📊 Reports":
         with rep_chart_col3:
             _pipeline_names = ["Screened", "Shortlisted", "Interviewed", "Selected"]
             _pipeline_values = [len(report_valid_candidates), len(_rep_shortlisted), len(report_interviews), len(_rep_selected)]
-            fig_rep_pipeline = go.Figure(go.Funnel(
-                x=_pipeline_values, y=_pipeline_names,
-                marker=dict(color=[DASHBOARD_COLORS["blue"], DASHBOARD_COLORS["amber"],
-                                   DASHBOARD_COLORS["violet"], DASHBOARD_COLORS["green"]]),
-                textinfo="value+percent initial",
-                connector=dict(line=dict(color=DASHBOARD_COLORS["grid"], width=2)),
+            _rep_screened_total = max(1, _pipeline_values[0])
+            _pipeline_percentages = [round(value / _rep_screened_total * 100) for value in _pipeline_values]
+            fig_rep_pipeline = go.Figure(go.Bar(
+                x=_pipeline_values, y=_pipeline_names, orientation="h",
+                marker=dict(
+                    color=[DASHBOARD_COLORS["blue"], DASHBOARD_COLORS["amber"],
+                           DASHBOARD_COLORS["violet"], DASHBOARD_COLORS["green"]],
+                    line=dict(color="#FFFFFF", width=1),
+                ),
+                text=[f"{value} · {pct}%" for value, pct in zip(_pipeline_values, _pipeline_percentages)],
+                textposition="outside", cliponaxis=False,
+                customdata=_pipeline_percentages,
+                hovertemplate="<b>%{y}</b><br>%{x} candidates<br>%{customdata}% of screened<extra></extra>",
             ))
-            style_dashboard_figure(fig_rep_pipeline, "Hiring funnel conversion", height=350)
+            style_dashboard_figure(fig_rep_pipeline, "Hiring stage conversion", height=350)
+            fig_rep_pipeline.update_yaxes(autorange="reversed")
+            fig_rep_pipeline.update_xaxes(
+                title="Candidates", dtick=1,
+                range=[0, max(_pipeline_values) * 1.28 if max(_pipeline_values) else 1],
+            )
             st.plotly_chart(fig_rep_pipeline, width="stretch")
 
         with rep_chart_col4:
