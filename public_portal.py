@@ -72,6 +72,22 @@ def _public_page_styles() -> None:
     .role-copy { color:#475569; font-size:.9rem; line-height:1.7; white-space:pre-line; }
     .role-skills { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
     .role-skills span { padding:7px 11px; border-radius:999px; color:#185FA5; background:#EAF3FF; border:1px solid #D7E9FF; font-size:.76rem; font-weight:800; }
+    .role-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:18px 0; }
+    .role-info-card { position:relative; overflow:hidden; min-height:240px; padding:24px; border-radius:20px;
+        border:1px solid var(--card-border); background:var(--card-bg); box-shadow:0 10px 28px rgba(15,49,74,.06); }
+    .role-info-card:after { content:""; position:absolute; width:120px; height:120px; right:-56px; top:-58px;
+        border-radius:50%; background:var(--card-orb); }
+    .role-info-heading { position:relative; z-index:1; display:flex; align-items:center; gap:12px; margin-bottom:17px;
+        color:#102A43; font-size:1.2rem; line-height:1.2; font-weight:850; }
+    .role-info-icon { width:42px; height:42px; flex:0 0 42px; display:inline-flex; align-items:center; justify-content:center;
+        border-radius:12px; background:var(--icon-bg); color:var(--icon-color); font-size:1.25rem; }
+    .role-info-list { position:relative; z-index:1; list-style:none; padding:0; margin:0; display:grid; gap:11px; }
+    .role-info-list li { position:relative; padding-left:22px; color:#334155; font-size:.88rem; line-height:1.55; }
+    .role-info-list li:before { content:"✓"; position:absolute; left:0; top:0; color:var(--icon-color); font-weight:900; }
+    .role-info-card.tasks { --card-bg:linear-gradient(145deg,#F0F7FF,#FFFFFF); --card-border:#CFE3FA;
+        --card-orb:rgba(47,128,237,.08); --icon-bg:#DBEAFE; --icon-color:#1D4ED8; }
+    .role-info-card.offer { --card-bg:linear-gradient(145deg,#F0FDF7,#FFFFFF); --card-border:#C7EEDB;
+        --card-orb:rgba(16,185,129,.08); --icon-bg:#D1FAE5; --icon-color:#047857; }
     [data-testid="stForm"] {
         background:#FFFFFF; border:1px solid #DCE6F1 !important; border-radius:22px !important;
         padding:24px !important; box-shadow:0 12px 32px rgba(15,49,74,.08);
@@ -96,6 +112,8 @@ def _public_page_styles() -> None:
         .apply-logo { width:46px; height:46px; flex-basis:46px; border-radius:12px; }
         .apply-hero { padding:23px 19px; border-radius:18px; }
         [data-testid="stForm"] { padding:18px !important; border-radius:18px !important; }
+        .role-grid { grid-template-columns:1fr; gap:13px; }
+        .role-info-card { min-height:0; padding:20px; }
     }
     </style>
     """)
@@ -162,15 +180,28 @@ def _render_job_details(job: dict) -> None:
     if description:
         st.html(f'<section class="role-section"><div class="role-section-title">About this role</div><div class="role-copy">{html.escape(description)}</div></section>')
 
-    left, right = st.columns(2)
+    def _items(value: str) -> list[str]:
+        normalized = value.replace("\r", "\n")
+        parts = [part.strip(" \t\n-•") for part in normalized.replace(";", "\n").split("\n")]
+        return [part for part in parts if part]
+
+    detail_cards = []
     if responsibilities:
-        with left.container(border=True, height="stretch"):
-            st.subheader("What you will do", anchor=False)
-            st.write(responsibilities)
+        items = "".join(f"<li>{html.escape(item)}</li>" for item in _items(responsibilities))
+        detail_cards.append(
+            f'<article class="role-info-card tasks"><div class="role-info-heading">'
+            f'<span class="role-info-icon">✓</span><span>What you will do</span></div>'
+            f'<ul class="role-info-list">{items}</ul></article>'
+        )
     if benefits:
-        with right.container(border=True, height="stretch"):
-            st.subheader("What we offer", anchor=False)
-            st.write(benefits)
+        items = "".join(f"<li>{html.escape(item)}</li>" for item in _items(benefits))
+        detail_cards.append(
+            f'<article class="role-info-card offer"><div class="role-info-heading">'
+            f'<span class="role-info-icon">★</span><span>What we offer</span></div>'
+            f'<ul class="role-info-list">{items}</ul></article>'
+        )
+    if detail_cards:
+        st.html(f'<section class="role-grid">{"".join(detail_cards)}</section>')
 
     if skills:
         chips = "".join(f"<span>{html.escape(str(skill))}</span>" for skill in skills)

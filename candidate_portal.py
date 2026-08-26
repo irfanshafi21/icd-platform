@@ -39,7 +39,13 @@ def _styles() -> None:
     .job-card { min-height:190px; padding:22px; border:1px solid #DCE6F1; border-top:4px solid #2F80ED; border-radius:18px;
       background:linear-gradient(180deg,#FFFFFF 0%,#F8FBFF 100%); box-shadow:0 8px 24px rgba(15,49,74,.06); transition:transform .18s ease,box-shadow .18s ease; }
     .job-card:hover { transform:translateY(-3px); box-shadow:0 14px 30px rgba(15,49,74,.11); }
-    .job-company { color:#185FA5; font-size:.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+    .job-brand { display:flex; align-items:center; gap:12px; min-height:48px; }
+    .job-logo { width:48px; height:48px; flex:0 0 48px; object-fit:contain; border-radius:12px; background:#fff;
+      padding:5px; border:1px solid #D7E5F4; box-shadow:0 5px 14px rgba(15,49,74,.08); }
+    .job-logo-fallback { width:48px; height:48px; flex:0 0 48px; border-radius:12px; background:linear-gradient(145deg,#EAF3FF,#DBEAFE);
+      color:#185FA5; display:inline-flex; align-items:center; justify-content:center; font-size:1.05rem; font-weight:850; }
+    .job-company { color:#102A43; font-size:.86rem; font-weight:850; line-height:1.25; }
+    .job-industry { color:#64748B; font-size:.7rem; margin-top:3px; }
     .job-title { color:#102A43; font-size:1.2rem; font-weight:850; margin:7px 0 9px; }
     .job-meta { color:#64748B; font-size:.82rem; line-height:1.5; min-height:40px; }
     .job-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; min-height:31px; }
@@ -219,14 +225,18 @@ def _ensure_profile(user: dict) -> dict | None:
 
 def _job_card(job: dict, index: int) -> None:
     company = job.get("companies") or {}
+    if not company and job.get("id"):
+        public_job = db.fetch_public_job(job.get("id")) or {}
+        company = public_job.get("companies") or {}
     title = html.escape(job.get("title") or "Open position")
     company_name = html.escape(company.get("name") or "Hiring organization")
+    company_industry = html.escape(company.get("industry") or "Careers")
     logo_uri = _company_logo_data_uri(company.get("logo_base64") or "")
     company_initial = html.escape((company_name[:1] or "C").upper())
-    company_logo = f'<img src="{logo_uri}" alt="{company_name} logo" style="width:38px;height:38px;object-fit:contain;border-radius:9px;background:#fff;padding:3px;border:1px solid #DBEAFE">' if logo_uri else f'<span style="width:38px;height:38px;border-radius:9px;background:#EAF3FF;color:#185FA5;display:inline-flex;align-items:center;justify-content:center;font-weight:850">{company_initial}</span>'
+    company_logo = f'<img class="job-logo" src="{logo_uri}" alt="{company_name} logo">' if logo_uri else f'<span class="job-logo-fallback">{company_initial}</span>'
     meta = " · ".join(filter(None, [job.get("location"), job.get("employment_type"), job.get("experience_level")])) or "Role details available"
     chips = "".join(f"<span>{html.escape(str(skill))}</span>" for skill in (job.get("required_skills") or [])[:5])
-    st.html(f'<div class="job-card"><div style="display:flex;align-items:center;gap:10px">{company_logo}<div class="job-company">{company_name}</div></div><div class="job-title">{title}</div><div class="job-meta">{html.escape(meta)}</div><div class="job-chips">{chips}</div></div>')
+    st.html(f'<div class="job-card"><div class="job-brand">{company_logo}<div><div class="job-company">{company_name}</div><div class="job-industry">{company_industry}</div></div></div><div class="job-title">{title}</div><div class="job-meta">{html.escape(meta)}</div><div class="job-chips">{chips}</div></div>')
     if st.button("View and apply", key=f"candidate_apply_{job.get('id')}_{index}", type="primary", icon=":material/arrow_forward:", width="stretch"):
         st.query_params.clear()
         st.query_params["apply"] = str(job["id"])
