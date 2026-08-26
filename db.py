@@ -349,7 +349,7 @@ def fetch_published_jobs(limit: int = 200) -> list[dict]:
     try:
         from datetime import date
         result = (client.table("jobs")
-                  .select("id,title,department,location,experience_level,employment_type,description,required_skills,deadline,company_id")
+                  .select("id,title,department,location,salary_range,experience_level,employment_type,description,responsibilities,benefits,required_skills,deadline,company_id")
                   .eq("published_to_portal", True)
                   .eq("status", "active")
                   .order("created_at", desc=True)
@@ -368,6 +368,39 @@ def fetch_published_jobs(limit: int = 200) -> list[dict]:
     except Exception as e:
         _last_error = f"fetch_published_jobs failed: {e}"
         return []
+
+
+def fetch_public_job(job_id) -> dict | None:
+    """Return one active public-application job with safe company branding."""
+    global _last_error
+    client = _get_client()
+    if client is None or not job_id:
+        return None
+    try:
+        result = (client.table("jobs").select("*").eq("id", job_id)
+                  .eq("status", "active").limit(1).execute())
+        rows = result.data or []
+        if not rows:
+            return None
+        job = rows[0]
+        if isinstance(job.get("required_skills"), str):
+            try:
+                job["required_skills"] = json.loads(job["required_skills"])
+            except Exception:
+                job["required_skills"] = []
+        company_id = job.get("company_id")
+        company = {}
+        if company_id:
+            company_result = (client.table("companies_public")
+                              .select("id,name,logo_base64,industry")
+                              .eq("id", company_id).limit(1).execute())
+            company = (company_result.data or [{}])[0]
+        job["companies"] = company
+        _last_error = None
+        return job
+    except Exception as e:
+        _last_error = f"fetch_public_job failed: {e}"
+        return None
 
 
 def fetch_candidate_profile(user_id: str) -> dict | None:

@@ -67,6 +67,11 @@ def _public_page_styles() -> None:
     .apply-subtitle { max-width:560px; font-size:.92rem; line-height:1.55; opacity:.88; }
     .apply-meta { display:flex; gap:9px; flex-wrap:wrap; margin-top:18px; }
     .apply-meta span { padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.14); font-size:.76rem; font-weight:700; }
+    .role-section { margin:18px 0; padding:22px; border:1px solid #DCE6F1; border-radius:18px; background:#FFFFFF; box-shadow:0 8px 24px rgba(15,49,74,.05); }
+    .role-section-title { display:flex; align-items:center; gap:9px; color:#102A43; font-size:1.02rem; font-weight:850; margin-bottom:10px; }
+    .role-copy { color:#475569; font-size:.9rem; line-height:1.7; white-space:pre-line; }
+    .role-skills { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .role-skills span { padding:7px 11px; border-radius:999px; color:#185FA5; background:#EAF3FF; border:1px solid #D7E9FF; font-size:.76rem; font-weight:800; }
     [data-testid="stForm"] {
         background:#FFFFFF; border:1px solid #DCE6F1 !important; border-radius:22px !important;
         padding:24px !important; box-shadow:0 12px 32px rgba(15,49,74,.08);
@@ -109,7 +114,7 @@ def _logo_data_uri(encoded_logo: str) -> str:
 
 
 def _company_brand(job: dict) -> dict:
-    company = auth.get_company_by_id(job.get("company_id")) or {}
+    company = job.get("companies") or auth.get_company_by_id(job.get("company_id")) or {}
     if company:
         return company
     logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo_header.png")
@@ -129,6 +134,8 @@ def _render_apply_header(job: dict) -> None:
     logo_html = f'<img src="{logo_uri}" alt="{company_name} logo">' if logo_uri else initial
     title = html.escape(job.get("title") or "Open position")
     deadline = str(job.get("deadline") or "")[:10]
+    meta_values = [job.get("location"), job.get("employment_type"), job.get("experience_level"), job.get("salary_range")]
+    role_meta = "".join(f"<span>{html.escape(str(value))}</span>" for value in meta_values if value)
     deadline_html = f"<span>Apply by {html.escape(deadline)}</span>" if deadline else ""
     st.html(f"""
     <div class="apply-brand">
@@ -139,9 +146,35 @@ def _render_apply_header(job: dict) -> None:
         <div class="apply-eyebrow">Now hiring</div>
         <div class="apply-title">{title}</div>
         <div class="apply-subtitle">Share your details and resume securely. The hiring team will review your application and contact you about the next step.</div>
-        <div class="apply-meta"><span>Secure application</span><span>PDF or DOCX</span>{deadline_html}</div>
+        <div class="apply-meta">{role_meta}<span>Secure application</span><span>PDF or DOCX</span>{deadline_html}</div>
     </section>
     """)
+
+
+def _render_job_details(job: dict) -> None:
+    description = (job.get("description") or "").strip()
+    responsibilities = (job.get("responsibilities") or "").strip()
+    benefits = (job.get("benefits") or "").strip()
+    skills = job.get("required_skills") or []
+    if isinstance(skills, str):
+        skills = [skill.strip() for skill in skills.split(",") if skill.strip()]
+
+    if description:
+        st.html(f'<section class="role-section"><div class="role-section-title">About this role</div><div class="role-copy">{html.escape(description)}</div></section>')
+
+    left, right = st.columns(2)
+    if responsibilities:
+        with left.container(border=True, height="stretch"):
+            st.subheader("What you will do", anchor=False)
+            st.write(responsibilities)
+    if benefits:
+        with right.container(border=True, height="stretch"):
+            st.subheader("What we offer", anchor=False)
+            st.write(benefits)
+
+    if skills:
+        chips = "".join(f"<span>{html.escape(str(skill))}</span>" for skill in skills)
+        st.html(f'<section class="role-section"><div class="role-section-title">Skills and qualifications</div><div class="role-skills">{chips}</div></section>')
 
 def _otp_key(email: str) -> str:
     return f"portal_otp_{email.strip().lower()}"
@@ -195,8 +228,7 @@ def render_apply_page(job_id: str):
     st.set_page_config(page_title="Apply for a role", page_icon=":material/work:", layout="centered")
     _public_page_styles()
 
-    jobs = db.fetch_jobs(include_archived=True)
-    job = next((j for j in jobs if str(j.get("id")) == str(job_id)), None)
+    job = db.fetch_public_job(job_id)
 
     if not job:
         st.error("This job posting couldn't be found — the link may be outdated or the job was removed.")
@@ -217,6 +249,11 @@ def render_apply_page(job_id: str):
         except Exception:
             pass
 
+    if st.button("Back to all jobs", icon=":material/arrow_back:"):
+        st.query_params.clear()
+        st.query_params["candidate"] = "1"
+        st.rerun()
+
     _render_apply_header(job)
     submitted_key = f"public_application_submitted_{job_id}"
     if st.session_state.get(submitted_key):
@@ -229,9 +266,7 @@ def render_apply_page(job_id: str):
         """)
         return
 
-    if job.get("description"):
-        with st.expander("About this role", expanded=False, icon=":material/description:"):
-            st.write(job["description"])
+    _render_job_details(job)
 
     candidate_profile = None
     try:

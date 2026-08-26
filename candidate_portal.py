@@ -68,6 +68,17 @@ def _logo_data_uri() -> str:
         return ""
 
 
+def _company_logo_data_uri(encoded_logo: str) -> str:
+    if not encoded_logo:
+        return ""
+    try:
+        raw = base64.b64decode(encoded_logo, validate=True)
+    except Exception:
+        return ""
+    mime = "image/jpeg" if raw.startswith(b"\xff\xd8\xff") else "image/png"
+    return f"data:{mime};base64,{encoded_logo}"
+
+
 def _write_auth_cookies(access_token: str, refresh_token: str) -> None:
     """Persist only the Supabase browser session; never render token text."""
     script = f"""
@@ -210,9 +221,12 @@ def _job_card(job: dict, index: int) -> None:
     company = job.get("companies") or {}
     title = html.escape(job.get("title") or "Open position")
     company_name = html.escape(company.get("name") or "Hiring organization")
+    logo_uri = _company_logo_data_uri(company.get("logo_base64") or "")
+    company_initial = html.escape((company_name[:1] or "C").upper())
+    company_logo = f'<img src="{logo_uri}" alt="{company_name} logo" style="width:38px;height:38px;object-fit:contain;border-radius:9px;background:#fff;padding:3px;border:1px solid #DBEAFE">' if logo_uri else f'<span style="width:38px;height:38px;border-radius:9px;background:#EAF3FF;color:#185FA5;display:inline-flex;align-items:center;justify-content:center;font-weight:850">{company_initial}</span>'
     meta = " · ".join(filter(None, [job.get("location"), job.get("employment_type"), job.get("experience_level")])) or "Role details available"
     chips = "".join(f"<span>{html.escape(str(skill))}</span>" for skill in (job.get("required_skills") or [])[:5])
-    st.html(f'<div class="job-card"><div class="job-company">{company_name}</div><div class="job-title">{title}</div><div class="job-meta">{html.escape(meta)}</div><div class="job-chips">{chips}</div></div>')
+    st.html(f'<div class="job-card"><div style="display:flex;align-items:center;gap:10px">{company_logo}<div class="job-company">{company_name}</div></div><div class="job-title">{title}</div><div class="job-meta">{html.escape(meta)}</div><div class="job-chips">{chips}</div></div>')
     if st.button("View and apply", key=f"candidate_apply_{job.get('id')}_{index}", type="primary", icon=":material/arrow_forward:", width="stretch"):
         st.query_params.clear()
         st.query_params["apply"] = str(job["id"])
