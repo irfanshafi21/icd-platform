@@ -4,10 +4,17 @@ from __future__ import annotations
 
 import base64
 import html
+import json
 import os
+from urllib.parse import unquote
 import streamlit as st
 
 import db
+
+
+_ACCESS_COOKIE = "icd_candidate_access"
+_REFRESH_COOKIE = "icd_candidate_refresh"
+_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
 
 def _styles() -> None:
@@ -19,21 +26,29 @@ def _styles() -> None:
     .portal-nav { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:13px 18px;
       border:1px solid #DCE6F1; border-radius:18px; background:#fff; box-shadow:0 8px 26px rgba(15,49,74,.07); margin-bottom:22px; }
     .portal-brand img { width:124px; max-height:48px; object-fit:contain; }
+    .portal-user { display:flex; align-items:center; gap:10px; color:#475569; font-size:.86rem; font-weight:700; }
+    .portal-user-dot { width:10px; height:10px; border-radius:50%; background:#22C55E; box-shadow:0 0 0 4px #DCFCE7; }
     .portal-hero { padding:34px; border-radius:24px; color:#fff; overflow:hidden; position:relative;
       background:linear-gradient(135deg,#0B2A52 0%,#185FA5 58%,#0891B2 100%);
       box-shadow:0 16px 38px rgba(18,49,74,.16); margin-bottom:24px; }
+    .portal-hero:after { content:""; position:absolute; width:260px; height:260px; right:-70px; top:-115px;
+      border-radius:50%; background:rgba(255,255,255,.10); }
     .portal-hero h1 { margin:0 0 8px; font-size:clamp(1.8rem,4vw,2.7rem); line-height:1.12; }
     .portal-hero p { margin:0; max-width:680px; opacity:.88; line-height:1.55; }
     .portal-eyebrow { font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; font-weight:850; opacity:.8; }
-    .job-card { min-height:190px; padding:22px; border:1px solid #DCE6F1; border-radius:18px;
-      background:#fff; box-shadow:0 8px 24px rgba(15,49,74,.06); }
+    .job-card { min-height:190px; padding:22px; border:1px solid #DCE6F1; border-top:4px solid #2F80ED; border-radius:18px;
+      background:linear-gradient(180deg,#FFFFFF 0%,#F8FBFF 100%); box-shadow:0 8px 24px rgba(15,49,74,.06); transition:transform .18s ease,box-shadow .18s ease; }
+    .job-card:hover { transform:translateY(-3px); box-shadow:0 14px 30px rgba(15,49,74,.11); }
     .job-company { color:#185FA5; font-size:.78rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
     .job-title { color:#102A43; font-size:1.2rem; font-weight:850; margin:7px 0 9px; }
     .job-meta { color:#64748B; font-size:.82rem; line-height:1.5; min-height:40px; }
     .job-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; min-height:31px; }
     .job-chips span { color:#0C4A6E; background:#E0F2FE; padding:5px 9px; border-radius:999px; font-size:.7rem; font-weight:750; }
-    .auth-panel { max-width:560px; margin:3rem auto 1rem; padding:28px; background:#fff; border:1px solid #DCE6F1;
-      border-radius:22px; box-shadow:0 16px 40px rgba(15,49,74,.10); }
+    .auth-panel { max-width:720px; margin:2rem auto 1rem; padding:34px; background:linear-gradient(145deg,#FFFFFF,#F6FAFF);
+      border:1px solid #DCE6F1; border-top:5px solid #2F80ED; border-radius:24px; box-shadow:0 18px 46px rgba(15,49,74,.11); }
+    .auth-logo { width:145px; margin-bottom:24px; }
+    .auth-points { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
+    .auth-points span { padding:7px 11px; border-radius:999px; color:#185FA5; background:#EAF3FF; font-size:.75rem; font-weight:750; }
     @media(max-width:640px){.stMainBlockContainer{padding:1rem .85rem 2rem}.portal-hero{padding:25px 20px}.portal-brand img{width:104px}}
     </style>
     """)
@@ -53,12 +68,54 @@ def _logo_data_uri() -> str:
         return ""
 
 
+def _write_auth_cookies(access_token: str, refresh_token: str) -> None:
+    """Persist only the Supabase browser session; never render token text."""
+    script = f"""
+    <script>
+    document.cookie = {_ACCESS_COOKIE!r} + "=" + encodeURIComponent({json.dumps(access_token)}) + "; Max-Age={_COOKIE_MAX_AGE}; Path=/; Secure; SameSite=Lax";
+    document.cookie = {_REFRESH_COOKIE!r} + "=" + encodeURIComponent({json.dumps(refresh_token)}) + "; Max-Age={_COOKIE_MAX_AGE}; Path=/; Secure; SameSite=Lax";
+    </script>
+    """
+    st.html(script, unsafe_allow_javascript=True)
+
+
+def _clear_auth_cookies() -> None:
+    st.html(
+        f'<script>document.cookie="{_ACCESS_COOKIE}=; Max-Age=0; Path=/; Secure; SameSite=Lax";'
+        f'document.cookie="{_REFRESH_COOKIE}=; Max-Age=0; Path=/; Secure; SameSite=Lax";</script>',
+        unsafe_allow_javascript=True,
+    )
+
+
+def _restore_candidate_session(client) -> None:
+    access_token = unquote(st.context.cookies.get(_ACCESS_COOKIE, ""))
+    refresh_token = unquote(st.context.cookies.get(_REFRESH_COOKIE, ""))
+    if not access_token or not refresh_token:
+        return
+    try:
+        response = client.auth.set_session(access_token, refresh_token)
+        session = getattr(response, "session", None)
+        if session and (session.access_token != access_token or session.refresh_token != refresh_token):
+            _write_auth_cookies(session.access_token, session.refresh_token)
+    except Exception:
+        _clear_auth_cookies()
+
+
 def _current_candidate() -> dict | None:
     client = db._get_client()
     if client is None:
         return None
     try:
         user = client.auth.get_user().user
+    except Exception:
+        user = None
+    if not user:
+        _restore_candidate_session(client)
+        try:
+            user = client.auth.get_user().user
+        except Exception:
+            user = None
+    try:
         if not user or not getattr(user, "email", None):
             return None
         return {"id": user.id, "email": user.email}
@@ -73,6 +130,7 @@ def _sign_out() -> None:
             client.auth.sign_out()
         except Exception:
             pass
+    _clear_auth_cookies()
     st.session_state.pop("candidate_email", None)
     st.session_state.pop("candidate_otp_sent", None)
 
@@ -81,7 +139,9 @@ def _auth_panel() -> dict | None:
     user = _current_candidate()
     if user:
         return user
-    st.html('<div class="auth-panel"><div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Enter your email address. We will send a secure verification code.</p></div>')
+    logo = _logo_data_uri()
+    logo_html = f'<img class="auth-logo" src="{logo}" alt="ICD Platform">' if logo else '<strong>ICD Platform</strong>'
+    st.html(f'<div class="auth-panel">{logo_html}<div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Sign in once with your email verification code. Your secure session stays active on this device.</p><div class="auth-points"><span>Verified openings</span><span>One-click profile</span><span>Live application status</span></div></div>')
     email = st.text_input("Email address", value=st.session_state.get("candidate_email", ""), placeholder="you@example.com").strip().lower()
     if not st.session_state.get("candidate_otp_sent"):
         if st.button("Email verification code", type="primary", icon=":material/mail:", width="stretch"):
@@ -110,12 +170,15 @@ def _auth_panel() -> dict | None:
         try:
             response = db._get_client().auth.verify_otp({"email": st.session_state.get("candidate_email", email), "token": code.strip(), "type": "email"})
             if getattr(response, "user", None):
+                session = getattr(response, "session", None)
+                if session:
+                    _write_auth_cookies(session.access_token, session.refresh_token)
                 st.session_state.candidate_otp_sent = False
-                st.rerun()
+                return {"id": response.user.id, "email": response.user.email}
             st.error("That code could not be verified.")
         except Exception as exc:
             st.error(f"Incorrect or expired code. ({exc})")
-    if right.button("Use another number", width="stretch"):
+    if right.button("Use another email", width="stretch"):
         st.session_state.candidate_otp_sent = False
         st.rerun()
     return None
@@ -192,7 +255,7 @@ def render_candidate_portal() -> None:
         return
     logo = _logo_data_uri()
     logo_html = f'<img src="{logo}" alt="ICD Platform">' if logo else "ICD Platform"
-    st.html(f'<div class="portal-nav"><div class="portal-brand">{logo_html}</div><div>Candidate portal</div></div>')
+    st.html(f'<div class="portal-nav"><div class="portal-brand">{logo_html}</div><div class="portal-user"><span class="portal-user-dot"></span>{html.escape(profile.get("full_name") or user.get("email") or "Candidate")}</div></div>')
     st.html(f'<section class="portal-hero"><div class="portal-eyebrow">Welcome, {html.escape(profile.get("full_name") or "candidate")}</div><h1>Discover roles built for your skills</h1><p>Browse verified openings, apply securely with your resume, and follow every application from one place.</p></section>')
     jobs_tab, applications_tab = st.tabs(["Find jobs", "My applications"], on_change="rerun")
     if applications_tab.open:
