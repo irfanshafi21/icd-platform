@@ -12,15 +12,136 @@ in, so it should touch as little of the rest of the app as possible.
 """
 
 import base64
+import html
+import os
 import random
 import time
 import streamlit as st
 
+import auth
 import db
 import email_utils
 
 
 # ----------------------------- SHARED HELPERS -----------------------------
+
+def _public_page_styles() -> None:
+    """Mobile-first styling for candidate-facing pages only."""
+    st.html("""
+    <style>
+    [data-testid="stHeader"], [data-testid="stToolbar"], footer { display: none !important; }
+    [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(circle at 8% 0%, rgba(37,99,235,.10), transparent 30%),
+            radial-gradient(circle at 92% 12%, rgba(8,145,178,.09), transparent 25%),
+            #F5F8FC;
+    }
+    .stMainBlockContainer { max-width: 760px; padding-top: 2rem; padding-bottom: 3rem; }
+    .apply-brand {
+        display:flex; align-items:center; gap:14px; margin-bottom:18px;
+        padding:14px 18px; background:rgba(255,255,255,.92);
+        border:1px solid #DCE6F1; border-radius:18px;
+        box-shadow:0 8px 28px rgba(15,49,74,.08);
+    }
+    .apply-logo {
+        width:54px; height:54px; flex:0 0 54px; border-radius:14px;
+        display:flex; align-items:center; justify-content:center; overflow:hidden;
+        background:#EFF6FF; border:1px solid #DBEAFE;
+        color:#1D4ED8; font-size:1.15rem; font-weight:800;
+    }
+    .apply-logo img { width:100%; height:100%; object-fit:contain; padding:5px; }
+    .apply-company { color:#102A43; font-size:1.05rem; font-weight:800; line-height:1.25; }
+    .apply-brand-copy { color:#64748B; font-size:.8rem; margin-top:3px; }
+    .apply-hero {
+        position:relative; overflow:hidden; padding:28px;
+        color:#FFFFFF; border-radius:22px;
+        background:linear-gradient(135deg,#12314A 0%,#185FA5 58%,#0891B2 100%);
+        box-shadow:0 16px 38px rgba(18,49,74,.18); margin-bottom:20px;
+    }
+    .apply-hero:after {
+        content:""; position:absolute; width:190px; height:190px; right:-65px; top:-95px;
+        border-radius:50%; border:34px solid rgba(255,255,255,.08);
+    }
+    .apply-eyebrow { font-size:.72rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; opacity:.82; }
+    .apply-title { font-size:clamp(1.65rem,6vw,2.35rem); font-weight:850; line-height:1.15; margin:9px 0 10px; }
+    .apply-subtitle { max-width:560px; font-size:.92rem; line-height:1.55; opacity:.88; }
+    .apply-meta { display:flex; gap:9px; flex-wrap:wrap; margin-top:18px; }
+    .apply-meta span { padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.14); font-size:.76rem; font-weight:700; }
+    [data-testid="stForm"] {
+        background:#FFFFFF; border:1px solid #DCE6F1 !important; border-radius:22px !important;
+        padding:24px !important; box-shadow:0 12px 32px rgba(15,49,74,.08);
+    }
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+        min-height:50px; border-radius:12px; font-weight:800; letter-spacing:.01em;
+        box-shadow:0 8px 18px rgba(37,99,235,.20);
+    }
+    .apply-form-heading { color:#102A43; font-size:1.12rem; font-weight:800; margin-bottom:-4px; }
+    .apply-form-note { color:#64748B; font-size:.8rem; margin-bottom:10px; }
+    .apply-success {
+        text-align:center; padding:32px 24px; background:#F0FDF4;
+        border:1px solid #BBF7D0; border-radius:22px; box-shadow:0 10px 28px rgba(22,163,74,.08);
+    }
+    .apply-success-icon { width:58px; height:58px; margin:0 auto 14px; border-radius:50%; display:flex;
+        align-items:center; justify-content:center; background:#16A34A; color:#FFFFFF; font-size:1.8rem; font-weight:800; }
+    .apply-success-title { color:#14532D; font-size:1.3rem; font-weight:850; }
+    .apply-success-copy { color:#3F6650; font-size:.88rem; line-height:1.55; margin-top:7px; }
+    @media (max-width: 640px) {
+        .stMainBlockContainer { padding:1rem .85rem 2rem; }
+        .apply-brand { border-radius:15px; padding:11px 13px; }
+        .apply-logo { width:46px; height:46px; flex-basis:46px; border-radius:12px; }
+        .apply-hero { padding:23px 19px; border-radius:18px; }
+        [data-testid="stForm"] { padding:18px !important; border-radius:18px !important; }
+    }
+    </style>
+    """)
+
+
+def _logo_data_uri(encoded_logo: str) -> str:
+    """Return a validated logo data URI, or an empty string."""
+    if not encoded_logo:
+        return ""
+    try:
+        raw = base64.b64decode(encoded_logo, validate=True)
+    except Exception:
+        return ""
+    mime = "image/jpeg" if raw.startswith(b"\xff\xd8\xff") else "image/png"
+    return f"data:{mime};base64,{encoded_logo}"
+
+
+def _company_brand(job: dict) -> dict:
+    company = auth.get_company_by_id(job.get("company_id")) or {}
+    if company:
+        return company
+    logo_path = os.path.join(os.path.dirname(__file__), "assets", "logo_header.png")
+    fallback_logo = ""
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as logo_file:
+            fallback_logo = base64.b64encode(logo_file.read()).decode("ascii")
+    return {"name": "ICD Platform", "industry": "Intelligent Candidate Discovery", "logo_base64": fallback_logo}
+
+
+def _render_apply_header(job: dict) -> None:
+    company = _company_brand(job)
+    company_name = html.escape(company.get("name") or "Hiring team")
+    industry = html.escape(company.get("industry") or "Careers")
+    logo_uri = _logo_data_uri(company.get("logo_base64") or "")
+    initial = html.escape((company_name[:1] or "C").upper())
+    logo_html = f'<img src="{logo_uri}" alt="{company_name} logo">' if logo_uri else initial
+    title = html.escape(job.get("title") or "Open position")
+    deadline = str(job.get("deadline") or "")[:10]
+    deadline_html = f"<span>Apply by {html.escape(deadline)}</span>" if deadline else ""
+    st.html(f"""
+    <div class="apply-brand">
+        <div class="apply-logo">{logo_html}</div>
+        <div><div class="apply-company">{company_name}</div><div class="apply-brand-copy">{industry} · Careers</div></div>
+    </div>
+    <section class="apply-hero">
+        <div class="apply-eyebrow">Now hiring</div>
+        <div class="apply-title">{title}</div>
+        <div class="apply-subtitle">Share your details and résumé securely. The hiring team will review your application and contact you about the next step.</div>
+        <div class="apply-meta"><span>Secure application</span><span>PDF or DOCX</span>{deadline_html}</div>
+    </section>
+    """)
 
 def _otp_key(email: str) -> str:
     return f"portal_otp_{email.strip().lower()}"
@@ -71,8 +192,8 @@ def _is_verified(email: str) -> bool:
 # ----------------------------- APPLY PAGE -----------------------------
 
 def render_apply_page(job_id: str):
-    st.set_page_config(page_title="Apply", page_icon="📝", layout="centered")
-    st.markdown("## Apply for this role")
+    st.set_page_config(page_title="Apply for a role", page_icon=":material/work:", layout="centered")
+    _public_page_styles()
 
     jobs = db.fetch_jobs(include_archived=True)
     job = next((j for j in jobs if str(j.get("id")) == str(job_id)), None)
@@ -96,21 +217,29 @@ def render_apply_page(job_id: str):
         except Exception:
             pass
 
-    st.markdown(f"### {job.get('title', 'Untitled Role')}")
-    if job.get("description"):
-        with st.expander("Job description", expanded=True):
-            st.write(job["description"])
-    if deadline:
-        st.caption(f"📅 Apply by {str(deadline)[:10]}")
+    _render_apply_header(job)
+    submitted_key = f"public_application_submitted_{job_id}"
+    if st.session_state.get(submitted_key):
+        st.html("""
+        <div class="apply-success">
+            <div class="apply-success-icon">✓</div>
+            <div class="apply-success-title">Application received</div>
+            <div class="apply-success-copy">Your résumé and contact details were submitted successfully. Use the same email address on the <b>check my applications</b> page to follow your status.</div>
+        </div>
+        """)
+        return
 
-    st.divider()
+    if job.get("description"):
+        with st.expander("About this role", expanded=False, icon=":material/description:"):
+            st.write(job["description"])
 
     with st.form("public_apply_form", clear_on_submit=False):
+        st.html('<div class="apply-form-heading">Your application</div><div class="apply-form-note">Fields marked with * are required. Your résumé is shared only with the hiring organization.</div>')
         name = st.text_input("Full name *")
         email = st.text_input("Email *")
         phone = st.text_input("Phone number")
         resume_file = st.file_uploader("Resume (PDF or DOCX) *", type=["pdf", "docx"])
-        submitted = st.form_submit_button("Submit Application", type="primary", width="stretch")
+        submitted = st.form_submit_button("Submit application", type="primary", width="stretch", icon=":material/send:")
 
     if submitted:
         if not name.strip() or not email.strip() or not resume_file:
@@ -133,11 +262,8 @@ def render_apply_page(job_id: str):
         })
 
         if saved:
-            st.success(
-                "Application submitted! You can check its status anytime using the "
-                "**check my applications** page with this same email."
-            )
-            st.balloons()
+            st.session_state[submitted_key] = True
+            st.rerun()
         else:
             st.error(
                 f"Something went wrong saving your application ({db.get_last_error() or 'unknown error'}). "
