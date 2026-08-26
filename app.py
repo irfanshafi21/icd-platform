@@ -4294,7 +4294,19 @@ elif page == "⭐ Shortlisted":
 
         for _role in sorted(_groups.keys()):
             _group_rows = _groups[_role]
-            st.markdown(f"#### 💼 {_role} <span style='color:#94A3B8; font-weight:400; font-size:0.9rem;'>({len(_group_rows)})</span>", unsafe_allow_html=True)
+            _role_color, _role_tint = job_role_theme(_role)
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:12px;margin:18px 0 16px;padding:13px 17px;'
+                f'border-radius:14px;background:linear-gradient(90deg,{_role_tint},#FFFFFF 82%);'
+                f'border:1px solid color-mix(in srgb,{_role_color} 20%,#E5EAF1);border-left:6px solid {_role_color};'
+                f'box-shadow:0 5px 16px color-mix(in srgb,{_role_color} 8%,transparent);">'
+                f'<span style="width:38px;height:38px;border-radius:11px;display:flex;align-items:center;'
+                f'justify-content:center;background:{_role_color};color:white;">💼</span>'
+                f'<span style="font-size:1.35rem;font-weight:800;color:#17233C;">{html.escape(_role)}</span>'
+                f'<span style="margin-left:auto;padding:6px 11px;border-radius:999px;background:{_role_tint};'
+                f'color:{_role_color};font-size:.82rem;font-weight:750;">{len(_group_rows)} candidates</span></div>',
+                unsafe_allow_html=True,
+            )
 
             for i, c in enumerate(_group_rows):
                 score = c["score"].get("overall_score", 0)
@@ -4311,13 +4323,46 @@ elif page == "⭐ Shortlisted":
                     if iscore is not None else ""
                 )
 
-                with st.container():
+                _shortlist_slug = "".join(ch if ch.isalnum() else "_" for ch in str(c["id"])).strip("_") or f"candidate_{i}"
+                _shortlist_key = f"shortlisted_card_{_shortlist_slug}"
+                _shortlist_class = f"st-key-{_shortlist_key}"
+                st.html(f"""
+                <style>
+                .{_shortlist_class},
+                .{_shortlist_class}[data-testid="stVerticalBlockBorderWrapper"],
+                div[data-testid="stVerticalBlockBorderWrapper"]:has(.{_shortlist_class}) {{
+                    background:linear-gradient(145deg,{_role_tint},color-mix(in srgb,{_role_tint} 45%,white)) !important;
+                    border-color:color-mix(in srgb,{_role_color} 22%,#DCE4EE) !important;
+                    border-left:5px solid {_role_color} !important;
+                    border-radius:18px !important;
+                    box-shadow:0 7px 20px color-mix(in srgb,{_role_color} 9%,transparent) !important;
+                    padding:18px 20px 16px !important;
+                    margin-bottom:16px !important;
+                }}
+                .{_shortlist_class} .candidate-card {{
+                    background:transparent !important;border:0 !important;box-shadow:none !important;
+                    padding:0 !important;margin:0 0 10px !important;
+                }}
+                .{_shortlist_class} .candidate-avatar {{
+                    background:{_role_color} !important;
+                    box-shadow:0 4px 12px color-mix(in srgb,{_role_color} 24%,transparent) !important;
+                }}
+                .{_shortlist_class} [class*="st-key-shortlist_reject_"] button {{
+                    color:#B42318 !important;background:#FFF7F6 !important;border-color:#FECACA !important;
+                }}
+                .{_shortlist_class} [class*="st-key-shortlist_reject_"] button:hover {{
+                    background:#FEECEC !important;border-color:#FCA5A5 !important;
+                }}
+                </style>
+                """)
+
+                with st.container(border=True, key=_shortlist_key):
                     st.markdown(f"""
                     <div class="candidate-card">
-                        <div class="candidate-avatar" style="background:linear-gradient(135deg,#378ADD,#185FA5);">⭐</div>
+                        <div class="candidate-avatar">⭐</div>
                         <div class="candidate-info">
                             <div class="candidate-rank-label">Shortlisted</div>
-                            <div class="candidate-name">{c['name']}</div>
+                            <div class="candidate-name">{html.escape(c['name'])}</div>
                         </div>
                         {components.status_chip_html(current_status)}
                         <span class="score-pill" style="background:{bg}; color:{color};">ATS {score}/100</span>
@@ -4326,21 +4371,34 @@ elif page == "⭐ Shortlisted":
                     </div>
                     """, unsafe_allow_html=True)
 
-                    sc1, sc2 = st.columns([1, 3])
-                    with sc1:
-                        new_status = st.selectbox(
-                            "Decision", outcome_options, index=outcome_options.index(current_status) if current_status in outcome_options else 0,
-                            key=f"shortlist_status_{c['id']}", label_visibility="collapsed",
-                        )
-                        if new_status != current_status:
-                            update_candidate_record(c["id"], {"status": new_status})
-                            st.rerun()
-                    with sc2:
-                        skills = c["profile"].get("skills", []) or []
-                        if skills:
-                            components.chip_list(skills[:6], variant="skill")
+                    skills = c["profile"].get("skills", []) or []
+                    if skills:
+                        components.chip_list(skills[:6], variant="skill")
 
-            st.markdown("---")
+                    action_spacer, select_col, reject_col = st.columns([2.4, 1, 1])
+                    with select_col:
+                        if st.button(
+                            "Selected" if current_status == "Selected" else "Select",
+                            key=f"shortlist_select_{c['id']}",
+                            icon=":material/check_circle:",
+                            type="primary" if current_status == "Selected" else "secondary",
+                            disabled=current_status == "Selected",
+                            width="stretch",
+                        ):
+                            update_candidate_record(c["id"], {"status": "Selected"})
+                            st.toast(f"{c['name']} selected", icon=":material/check_circle:")
+                            st.rerun()
+                    with reject_col:
+                        if st.button(
+                            "Rejected" if current_status == "Rejected" else "Reject",
+                            key=f"shortlist_reject_{c['id']}",
+                            icon=":material/cancel:",
+                            disabled=current_status == "Rejected",
+                            width="stretch",
+                        ):
+                            update_candidate_record(c["id"], {"status": "Rejected"})
+                            st.toast(f"{c['name']} rejected", icon=":material/cancel:")
+                            st.rerun()
 
 # ============================================================
 # PAGE — REPORTS (extracted from Home so it has its own sidebar entry)
