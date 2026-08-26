@@ -841,19 +841,19 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
     st.html("""
     <style>
     [class*="st-key-application_card_"] {
-        font-family: "Inter", "Segoe UI", sans-serif;
+        font-family: sans-serif;
         background: #FFFFFF;
         border-color: #D9E3EF !important;
         box-shadow: 0 6px 18px rgba(15, 49, 74, .055);
     }
     [class*="st-key-application_card_"] h4 {
-        font-family: "Inter", "Segoe UI", sans-serif !important;
-        color: #102A43; font-size: 1.28rem; font-weight: 750;
-        letter-spacing: -.02em; margin-bottom: .25rem;
+        font-family: sans-serif !important;
+        color: #102A43; font-size: 1.28rem; font-weight: 700;
+        letter-spacing: normal; margin-bottom: .25rem;
     }
     [class*="st-key-application_card_"] p,
     [class*="st-key-application_card_"] button {
-        font-family: "Inter", "Segoe UI", sans-serif !important;
+        font-family: sans-serif !important;
     }
     [class*="st-key-application_card_"] [data-testid="stCaptionContainer"] p {
         color: #64748B; font-size: .84rem; line-height: 1.45;
