@@ -412,7 +412,7 @@ def fetch_interviews(limit: int = 500) -> list[dict]:
 #   create table public_applications (
 #     id bigint generated always as identity primary key,
 #     job_id bigint references jobs(id) on delete cascade,
-#     company_id bigint,
+#     company_id uuid not null references companies(id) on delete cascade,
 #     applicant_name text,
 #     applicant_email text,
 #     applicant_phone text,
@@ -450,9 +450,16 @@ def save_public_application(application: dict) -> dict | None:
             if job_row.data:
                 company_id = job_row.data[0].get("company_id")
         row = {**application, "company_id": company_id, "status": "Submitted"}
-        result = client.table("public_applications").insert(row).execute()
+        # Public applicants may INSERT but must never be able to SELECT other
+        # candidates' contact details or resume data. Asking PostgREST for no
+        # representation keeps the successful response compatible with that
+        # least-privilege policy.
+        from postgrest import ReturnMethod
+        client.table("public_applications").insert(
+            row, returning=ReturnMethod.minimal
+        ).execute()
         _last_error = None
-        return (result.data or [None])[0]
+        return row
     except Exception as e:
         _last_error = f"save_public_application failed: {e}"
         return None
