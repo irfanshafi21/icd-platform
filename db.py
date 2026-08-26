@@ -509,6 +509,35 @@ def update_application_status(application_id, status: str) -> bool:
         return False
 
 
+def delete_public_application(application_id) -> bool:
+    """Permanently delete one public application and its stored résumé.
+
+    The explicit company filter provides application-level defense in depth;
+    the database RLS policy independently restricts deletes to the signed-in
+    owner of that same company.
+    """
+    global _last_error
+    client = _get_client()
+    company_id = _current_company_id()
+    if client is None or company_id is None or application_id is None:
+        _last_error = "A signed-in company and application ID are required."
+        return False
+    try:
+        result = (client.table("public_applications")
+                  .delete()
+                  .eq("id", application_id)
+                  .eq("company_id", company_id)
+                  .execute())
+        if not (result.data or []):
+            _last_error = "The application was not found or you do not have permission to remove it."
+            return False
+        _last_error = None
+        return True
+    except Exception as e:
+        _last_error = f"delete_public_application failed: {e}"
+        return False
+
+
 # ============================================================
 # LINKEDIN CONNECTION — OAuth token storage, one connection per company
 # ============================================================

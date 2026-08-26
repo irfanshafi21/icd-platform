@@ -761,10 +761,39 @@ def _confirm_application_screening(job: dict, applications: list[dict]) -> None:
         st.rerun()
 
 
+@st.dialog("Remove application")
+def _confirm_application_removal(application: dict) -> None:
+    """Confirm permanent removal of an application and its stored résumé."""
+    applicant_name = application.get("applicant_name") or "this candidate"
+    st.warning("This action cannot be undone.", icon=":material/warning:")
+    st.write(
+        f"Remove **{applicant_name}** from Applied candidates? "
+        "Their contact details and stored résumé will be permanently deleted."
+    )
+    actions = st.columns(2)
+    with actions[0]:
+        if st.button(
+            "Cancel", width="stretch",
+            key=f"cancel_application_removal_{application.get('id')}",
+        ):
+            st.rerun()
+    with actions[1]:
+        if st.button(
+            "Remove permanently", type="primary", icon=":material/delete:", width="stretch",
+            key=f"confirm_application_removal_{application.get('id')}",
+        ):
+            if db.delete_public_application(application.get("id")):
+                st.session_state["application_removed_notice"] = f"{applicant_name}'s application was removed."
+                st.rerun()
+            st.error(db.get_last_error() or "The application could not be removed.")
+
+
 def _render_applied_candidates_tab(jobs: list[dict]) -> None:
     """Recruiter view of public applications, grouped by their saved job."""
     st.subheader(":material/inbox: Applied candidates")
     st.caption("Review applicant details, download individual résumés, or send every résumé for one role to screening.")
+    if st.session_state.get("application_removed_notice"):
+        st.success(st.session_state.pop("application_removed_notice"), icon=":material/check_circle:")
     if not jobs:
         st.info("Create a job first. Applications received through its public link will appear here.")
         return
@@ -823,17 +852,25 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
             contact_left.markdown(f"**Email:** {application.get('applicant_email') or '—'}")
             contact_right.markdown(f"**Phone:** {application.get('applicant_phone') or '—'}")
             decoded = _application_resume_items([application])
-            if decoded:
-                resume_name, resume_bytes = decoded[0]
-                st.download_button(
-                    "Download résumé",
-                    data=resume_bytes,
-                    file_name=resume_name,
-                    mime=("application/pdf" if resume_name.lower().endswith(".pdf")
-                          else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-                    icon=":material/download:",
-                    key=f"application_resume_{application.get('id', index)}",
-                )
+            action_columns = st.columns(2)
+            with action_columns[0]:
+                if decoded:
+                    resume_name, resume_bytes = decoded[0]
+                    st.download_button(
+                        "Download résumé",
+                        data=resume_bytes,
+                        file_name=resume_name,
+                        mime=("application/pdf" if resume_name.lower().endswith(".pdf")
+                              else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+                        icon=":material/download:", width="stretch",
+                        key=f"application_resume_{application.get('id', index)}",
+                    )
+            with action_columns[1]:
+                if st.button(
+                    "Remove", icon=":material/delete:", width="stretch",
+                    key=f"remove_application_{application.get('id', index)}",
+                ):
+                    _confirm_application_removal(application)
 
 
 # ----------------------------- PUBLIC ROUTES (no login) -----------------------------
