@@ -64,7 +64,7 @@ _SCOPES = "openid profile w_member_social"
 # a load balancer, move this to a shared store (e.g. a Supabase table with
 # an expiry column) instead, since each instance would otherwise have its
 # own separate copy of this dict.
-_pending_oauth_states: dict[str, float] = {}
+_pending_oauth_states: dict[str, dict] = {}
 _pending_oauth_states_lock = threading.Lock()
 _OAUTH_STATE_TTL_SECONDS = 600  # 10 minutes — plenty of time to approve on LinkedIn's consent screen
 
@@ -74,17 +74,37 @@ def _stash_oauth_state(state: str) -> None:
     with _pending_oauth_states_lock:
         # Opportunistically clear expired entries so this dict doesn't grow
         # unbounded if some connect attempts never complete.
-        for k in [k for k, exp in _pending_oauth_states.items() if exp <= now]:
+        for k in [k for k, context in _pending_oauth_states.items()
+                  if context["expires_at"] <= now]:
             del _pending_oauth_states[k]
-        _pending_oauth_states[state] = now + _OAUTH_STATE_TTL_SECONDS
+        _pending_oauth_states[state] = {
+            "expires_at": now + _OAUTH_STATE_TTL_SECONDS,
+            # LinkedIn returns through a new Streamlit session. Retain the
+            # authenticated, per-browser Supabase client and company identity
+            # only for this random, short-lived, single-use OAuth state.
+            "supabase_client": st.session_state.get("_supabase_client"),
+            "auth_company": st.session_state.get("auth_company"),
+            "auth_user": st.session_state.get("auth_user"),
+        }
 
 
-def _consume_oauth_state(state: str) -> bool:
+def _consume_oauth_state(state: str) -> dict | None:
     """Checks the state is one we actually issued and hasn't expired, and
     removes it (single-use) so the same authorization link can't be reused."""
     with _pending_oauth_states_lock:
-        expiry = _pending_oauth_states.pop(state, None)
-    return expiry is not None and expiry > time.time()
+        context = _pending_oauth_states.pop(state, None)
+    if not context or context["expires_at"] <= time.time():
+        return None
+    return context
+
+
+def _restore_oauth_session(context: dict) -> None:
+    """Restore the originating app identity after LinkedIn redirects back."""
+    for key in ("auth_company", "auth_user"):
+        if context.get(key):
+            st.session_state[key] = context[key]
+    if context.get("supabase_client") is not None:
+        st.session_state["_supabase_client"] = context["supabase_client"]
 
 
 def _get_secret(name: str) -> str | None:
@@ -155,11 +175,13 @@ def handle_oauth_callback(code: str, state: str) -> tuple[bool, str]:
     """Call this when the app detects ?linkedin_callback=1&code=...&state=...
     in the query params. Exchanges the code for an access token, fetches the
     member's identity, and persists the connection. Returns (ok, message)."""
-    if not _consume_oauth_state(state):
+    oauth_context = _consume_oauth_state(state)
+    if not oauth_context:
         return False, (
             "This connection link expired or was already used — click "
             "'Connect LinkedIn' again to get a fresh one."
         )
+    _restore_oauth_session(oauth_context)
 
     client_id = _get_secret("LINKEDIN_CLIENT_ID")
     client_secret = _get_secret("LINKEDIN_CLIENT_SECRET")
