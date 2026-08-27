@@ -21,8 +21,11 @@ def _styles() -> None:
     st.html("""
     <style>
     [data-testid="stHeader"], [data-testid="stToolbar"], footer { display:none!important; }
-    [data-testid="stAppViewContainer"] { background:#F5F8FC; }
-    .stMainBlockContainer { max-width:1180px; padding-top:1.5rem; padding-bottom:3rem; }
+    [data-testid="stAppViewContainer"] { background:
+      radial-gradient(circle at 8% 8%,rgba(56,189,248,.16),transparent 28%),
+      radial-gradient(circle at 92% 92%,rgba(99,102,241,.11),transparent 30%),
+      linear-gradient(145deg,#F8FBFF 0%,#F3F7FC 52%,#F8FAFF 100%); }
+    .stMainBlockContainer { max-width:1180px; padding-top:2.5rem; padding-bottom:3rem; }
     .portal-nav { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:13px 18px;
       border:1px solid #DCE6F1; border-radius:18px; background:#fff; box-shadow:0 8px 26px rgba(15,49,74,.07); margin-bottom:22px; }
     .portal-brand img { width:124px; max-height:48px; object-fit:contain; }
@@ -50,12 +53,57 @@ def _styles() -> None:
     .job-meta { color:#64748B; font-size:.82rem; line-height:1.5; min-height:40px; }
     .job-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; min-height:31px; }
     .job-chips span { color:#0C4A6E; background:#E0F2FE; padding:5px 9px; border-radius:999px; font-size:.7rem; font-weight:750; }
-    .auth-panel { max-width:720px; margin:2rem auto 1rem; padding:34px; background:linear-gradient(145deg,#FFFFFF,#F6FAFF);
-      border:1px solid #DCE6F1; border-top:5px solid #2F80ED; border-radius:24px; box-shadow:0 18px 46px rgba(15,49,74,.11); }
-    .auth-logo { width:145px; margin-bottom:24px; }
-    .auth-points { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
-    .auth-points span { padding:7px 11px; border-radius:999px; color:#185FA5; background:#EAF3FF; font-size:.75rem; font-weight:750; }
-    @media(max-width:640px){.stMainBlockContainer{padding:1rem .85rem 2rem}.portal-hero{padding:25px 20px}.portal-brand img{width:104px}}
+    .st-key-candidate_auth_value { min-height:560px; padding:42px 40px!important; border-radius:28px!important;
+      color:#fff; overflow:hidden; position:relative;
+      background:linear-gradient(145deg,#09264B 0%,#124E88 55%,#0788A7 100%)!important;
+      box-shadow:0 24px 58px rgba(13,56,96,.22)!important; }
+    .st-key-candidate_auth_value:before { content:""; position:absolute; width:290px; height:290px; right:-105px; top:-125px;
+      border-radius:50%; border:42px solid rgba(255,255,255,.08); }
+    .st-key-candidate_auth_value:after { content:""; position:absolute; width:180px; height:180px; left:-75px; bottom:-80px;
+      border-radius:50%; background:rgba(56,189,248,.15); }
+    .candidate-auth-logo-wrap { display:inline-flex; padding:10px 14px; border-radius:15px; background:#fff;
+      box-shadow:0 10px 24px rgba(2,20,45,.2); margin-bottom:45px; position:relative; z-index:1; }
+    .candidate-auth-logo { width:145px; display:block; }
+    .candidate-auth-eyebrow { color:#BAE6FD; font-size:.72rem; font-weight:850; letter-spacing:.15em;
+      text-transform:uppercase; margin-bottom:13px; position:relative; z-index:1; }
+    .candidate-auth-heading { color:#fff; font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(2rem,3.4vw,3rem);
+      font-weight:850; letter-spacing:-.04em; line-height:1.08; margin:0 0 17px; position:relative; z-index:1; }
+    .candidate-auth-copy { color:#D9ECFA; font-size:1rem; line-height:1.68; max-width:475px; margin:0 0 28px; position:relative; z-index:1; }
+    .candidate-auth-benefits { display:grid; gap:13px; position:relative; z-index:1; }
+    .candidate-auth-benefit { display:flex; align-items:center; gap:11px; color:#F4FAFF; font-size:.87rem; font-weight:680; }
+    .candidate-auth-benefit-icon { width:28px; height:28px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.14); color:#BAE6FD; font-family:'Material Symbols Rounded'; font-size:17px; }
+    .st-key-candidate_auth_form { min-height:560px; padding:42px 38px 32px!important; border-radius:28px!important;
+      background:rgba(255,255,255,.94)!important; border:1px solid rgba(203,213,225,.82)!important;
+      box-shadow:0 22px 55px rgba(15,49,74,.11)!important; backdrop-filter:blur(14px); }
+    .candidate-auth-step { display:inline-flex; align-items:center; gap:7px; padding:7px 11px; border-radius:999px;
+      color:#1769AA; background:#EAF4FF; border:1px solid #D6E9FC; font-size:.7rem; font-weight:800;
+      letter-spacing:.08em; text-transform:uppercase; margin-bottom:24px; }
+    .candidate-auth-step span { font-family:'Material Symbols Rounded'; font-size:16px; }
+    .candidate-auth-form-title { color:#14213B; font-size:1.75rem; font-weight:850; letter-spacing:-.025em; margin-bottom:9px; }
+    .candidate-auth-form-copy { color:#64748B; font-size:.9rem; line-height:1.6; margin-bottom:25px; }
+    .candidate-auth-security { display:flex; align-items:flex-start; gap:10px; padding:12px 13px; border-radius:12px;
+      color:#52627A; background:#F8FAFC; border:1px solid #E2E8F0; font-size:.76rem; line-height:1.45; margin:18px 0 13px; }
+    .candidate-auth-security span { font-family:'Material Symbols Rounded'; color:#0F8A67; font-size:18px; }
+    .st-key-candidate_auth_form .stTextInput input { min-height:49px; border-radius:12px!important; background:#F8FAFC!important;
+      border:1px solid #D8E1EC!important; color:#17233C!important; }
+    .st-key-candidate_auth_form .stTextInput input:focus { border-color:#2F80ED!important;
+      box-shadow:0 0 0 3px rgba(47,128,237,.14)!important; }
+    .st-key-candidate_auth_form label { color:#334155!important; font-weight:700!important; }
+    .st-key-candidate_auth_form button { min-height:49px!important; border-radius:12px!important; font-weight:750!important; }
+    .st-key-candidate_auth_form button[kind="primary"] { color:#fff!important; border:0!important;
+      background:linear-gradient(135deg,#378ADD,#1565AD)!important; box-shadow:0 10px 22px rgba(21,101,173,.18)!important; }
+    .st-key-candidate_auth_form button[kind="primary"]:hover { transform:translateY(-1px); box-shadow:0 13px 26px rgba(21,101,173,.25)!important; }
+    .st-key-candidate_auth_form button[kind="secondary"] { color:#40516A!important; border-color:#D8E1EC!important; background:#fff!important; }
+    .candidate-auth-divider { display:flex; align-items:center; gap:12px; color:#94A3B8; font-size:.7rem; margin:16px 0; }
+    .candidate-auth-divider:before,.candidate-auth-divider:after { content:""; height:1px; background:#E2E8F0; flex:1; }
+    .candidate-auth-help { color:#718096; text-align:center; font-size:.72rem; margin-top:17px; }
+    @media(max-width:640px){
+      .stMainBlockContainer{padding:1rem .85rem 2rem}.portal-hero{padding:25px 20px}.portal-brand img{width:104px}
+      .st-key-candidate_auth_value,.st-key-candidate_auth_form{min-height:auto;padding:28px 23px!important;border-radius:21px!important}
+      .candidate-auth-logo-wrap{margin-bottom:28px}.candidate-auth-copy{font-size:.91rem}.candidate-auth-heading{font-size:2rem}
+    }
+    @media(prefers-reduced-motion:reduce){.st-key-candidate_auth_form button{transition:none!important;transform:none!important}}
     </style>
     """)
 
@@ -157,47 +205,113 @@ def _auth_panel() -> dict | None:
     if user:
         return user
     logo = _logo_data_uri()
-    logo_html = f'<img class="auth-logo" src="{logo}" alt="ICD Platform">' if logo else '<strong>ICD Platform</strong>'
-    st.html(f'<div class="auth-panel">{logo_html}<div class="portal-eyebrow" style="color:#185FA5">Candidate access</div><h2>Find your next opportunity</h2><p style="color:#64748B">Sign in once with your email verification code. Your secure session stays active on this device.</p><div class="auth-points"><span>Verified openings</span><span>One-click profile</span><span>Live application status</span></div></div>')
-    email = st.text_input("Email address", value=st.session_state.get("candidate_email", ""), placeholder="you@example.com").strip().lower()
-    if not st.session_state.get("candidate_otp_sent"):
-        if st.button("Email verification code", type="primary", icon=":material/mail:", width="stretch"):
-            if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
-                st.error("Enter a valid email address.")
-            else:
-                try:
-                    db._get_client().auth.sign_in_with_otp({"email": email})
-                    st.session_state.candidate_email = email
-                    st.session_state.candidate_otp_sent = True
+    logo_html = (
+        f'<div class="candidate-auth-logo-wrap"><img class="candidate-auth-logo" src="{logo}" alt="ICD Platform"></div>'
+        if logo else '<div class="candidate-auth-logo-wrap"><strong>ICD Platform</strong></div>'
+    )
+
+    value_col, form_col = st.columns([1.08, .92], gap="large")
+    with value_col:
+        with st.container(height="stretch", key="candidate_auth_value"):
+            st.html(
+                f'{logo_html}'
+                '<div class="candidate-auth-eyebrow">Candidate careers portal</div>'
+                '<h1 class="candidate-auth-heading">Your next opportunity starts here.</h1>'
+                '<p class="candidate-auth-copy">Discover verified roles from trusted hiring teams, apply securely, '
+                'and follow every application from one simple workspace.</p>'
+                '<div class="candidate-auth-benefits">'
+                '<div class="candidate-auth-benefit"><span class="candidate-auth-benefit-icon">verified</span>Verified company openings</div>'
+                '<div class="candidate-auth-benefit"><span class="candidate-auth-benefit-icon">person</span>One reusable candidate profile</div>'
+                '<div class="candidate-auth-benefit"><span class="candidate-auth-benefit-icon">track_changes</span>Live application progress</div>'
+                '</div>'
+            )
+
+    with form_col:
+        with st.container(height="stretch", key="candidate_auth_form"):
+            _otp_sent = bool(st.session_state.get("candidate_otp_sent"))
+            _step_icon = "mark_email_read" if _otp_sent else "lock"
+            _step_text = "Step 2 of 2 · Verify email" if _otp_sent else "Secure candidate access"
+            _form_title = "Enter your verification code" if _otp_sent else "Sign in to continue"
+            _form_copy = (
+                "Use the numeric code from your email. It expires shortly for your security."
+                if _otp_sent else
+                "No password is needed. We will email you a secure one-time verification code."
+            )
+            st.html(
+                f'<div class="candidate-auth-step"><span>{_step_icon}</span>{_step_text}</div>'
+                f'<div class="candidate-auth-form-title">{_form_title}</div>'
+                f'<div class="candidate-auth-form-copy">{_form_copy}</div>'
+            )
+
+            email = st.text_input(
+                "Email address",
+                value=st.session_state.get("candidate_email", ""),
+                placeholder="you@example.com",
+                disabled=_otp_sent,
+                key="candidate_auth_email",
+            ).strip().lower()
+
+            if not _otp_sent:
+                if st.button(
+                    "Email verification code", type="primary", icon=":material/mail:",
+                    width="stretch", key="candidate_auth_send_code",
+                ):
+                    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+                        st.error("Enter a valid email address.")
+                    else:
+                        try:
+                            db._get_client().auth.sign_in_with_otp({"email": email})
+                            st.session_state.candidate_email = email
+                            st.session_state.candidate_otp_sent = True
+                            st.rerun()
+                        except Exception as exc:
+                            st.error(f"Could not send the code. Confirm Email Auth is enabled in Supabase. ({exc})")
+                st.html(
+                    '<div class="candidate-auth-security"><span>shield_lock</span><div><strong>Password-free and secure.</strong><br>'
+                    'Your verified session remains active on this device, so you do not need to sign in every visit.</div></div>'
+                    '<div class="candidate-auth-divider">or</div>'
+                )
+                if st.button(
+                    "Back to account selection", icon=":material/arrow_back:",
+                    width="stretch", key="candidate_auth_back",
+                ):
+                    st.query_params.clear()
+                    st.session_state.pop("entry_role", None)
                     st.rerun()
+                st.html('<div class="candidate-auth-help">We only use your email for secure access and application updates.</div>')
+                return None
+
+            st.caption(
+                f"Code sent to **{st.session_state.get('candidate_email', email)}**. "
+                "Check your inbox and spam folder."
+            )
+            code = st.text_input(
+                "Verification code", max_chars=10, placeholder="Enter the code from your email",
+                key=f"candidate_auth_code_{st.session_state.get('candidate_email', email)}",
+            )
+            if st.button(
+                "Verify and continue", type="primary", icon=":material/arrow_forward:",
+                width="stretch", key="candidate_auth_verify",
+            ):
+                if not code.strip().isdigit() or not 6 <= len(code.strip()) <= 10:
+                    st.error("Enter the complete numeric verification code from your email.")
+                    return None
+                try:
+                    response = db._get_client().auth.verify_otp({"email": st.session_state.get("candidate_email", email), "token": code.strip(), "type": "email"})
+                    if getattr(response, "user", None):
+                        session = getattr(response, "session", None)
+                        if session:
+                            _write_auth_cookies(session.access_token, session.refresh_token)
+                        st.session_state.candidate_otp_sent = False
+                        return {"id": response.user.id, "email": response.user.email}
+                    st.error("That code could not be verified.")
                 except Exception as exc:
-                    st.error(f"Could not send the code. Confirm Email Auth is enabled in Supabase. ({exc})")
-        if st.button("Back to account selection", icon=":material/arrow_back:", width="stretch"):
-            st.query_params.clear()
-            st.session_state.pop("entry_role", None)
-            st.rerun()
-        return None
-    st.caption(f"A verification code was sent to {st.session_state.get('candidate_email', email)}. Check your inbox and spam folder.")
-    code = st.text_input("Verification code", max_chars=10, placeholder="Enter the code from your email")
-    left, right = st.columns(2)
-    if left.button("Verify and continue", type="primary", width="stretch"):
-        if not code.strip().isdigit() or not 6 <= len(code.strip()) <= 10:
-            st.error("Enter the complete numeric verification code from your email.")
-            return None
-        try:
-            response = db._get_client().auth.verify_otp({"email": st.session_state.get("candidate_email", email), "token": code.strip(), "type": "email"})
-            if getattr(response, "user", None):
-                session = getattr(response, "session", None)
-                if session:
-                    _write_auth_cookies(session.access_token, session.refresh_token)
+                    st.error(f"Incorrect or expired code. ({exc})")
+            if st.button(
+                "Use another email", icon=":material/edit:", width="stretch", key="candidate_auth_change_email",
+            ):
                 st.session_state.candidate_otp_sent = False
-                return {"id": response.user.id, "email": response.user.email}
-            st.error("That code could not be verified.")
-        except Exception as exc:
-            st.error(f"Incorrect or expired code. ({exc})")
-    if right.button("Use another email", width="stretch"):
-        st.session_state.candidate_otp_sent = False
-        st.rerun()
+                st.rerun()
     return None
 
 
