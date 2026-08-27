@@ -136,9 +136,17 @@ def list_companies(search: str = "") -> list[dict]:
         q = client.table("companies_public").select("*").order("name")
         if search.strip():
             q = q.ilike("name", f"%{search.strip()}%")
-        result = q.limit(25).execute()
-        return result.data or []
+        result = _with_retry(lambda: q.limit(25).execute(), attempts=2, delay=0.2)
+        companies = result.data or []
+        if not search.strip() and companies:
+            st.session_state._company_directory_fallback = companies
+        return companies
     except Exception:
+        # A transient Data API error should not make existing organizations
+        # look deleted. Reuse the most recent successful directory response
+        # for this browser session when the unfiltered showcase is requested.
+        if not search.strip():
+            return st.session_state.get("_company_directory_fallback", [])
         return []
 
 

@@ -207,6 +207,22 @@ def _sign_out() -> None:
     st.session_state.pop("candidate_pending_tokens", None)
 
 
+def _go_to_account_selection() -> None:
+    st.session_state.show_account_gate = True
+    st.session_state.pop("entry_role", None)
+    st.query_params.clear()
+
+
+def _go_to_application(job_id) -> None:
+    st.query_params.clear()
+    st.query_params["apply"] = str(job_id)
+
+
+def _back_to_account_selection() -> None:
+    st.session_state.pop("entry_role", None)
+    st.query_params.clear()
+
+
 def _auth_panel() -> dict | None:
     user = _current_candidate()
     if user:
@@ -278,13 +294,11 @@ def _auth_panel() -> dict | None:
                     'Your verified session remains active on this device, so you do not need to sign in every visit.</div></div>'
                     '<div class="candidate-auth-divider">or</div>'
                 )
-                if st.button(
+                st.button(
                     "Back to account selection", icon=":material/arrow_back:",
                     width="stretch", key="candidate_auth_back",
-                ):
-                    st.query_params.clear()
-                    st.session_state.pop("entry_role", None)
-                    st.rerun()
+                    on_click=_back_to_account_selection,
+                )
                 st.html('<div class="candidate-auth-help">We only use your email for secure access and application updates.</div>')
                 return None
 
@@ -367,10 +381,11 @@ def _job_card(job: dict, index: int) -> None:
     meta = " · ".join(filter(None, [job.get("location"), job.get("employment_type"), job.get("experience_level")])) or "Role details available"
     chips = "".join(f"<span>{html.escape(str(skill))}</span>" for skill in (job.get("required_skills") or [])[:5])
     st.html(f'<div class="job-card"><div class="job-brand">{company_logo}<div><div class="job-company">{company_name}</div><div class="job-industry">{company_industry}</div></div></div><div class="job-title">{title}</div><div class="job-meta">{html.escape(meta)}</div><div class="job-chips">{chips}</div></div>')
-    if st.button("View and apply", key=f"candidate_apply_{job.get('id')}_{index}", type="primary", icon=":material/arrow_forward:", width="stretch"):
-        st.query_params.clear()
-        st.query_params["apply"] = str(job["id"])
-        st.rerun()
+    st.button(
+        "View and apply", key=f"candidate_apply_{job.get('id')}_{index}",
+        type="primary", icon=":material/arrow_forward:", width="stretch",
+        on_click=_go_to_application, args=(job["id"],),
+    )
 
 
 def _render_my_applications(user: dict) -> None:
@@ -399,8 +414,6 @@ def _render_my_applications(user: dict) -> None:
 
 
 def render_candidate_portal() -> None:
-    st.set_page_config(page_title="ICD candidate portal", page_icon=":material/work:", layout="wide", initial_sidebar_state="collapsed")
-    _styles()
     auth_slot = st.empty()
     with auth_slot.container():
         user = _auth_panel()
@@ -419,14 +432,12 @@ def render_candidate_portal() -> None:
         if logo else "ICD Platform"
     )
     st.html(f'<div class="portal-nav"><div class="portal-brand">{logo_html}</div><div class="portal-user"><span class="portal-user-dot"></span>{html.escape(profile.get("full_name") or user.get("email") or "Candidate")}</div></div>')
-    if st.button(
+    st.button(
         "Back to account selection",
         icon=":material/arrow_back:",
         key="candidate_portal_account_selection",
-    ):
-        st.session_state.show_account_gate = True
-        st.query_params.clear()
-        st.rerun()
+        on_click=_go_to_account_selection,
+    )
     st.html(f'<section class="portal-hero"><div class="portal-eyebrow">Welcome, {html.escape(profile.get("full_name") or "candidate")}</div><h1>Discover roles built for your skills</h1><p>Browse verified openings, apply securely with your resume, and follow every application from one place.</p></section>')
     jobs_tab, applications_tab = st.tabs(["Find jobs", "My applications"], on_change="rerun")
     if applications_tab.open:

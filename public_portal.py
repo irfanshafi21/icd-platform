@@ -257,12 +257,14 @@ def _is_verified(email: str) -> bool:
     return bool(record and record.get("verified"))
 
 
+def _back_to_candidate_jobs() -> None:
+    st.query_params.clear()
+    st.query_params["candidate"] = "1"
+
+
 # ----------------------------- APPLY PAGE -----------------------------
 
 def render_apply_page(job_id: str):
-    st.set_page_config(page_title="Apply for a role", page_icon=":material/work:", layout="centered")
-    _public_page_styles()
-
     job = db.fetch_public_job(job_id)
 
     if not job:
@@ -284,10 +286,10 @@ def render_apply_page(job_id: str):
         except Exception:
             pass
 
-    if st.button("Back to all jobs", icon=":material/arrow_back:"):
-        st.query_params.clear()
-        st.query_params["candidate"] = "1"
-        st.rerun()
+    st.button(
+        "Back to all jobs", icon=":material/arrow_back:",
+        on_click=_back_to_candidate_jobs,
+    )
 
     _render_apply_header(job)
     submitted_key = f"public_application_submitted_{job_id}"
@@ -352,7 +354,6 @@ def render_apply_page(job_id: str):
 # ----------------------------- STATUS PAGE -----------------------------
 
 def render_status_page():
-    st.set_page_config(page_title="My Applications", page_icon="📋", layout="centered")
     st.markdown("## Check your application status")
     st.caption("Verify your email to see every job you've applied to and its current status.")
 

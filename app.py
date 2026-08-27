@@ -937,17 +937,35 @@ def _render_applied_candidates_tab(jobs: list[dict]) -> None:
 # own page config and then st.stop() — the rest of this file (the full
 # authenticated app) never runs for these visitors.
 _qp = st.query_params
-if "apply" in _qp:
-    import public_portal
-    public_portal.render_apply_page(_qp["apply"])
-    st.stop()
-elif "portal" in _qp:
-    import public_portal
-    public_portal.render_status_page()
-    st.stop()
-elif "candidate" in _qp:
+if any(route in _qp for route in ("apply", "portal", "candidate")):
+    # All candidate-facing routes render page config and both critical style
+    # sheets at the same delta positions. Switching between jobs, apply, and
+    # status pages therefore cannot briefly unmount CSS while stale elements
+    # from the previous route are still fading out.
+    _public_title = "Apply for a role" if "apply" in _qp else "ICD candidate portal"
+    _public_layout = "centered" if "apply" in _qp or "portal" in _qp else "wide"
+    st.set_page_config(
+        page_title=_public_title,
+        page_icon=":material/work:",
+        layout=_public_layout,
+        initial_sidebar_state="collapsed",
+    )
     import candidate_portal
-    candidate_portal.render_candidate_portal()
+    import public_portal
+    public_portal._public_page_styles()
+    candidate_portal._styles()
+    st.html(
+        '<style>.stMainBlockContainer{max-width:'
+        + ('760px' if "apply" in _qp or "portal" in _qp else '1180px')
+        + '!important;}</style>'
+    )
+
+    if "apply" in _qp:
+        public_portal.render_apply_page(_qp["apply"])
+    elif "portal" in _qp:
+        public_portal.render_status_page()
+    else:
+        candidate_portal.render_candidate_portal()
     st.stop()
 
 # ----------------------------- PAGE CONFIG -----------------------------
