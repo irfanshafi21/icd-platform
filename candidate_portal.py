@@ -193,17 +193,18 @@ def _restore_candidate_session(client) -> None:
 
 
 def _current_candidate() -> dict | None:
-    cached_user = st.session_state.get("candidate_user")
-    if cached_user and cached_user.get("id") and cached_user.get("email"):
-        return cached_user
     client = db._get_client()
     if client is None:
         return None
+    cached_user = st.session_state.get("candidate_user")
     try:
         user = client.auth.get_user().user
     except Exception:
         user = None
-    if not user:
+    # Session State can outlive the Supabase client's in-memory JWT after a
+    # reconnect or server restart. Never trust the cached identity by itself:
+    # restore the signed browser session before making an RLS-protected query.
+    if not user or (cached_user and str(user.id) != str(cached_user.get("id"))):
         _restore_candidate_session(client)
         try:
             user = client.auth.get_user().user
@@ -211,6 +212,7 @@ def _current_candidate() -> dict | None:
             user = None
     try:
         if not user or not getattr(user, "email", None):
+            st.session_state.pop("candidate_user", None)
             return None
         current_user = {"id": user.id, "email": user.email}
         st.session_state.candidate_user = current_user
