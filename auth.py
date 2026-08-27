@@ -123,36 +123,29 @@ def sign_out():
         st.session_state.pop(key, None)
 
 
-@st.cache_data(ttl=300, max_entries=32, show_spinner=False)
-def _cached_company_directory(search: str = "") -> list[dict]:
-    """Cache the safe public directory so route changes do not wait on it."""
-    client = db._get_public_client()
-    if client is None:
-        return []
-    q = client.table("companies_public").select("*").order("name")
-    if search:
-        q = q.ilike("name", f"%{search}%")
-    result = _with_retry(lambda: q.limit(25).execute(), attempts=2, delay=0.2)
-    return result.data or []
-
-
 def list_companies(search: str = "") -> list[dict]:
     """Lists companies for the 'Choose Company' picker — reads from the
     companies_public view (name/logo/industry only, nothing sensitive), so
     this works even before anyone has entered a code. Returns [] on any
     error rather than raising, since a picker with no results should just
     show 'no matches', not crash the screen."""
-    normalized_search = search.strip()
+    client = _client()
+    if client is None:
+        return []
     try:
-        companies = _cached_company_directory(normalized_search)
-        if not normalized_search and companies:
+        q = client.table("companies_public").select("*").order("name")
+        if search.strip():
+            q = q.ilike("name", f"%{search.strip()}%")
+        result = _with_retry(lambda: q.limit(25).execute(), attempts=2, delay=0.2)
+        companies = result.data or []
+        if not search.strip() and companies:
             st.session_state._company_directory_fallback = companies
         return companies
     except Exception:
         # A transient Data API error should not make existing organizations
         # look deleted. Reuse the most recent successful directory response
         # for this browser session when the unfiltered showcase is requested.
-        if not normalized_search:
+        if not search.strip():
             return st.session_state.get("_company_directory_fallback", [])
         return []
 
@@ -214,7 +207,6 @@ def create_company(name: str, logo_bytes: bytes | None, website: str = "",
         result = _with_retry(lambda: client.table("companies").insert(row).execute())
         if result.data:
             st.session_state.auth_company = result.data[0]
-            _cached_company_directory.clear()
             return True, "Organization created."
         return False, "Couldn't save organization details."
     except Exception as e:
@@ -258,7 +250,6 @@ def update_company(company_id, updates: dict) -> tuple[bool, str]:
             st.session_state.auth_company = result.data[0]
         else:
             st.session_state.auth_company = {**st.session_state.get("auth_company", {}), **updates}
-        _cached_company_directory.clear()
         return True, "Saved."
     except Exception as e:
         return False, f"Couldn't save changes: {e}"
