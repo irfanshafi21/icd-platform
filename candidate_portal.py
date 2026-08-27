@@ -167,6 +167,9 @@ def _restore_candidate_session(client) -> None:
 
 
 def _current_candidate() -> dict | None:
+    cached_user = st.session_state.get("candidate_user")
+    if cached_user and cached_user.get("id") and cached_user.get("email"):
+        return cached_user
     client = db._get_client()
     if client is None:
         return None
@@ -183,7 +186,9 @@ def _current_candidate() -> dict | None:
     try:
         if not user or not getattr(user, "email", None):
             return None
-        return {"id": user.id, "email": user.email}
+        current_user = {"id": user.id, "email": user.email}
+        st.session_state.candidate_user = current_user
+        return current_user
     except Exception:
         return None
 
@@ -198,6 +203,8 @@ def _sign_out() -> None:
     _clear_auth_cookies()
     st.session_state.pop("candidate_email", None)
     st.session_state.pop("candidate_otp_sent", None)
+    st.session_state.pop("candidate_user", None)
+    st.session_state.pop("candidate_pending_tokens", None)
 
 
 def _auth_panel() -> dict | None:
@@ -300,10 +307,15 @@ def _auth_panel() -> dict | None:
                     response = db._get_client().auth.verify_otp({"email": st.session_state.get("candidate_email", email), "token": code.strip(), "type": "email"})
                     if getattr(response, "user", None):
                         session = getattr(response, "session", None)
+                        current_user = {"id": response.user.id, "email": response.user.email}
                         if session:
-                            _write_auth_cookies(session.access_token, session.refresh_token)
+                            st.session_state.candidate_pending_tokens = (
+                                session.access_token,
+                                session.refresh_token,
+                            )
+                        st.session_state.candidate_user = current_user
                         st.session_state.candidate_otp_sent = False
-                        st.rerun()
+                        return current_user
                     st.error("That code could not be verified.")
                 except Exception as exc:
                     st.error(f"Incorrect or expired code. ({exc})")
@@ -389,9 +401,15 @@ def _render_my_applications(user: dict) -> None:
 def render_candidate_portal() -> None:
     st.set_page_config(page_title="ICD candidate portal", page_icon=":material/work:", layout="wide", initial_sidebar_state="collapsed")
     _styles()
-    user = _auth_panel()
+    auth_slot = st.empty()
+    with auth_slot.container():
+        user = _auth_panel()
     if not user:
         return
+    auth_slot.empty()
+    pending_tokens = st.session_state.pop("candidate_pending_tokens", None)
+    if pending_tokens:
+        _write_auth_cookies(*pending_tokens)
     profile = _ensure_profile(user)
     if not profile:
         return
@@ -406,7 +424,6 @@ def render_candidate_portal() -> None:
         icon=":material/arrow_back:",
         key="candidate_portal_account_selection",
     ):
-        _sign_out()
         st.session_state.show_account_gate = True
         st.query_params.clear()
         st.rerun()
