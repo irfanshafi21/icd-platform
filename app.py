@@ -1733,26 +1733,67 @@ def _render_account_type_gate():
     )
 
 
-_AUTH_CSS = "\n".join(line.strip() for line in """
+_AUTH_CSS = """
 <style>
-.auth-hero { border-radius: 24px; padding: 3rem 2.5rem; min-height: 560px;
-background: linear-gradient(160deg, #0B2A52 0%, #001736 70%, #001025 100%);
-display: flex; flex-direction: column; justify-content: center; align-items: center;
-text-align: center; color: white; }
-.auth-hero-card { background: white; border-radius: 16px; padding: 1.75rem 2rem;
-box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-bottom: 2rem; }
-.auth-hero h1 { font-size: 2.1rem; font-weight: 700; line-height: 1.15; margin: 0 0 1rem 0; letter-spacing: -0.01em; }
-.auth-hero p { font-size: 1rem; opacity: 0.85; max-width: 380px; margin: 0 auto; line-height: 1.5; }
-.auth-badge { display: inline-block; background: #E5EEFF; color: #0051D5; font-weight: 700;
-font-size: 0.7rem; letter-spacing: 0.04em; padding: 6px 12px; border-radius: 8px; margin-bottom: 1rem; }
-div[data-testid="stForm"] button[kind="primary"], .stButton > button[kind="primary"] {
-background: #001736 !important; border-color: #001736 !important; border-radius: 8px !important;
+.stApp {
+background:radial-gradient(circle at 8% 8%,rgba(56,189,248,.16),transparent 28%),
+radial-gradient(circle at 92% 92%,rgba(99,102,241,.11),transparent 30%),
+linear-gradient(145deg,#F8FBFF 0%,#F3F7FC 52%,#F8FAFF 100%)!important;
 }
-div[data-testid="stForm"] button[kind="primary"]:hover, .stButton > button[kind="primary"]:hover {
-background: #002B5C !important; border-color: #002B5C !important;
-}
+[data-testid="stHeader"]{background:transparent!important}
+[data-testid="stMainBlockContainer"]{max-width:1180px!important;padding-top:2.5rem!important;padding-bottom:3rem!important}
+.st-key-recruiter_auth_value{min-height:610px;padding:42px 40px!important;border-radius:28px!important;color:#fff;
+overflow:hidden;position:relative;background:linear-gradient(145deg,#09264B 0%,#124E88 55%,#0788A7 100%)!important;
+box-shadow:0 24px 58px rgba(13,56,96,.22)!important}
+.st-key-recruiter_auth_value:before{content:"";position:absolute;width:290px;height:290px;right:-105px;top:-125px;
+border-radius:50%;border:42px solid rgba(255,255,255,.08)}
+.st-key-recruiter_auth_value:after{content:"";position:absolute;width:180px;height:180px;left:-75px;bottom:-80px;
+border-radius:50%;background:rgba(56,189,248,.15)}
+.recruiter-auth-logo-wrap{display:inline-flex;padding:10px 14px;border-radius:15px;background:#fff;
+box-shadow:0 10px 24px rgba(2,20,45,.2);margin-bottom:45px;position:relative;z-index:1}
+.recruiter-auth-logo{width:145px;display:block}.recruiter-auth-eyebrow{color:#BAE6FD;font-size:.72rem;font-weight:850;
+letter-spacing:.15em;text-transform:uppercase;margin-bottom:13px;position:relative;z-index:1}
+.recruiter-auth-heading{color:#fff;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2rem,3.4vw,3rem);
+font-weight:850;letter-spacing:-.04em;line-height:1.08;margin:0 0 17px;position:relative;z-index:1}
+.recruiter-auth-copy{color:#D9ECFA;font-size:1rem;line-height:1.68;max-width:475px;margin:0 0 28px;position:relative;z-index:1}
+.recruiter-auth-benefits{display:grid;gap:13px;position:relative;z-index:1}.recruiter-auth-benefit{display:flex;
+align-items:center;gap:11px;color:#F4FAFF;font-size:.87rem;font-weight:680}.recruiter-auth-benefit-icon{width:28px;height:28px;
+border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.14);color:#BAE6FD;
+font-family:'Material Symbols Rounded';font-size:17px}
+.st-key-recruiter_auth_form{min-height:610px;padding:40px 36px 30px!important;border-radius:28px!important;
+background:rgba(255,255,255,.94)!important;border:1px solid rgba(203,213,225,.82)!important;
+box-shadow:0 22px 55px rgba(15,49,74,.11)!important;backdrop-filter:blur(14px)}
+.recruiter-auth-step{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;color:#1769AA;
+background:#EAF4FF;border:1px solid #D6E9FC;font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:22px}
+.recruiter-auth-step span{font-family:'Material Symbols Rounded';font-size:16px}.recruiter-auth-title{color:#14213B;
+font-size:1.75rem;font-weight:850;letter-spacing:-.025em;margin-bottom:8px}.recruiter-auth-description{color:#64748B;
+font-size:.9rem;line-height:1.6;margin-bottom:24px}.recruiter-auth-tip{display:flex;align-items:flex-start;gap:10px;padding:12px 13px;
+border-radius:12px;color:#52627A;background:#F8FAFC;border:1px solid #E2E8F0;font-size:.76rem;line-height:1.45;margin:16px 0 13px}
+.recruiter-auth-tip span{font-family:'Material Symbols Rounded';color:#0F8A67;font-size:18px}
+.st-key-recruiter_auth_form .stTextInput input{min-height:49px;border-radius:12px!important;background:#F8FAFC!important;
+border:1px solid #D8E1EC!important;color:#17233C!important}.st-key-recruiter_auth_form .stTextInput input:focus{border-color:#2F80ED!important;
+box-shadow:0 0 0 3px rgba(47,128,237,.14)!important}.st-key-recruiter_auth_form label{color:#334155!important;font-weight:700!important}
+.st-key-recruiter_auth_form button{min-height:48px!important;border-radius:12px!important;font-weight:750!important}
+.st-key-recruiter_auth_form button[kind="primary"],.st-key-recruiter_auth_form div[data-testid="stForm"] button[kind="primary"]{
+color:#fff!important;border:0!important;background:linear-gradient(135deg,#378ADD,#1565AD)!important;
+box-shadow:0 10px 22px rgba(21,101,173,.18)!important}.st-key-recruiter_auth_form button[kind="primary"]:hover{
+transform:translateY(-1px);box-shadow:0 13px 26px rgba(21,101,173,.25)!important}.st-key-recruiter_auth_form button[kind="secondary"]{
+color:#40516A!important;border-color:#D8E1EC!important;background:#fff!important}
+.auth-badge{display:inline-flex;background:#EAF4FF;color:#1769AA;font-weight:800;font-size:.7rem;letter-spacing:.08em;
+padding:7px 11px;border:1px solid #D6E9FC;border-radius:999px;margin-bottom:14px;text-transform:uppercase}
+.collab-heading{display:flex;align-items:center;gap:9px;color:#334155;font-weight:800;font-size:.88rem;margin:19px 0 5px}
+.collab-heading span{font-family:'Material Symbols Rounded';color:#2F80ED;font-size:19px}
+[class*="st-key-company_result_"]{padding:8px 9px!important;border:1px solid #DBE7F3!important;border-radius:14px!important;
+background:linear-gradient(135deg,#F8FBFF,#F1F7FD)!important;margin-bottom:9px;transition:transform .16s ease,box-shadow .16s ease}
+[class*="st-key-company_result_"]:hover{transform:translateY(-2px);box-shadow:0 9px 20px rgba(15,49,74,.09)!important;border-color:#BFD8EF!important}
+[class*="st-key-company_result_"] button{background:transparent!important;border:0!important;color:#183653!important;text-align:left!important;
+justify-content:flex-start!important;box-shadow:none!important}
+@media(max-width:640px){[data-testid="stMainBlockContainer"]{padding:1rem .85rem 2rem!important}.st-key-recruiter_auth_value,
+.st-key-recruiter_auth_form{min-height:auto;padding:28px 23px!important;border-radius:21px!important}.recruiter-auth-logo-wrap{margin-bottom:28px}
+.recruiter-auth-copy{font-size:.91rem}.recruiter-auth-heading{font-size:2rem}}
+@media(prefers-reduced-motion:reduce){.st-key-recruiter_auth_form button{transition:none!important;transform:none!important}}
 </style>
-""".strip("\n").split("\n"))
+"""
 
 
 def _auth_hero(title: str, subtitle: str):
@@ -1767,46 +1808,51 @@ def _auth_hero(title: str, subtitle: str):
     if os.path.exists(logo_path):
         with open(logo_path, "rb") as f:
             logo_b64 = base64.b64encode(f.read()).decode("ascii")
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="height:32px;" />' if logo_b64 else \
-        '<span style="font-size:1.8rem;">🧭</span>'
-
-    lines = [
-        _AUTH_CSS,
-        '<div class="auth-hero">',
-        '<div class="auth-hero-card">',
-        f'<div style="display:flex; align-items:center; gap:10px; justify-content:center;">{logo_html}</div>',
-        '</div>',
-        f'<h1>{title}</h1>',
-        f'<p>{subtitle}</p>',
-        '</div>',
-    ]
-    st.markdown("\n".join(lines), unsafe_allow_html=True)
+    logo_html = (
+        f'<div class="recruiter-auth-logo-wrap"><img class="recruiter-auth-logo" src="data:image/png;base64,{logo_b64}" alt="ICD Platform"></div>'
+        if logo_b64 else '<div class="recruiter-auth-logo-wrap"><strong>ICD Platform</strong></div>'
+    )
+    st.html(
+        f'{logo_html}'
+        '<div class="recruiter-auth-eyebrow">Recruiter workspace</div>'
+        f'<h1 class="recruiter-auth-heading">{title}</h1>'
+        f'<p class="recruiter-auth-copy">{subtitle}</p>'
+        '<div class="recruiter-auth-benefits">'
+        '<div class="recruiter-auth-benefit"><span class="recruiter-auth-benefit-icon">document_scanner</span>Fast, intelligent resume screening</div>'
+        '<div class="recruiter-auth-benefit"><span class="recruiter-auth-benefit-icon">groups</span>One connected hiring workspace</div>'
+        '<div class="recruiter-auth-benefit"><span class="recruiter-auth-benefit-icon">verified_user</span>Private organization access</div>'
+        '</div>'
+    )
 
 
 def _render_auth_flow():
-    st.markdown('<div style="height:3rem;"></div>', unsafe_allow_html=True)
+    st.html(_AUTH_CSS)
     screen = st.session_state.get("auth_screen", "choose_company")
-    left, right = st.columns([0.45, 0.55], gap="large")
-    with right:
-        _auth_hero(
-            "Intelligent Candidate Discovery",
-            "Empowering high-volume recruiters with cognitive precision and AI-driven insights to find the perfect talent faster.",
-        )
+    left, right = st.columns([1.08, 0.92], gap="large")
     with left:
-        st.markdown('<div style="height:1.5rem;"></div>', unsafe_allow_html=True)
-        if screen == "choose_company":
-            _render_choose_company()
-        elif screen == "access_code":
-            _render_access_code()
-        elif screen == "signup1":
-            _render_signup_step1()
-        elif screen == "signup_success":
-            _render_signup_success()
+        with st.container(height="stretch", key="recruiter_auth_value"):
+            _auth_hero(
+                "Hire with clarity and confidence.",
+                "Find the strongest candidates faster, coordinate every hiring stage, and keep your team aligned from screening to offer.",
+            )
+    with right:
+        with st.container(height="stretch", key="recruiter_auth_form"):
+            if screen == "choose_company":
+                _render_choose_company()
+            elif screen == "access_code":
+                _render_access_code()
+            elif screen == "signup1":
+                _render_signup_step1()
+            elif screen == "signup_success":
+                _render_signup_success()
 
 
 def _render_choose_company():
-    st.markdown("### Company Selection")
-    st.caption("Find and select your organization to continue.")
+    st.html(
+        '<div class="recruiter-auth-step"><span>business</span>Step 1 of 2 · Organization</div>'
+        '<div class="recruiter-auth-title">Choose your organization</div>'
+        '<div class="recruiter-auth-description">Search for your company to open its secure recruiter workspace.</div>'
+    )
 
     search = st.text_input("Search your organization", placeholder="Type at least 3 characters...",
                             label_visibility="collapsed", key="choose_company_search")
@@ -1815,20 +1861,24 @@ def _render_choose_company():
         if not results:
             st.caption("No matching organizations found.")
         for comp in results:
-            c1, c2 = st.columns([1, 5])
-            with c1:
-                if comp.get("logo_base64"):
-                    import base64 as _b64
-                    st.image(_b64.b64decode(comp["logo_base64"]), width=36)
-                else:
-                    st.markdown("🏢")
-            with c2:
-                if st.button(comp["name"], key=f"pick_company_{comp['id']}", width="stretch"):
-                    st.session_state.chosen_company = comp
-                    st.session_state.auth_screen = "access_code"
-                    st.rerun()
+            with st.container(key=f"company_result_{comp['id']}"):
+                c1, c2 = st.columns([1, 5], vertical_alignment="center")
+                with c1:
+                    if comp.get("logo_base64"):
+                        import base64 as _b64
+                        st.image(_b64.b64decode(comp["logo_base64"]), width=40)
+                    else:
+                        st.markdown(":material/business:")
+                with c2:
+                    if st.button(
+                        comp["name"], key=f"pick_company_{comp['id']}",
+                        icon=":material/arrow_forward:", width="stretch",
+                    ):
+                        st.session_state.chosen_company = comp
+                        st.session_state.auth_screen = "access_code"
+                        st.rerun()
     else:
-        st.caption("Please enter 3 or more characters.")
+        st.caption("Enter at least three characters to search.")
 
         # ---- Fill the empty space below with a showcase of organizations
         # already on the platform, instead of leaving it blank before search.
@@ -1838,9 +1888,7 @@ def _render_choose_company():
         # button trick from before. Single-row horizontal scroll via CSS. ----
         collaborators = auth.list_companies("")
         if collaborators:
-            st.markdown("")
-            st.markdown("---")
-            st.markdown("##### 🤝 Our Collaborators")
+            st.html('<div class="collab-heading"><span>handshake</span>Organizations on ICD Platform</div>')
             st.caption("Organizations already using the platform.")
 
             card_html_parts = []
@@ -1872,7 +1920,8 @@ def _render_choose_company():
             st.markdown(strip_html, unsafe_allow_html=True)
 
     st.markdown("")
-    if st.button("Don't see your organization? Create one", key="goto_signup_from_choose"):
+    st.html('<div class="recruiter-auth-tip"><span>add_business</span><div>New to ICD Platform? Create a secure organization workspace in a few steps.</div></div>')
+    if st.button("Create a new organization", key="goto_signup_from_choose", icon=":material/add_business:", width="stretch"):
         st.session_state.auth_screen = "signup1"
         st.rerun()
 
@@ -1886,7 +1935,7 @@ def _render_access_code():
         st.rerun()
         return
 
-    c1, c2 = st.columns([1, 5])
+    c1, c2 = st.columns([1, 5], vertical_alignment="center")
     with c1:
         if chosen.get("logo_base64"):
             import base64 as _b64
@@ -1894,12 +1943,15 @@ def _render_access_code():
     with c2:
         st.markdown(f'<span class="auth-badge">{chosen["name"].upper()}</span>', unsafe_allow_html=True)
 
-    st.markdown("### Enter Access Code")
-    st.caption("Ask your organization's admin for this code — that's all you need to get in.")
+    st.html(
+        '<div class="recruiter-auth-step"><span>key</span>Step 2 of 2 · Access code</div>'
+        '<div class="recruiter-auth-title">Enter your access code</div>'
+        '<div class="recruiter-auth-description">Use the four-digit code shared by your organization administrator.</div>'
+    )
 
     with st.form("access_code_form"):
         code = st.text_input("Access code", key="access_code_input", placeholder="e.g. 4721", max_chars=4)
-        submitted = st.form_submit_button("Enter →", type="primary", width="stretch")
+        submitted = st.form_submit_button("Enter recruiter workspace", type="primary", icon=":material/arrow_forward:", width="stretch")
     if submitted:
         if not code.strip():
             st.error("Enter the access code.")
@@ -1923,7 +1975,8 @@ def _render_access_code():
             else:
                 st.error(msg)
 
-    if st.button("← Choose a different organization", key="access_code_back"):
+    st.html('<div class="recruiter-auth-tip"><span>shield_lock</span><div>Your access code keeps company hiring data private and separated from other organizations.</div></div>')
+    if st.button("Choose a different organization", key="access_code_back", icon=":material/arrow_back:", width="stretch"):
         st.session_state.auth_screen = "choose_company"
         st.session_state.pop("chosen_company", None)
         st.rerun()
