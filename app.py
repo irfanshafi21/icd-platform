@@ -511,7 +511,10 @@ def show_candidate_details_dialog(candidate: dict) -> None:
 # ----------------------------- INTERVIEWS storage (Supabase-backed, session-local fallback) -----------------------------
 
 def get_interviews() -> list[dict]:
-    remote = db.fetch_interviews() if db.is_configured() else []
+    remote = (
+        _session_cached("interviews:all", db.fetch_interviews, ttl_seconds=60)
+        if db.is_configured() else []
+    )
     all_interviews = remote + st.session_state.local_interviews
     return sorted(all_interviews, key=lambda i: i.get("scheduled_at", ""))
 
@@ -520,6 +523,7 @@ def create_interview(interview: dict) -> tuple[dict, bool]:
     if db.is_configured():
         saved = db.save_interview(interview)
         if saved:
+            _invalidate_interface_cache("interviews:")
             return saved, True
     new_id = max([i["id"] for i in st.session_state.local_interviews], default=0) + 1
     row = {**interview, "id": new_id}
@@ -672,6 +676,8 @@ def update_interview_record(interview_id, updates: dict) -> bool:
     for i in st.session_state.local_interviews:
         if i["id"] == interview_id:
             i.update(updates)
+    if ok:
+        _invalidate_interface_cache("interviews:")
     return ok
 
 
@@ -679,6 +685,7 @@ def remove_interview(interview_id) -> None:
     if db.is_configured():
         db.delete_interview(interview_id)
     st.session_state.local_interviews = [i for i in st.session_state.local_interviews if i["id"] != interview_id]
+    _invalidate_interface_cache("interviews:")
 
 
 # ----------------------------- PUBLIC APPLY LINK / QR / ZIP HELPERS -----------------------------
