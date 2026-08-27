@@ -1880,39 +1880,50 @@ def _render_choose_company():
     else:
         st.caption("Enter at least three characters to search.")
 
-        # Show existing organizations immediately.  These used to be
-        # display-only cards, which made a company look unavailable until the
-        # recruiter typed its name and pressed Enter.  Keep the directory
-        # visible and make every card a direct path to the access-code step.
+        # Show which organizations are already using the platform. These are
+        # intentionally display-only; recruiters use the search field above
+        # when they want to open an organization's access-code screen.
         collaborators = auth.list_companies("")
         if collaborators:
             st.html('<div class="collab-heading"><span>handshake</span>Organizations on ICD Platform</div>')
-            st.caption("Choose an organization below, or search by name above.")
+            st.caption("Companies already registered on the platform.")
 
-            columns = st.columns(min(3, len(collaborators)))
-            for index, comp in enumerate(collaborators):
-                with columns[index % len(columns)]:
-                    with st.container(border=True, key=f"company_directory_{comp['id']}"):
-                        if comp.get("logo_base64"):
-                            import base64 as _b64
-                            try:
-                                st.image(_b64.b64decode(comp["logo_base64"]), width=48)
-                            except Exception:
-                                st.markdown(":material/business:")
-                        else:
-                            st.markdown(":material/business:")
-                        st.markdown(f"**{comp['name']}**")
-                        if comp.get("industry"):
-                            st.caption(comp["industry"])
-                        if st.button(
-                            "Choose organization",
-                            key=f"choose_directory_company_{comp['id']}",
-                            icon=":material/arrow_forward:",
-                            width="stretch",
-                        ):
-                            st.session_state.chosen_company = comp
-                            st.session_state.auth_screen = "access_code"
-                            st.rerun()
+            cards = []
+            for comp in collaborators:
+                company_name = html.escape(str(comp.get("name") or "Organization"))
+                industry = html.escape(str(comp.get("industry") or ""))
+                if comp.get("logo_base64"):
+                    logo = (
+                        f'<img src="data:image/png;base64,{comp["logo_base64"]}" '
+                        'alt="" style="width:48px;height:48px;object-fit:contain;">'
+                    )
+                else:
+                    logo = '<span class="material-symbols-rounded" style="font-size:42px;color:#2563EB;">business</span>'
+                cards.append(
+                    '<div class="company-showcase-card">'
+                    f'<div class="company-showcase-logo">{logo}</div>'
+                    f'<div class="company-showcase-name">{company_name}</div>'
+                    f'<div class="company-showcase-industry">{industry}</div>'
+                    '</div>'
+                )
+
+            st.html(
+                '<div class="company-showcase-strip">' + "".join(cards) + '</div>'
+                '<style>'
+                '.company-showcase-strip{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 14px;'
+                'scrollbar-width:thin;scrollbar-color:#CBD5E1 transparent;}'
+                '.company-showcase-card{flex:0 0 132px;min-height:148px;padding:16px 12px;box-sizing:border-box;'
+                'border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF;display:flex;flex-direction:column;'
+                'align-items:center;text-align:center;box-shadow:0 4px 14px rgba(15,23,42,.04);}'
+                '.company-showcase-logo{height:54px;display:flex;align-items:center;justify-content:center;}'
+                '.company-showcase-name{width:100%;margin-top:9px;color:#172033;font-size:.9rem;font-weight:750;'
+                'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+                '.company-showcase-industry{width:100%;margin-top:5px;color:#7C8799;font-size:.72rem;'
+                'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+                '.company-showcase-strip::-webkit-scrollbar{height:7px;}'
+                '.company-showcase-strip::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:999px;}'
+                '</style>'
+            )
         else:
             st.warning("No organizations are available yet. Create the first organization below.")
 
