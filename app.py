@@ -1604,10 +1604,12 @@ def _render_account_type_gate():
         padding-bottom: 2rem !important;
     }
     .account-kicker {
-        display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;
+        display:flex;width:max-content;align-items:center;justify-content:center;gap:8px;padding:7px 13px;border-radius:999px;
         color:#075985;background:#E0F2FE;border:1px solid #BAE6FD;font-size:.74rem;
-        font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin-bottom:16px;
+        font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin:0 auto 16px;
     }
+    .st-key-account_gate_intro,
+    .st-key-account_gate_intro [data-testid="stMarkdownContainer"] {text-align:center !important;}
     .account-kicker-dot {width:7px;height:7px;border-radius:50%;background:#0EA5E9;box-shadow:0 0 0 5px rgba(14,165,233,.12);}
     .account-title {
         margin:0;color:#0F1D38;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2.1rem,4.5vw,3.55rem);
@@ -2533,7 +2535,17 @@ with st.sidebar:
                 else:
                     st.error(msg)
 
-    if st.button("🚪 Log out", key="global_logout_btn"):
+    if st.button(
+        "Back to account selection", icon=":material/arrow_back:",
+        key="sidebar_account_selection", width="stretch",
+    ):
+        auth.sign_out()
+        st.session_state.show_account_gate = True
+        st.session_state.pop("entry_role", None)
+        st.session_state.auth_screen = "choose_company"
+        st.rerun()
+
+    if st.button("Log out", icon=":material/logout:", key="global_logout_btn", width="stretch"):
         auth.sign_out()
         st.rerun()
 
@@ -2708,7 +2720,7 @@ if "tagline_quote" not in st.session_state:
     ])
 
 with st.container(key="topnavbar"):
-    nav_logo, nav_action = st.columns([4.8, 2.1], vertical_alignment="center")
+    nav_logo, nav_action = st.columns([5.2, 1.3], vertical_alignment="center")
 
     with nav_logo:
         current_label = st.session_state.get("current_page", "🏠 Home")
@@ -2726,16 +2738,9 @@ with st.container(key="topnavbar"):
         """, unsafe_allow_html=True)
 
     with nav_action:
-        with st.container(horizontal=True, horizontal_alignment="right"):
-            if st.button("Account selection", icon=":material/arrow_back:", key="nav_account_selection"):
-                auth.sign_out()
-                st.session_state.show_account_gate = True
-                st.session_state.pop("entry_role", None)
-                st.session_state.auth_screen = "choose_company"
-                st.rerun()
-            if st.button("Quick action", icon=":material/add:", key="nav_quick_action"):
-                st.session_state.current_page = "📤 Resume Screening"
-                st.rerun()
+        if st.button("Quick action", icon=":material/add:", key="nav_quick_action", width="stretch"):
+            st.session_state.current_page = "📤 Resume Screening"
+            st.rerun()
 
 # ============================================================
 # PAGE 1 — UPLOAD & SCREEN
