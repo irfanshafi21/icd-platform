@@ -151,7 +151,7 @@ def _render_apply_header(job: dict) -> None:
     initial = html.escape((company_name[:1] or "C").upper())
     logo_html = (
         f'<img src="{logo_uri}" alt="{company_name} logo" '
-        'style="width:100%;height:100%;object-fit:contain;padding:5px;display:block;">'
+        'style="width:54px;height:54px;max-width:54px;max-height:54px;object-fit:contain;padding:5px;display:block;box-sizing:border-box;">'
         if logo_uri else initial
     )
     title = html.escape(job.get("title") or "Open position")
@@ -161,7 +161,7 @@ def _render_apply_header(job: dict) -> None:
     deadline_html = f"<span>Apply by {html.escape(deadline)}</span>" if deadline else ""
     st.html(f"""
     <div class="apply-brand">
-        <div class="apply-logo">{logo_html}</div>
+        <div class="apply-logo" style="width:54px;height:54px;min-width:54px;max-width:54px;min-height:54px;max-height:54px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-sizing:border-box;">{logo_html}</div>
         <div><div class="apply-company">{company_name}</div><div class="apply-brand-copy">{industry} · Careers</div></div>
     </div>
     <section class="apply-hero">
