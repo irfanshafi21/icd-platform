@@ -1803,7 +1803,7 @@ def _render_account_type_gate():
               document.documentElement.classList.remove('icd-candidate-routing');
               observer.disconnect();
             }, 12000);
-          }, {once:true});
+          }, {once:true, capture:true});
         })();
         </script>
         """,
