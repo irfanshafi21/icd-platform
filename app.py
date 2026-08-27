@@ -640,18 +640,21 @@ def notify(message: str, icon: str = "✅"):
         st.success(message, icon=icon)
 
 
-def page_header(icon: str, title: str, subtitle: str = ""):
+def page_header(icon: str, title: str, subtitle: str = "", *, compact: bool = False):
     """Consistent, styled header used at the top of every page.
     HTML is built as a single unindented line — Streamlit's markdown still
     runs content through a Markdown parser before injecting raw HTML, and
     lines indented 4+ spaces get treated as literal code blocks, which
     corrupted this exact header when subtitle was empty."""
     sub_html = f'<div class="page-header-sub">{subtitle}</div>' if subtitle else ""
+    header_class = "page-header page-header-compact" if compact else "page-header page-header-hero"
+    eyebrow = "" if compact else '<div class="page-header-eyebrow">Recruiter workspace</div>'
     html = (
-        '<div class="page-header">'
+        f'<div class="{header_class}">'
         '<div class="page-header-decoration"></div>'
         f'<div class="page-header-icon">{icon}</div>'
         '<div class="page-header-text">'
+        f'{eyebrow}'
         f'<div class="page-header-title">{title}</div>'
         f'{sub_html}'
         '</div>'
@@ -1486,6 +1489,32 @@ st.markdown("""
         box-shadow: var(--shadow-1);
         animation: headerFadeIn 0.45s ease;
     }
+    .page-header.page-header-hero {
+        min-height: 150px;
+        padding: 27px 31px;
+        color: #FFFFFF;
+        background: linear-gradient(130deg,#0B2A52 0%,#185FA5 58%,#0891B2 100%);
+        border: 0;
+        box-shadow: 0 16px 36px rgba(18,49,74,.15);
+    }
+    .page-header.page-header-hero .page-header-decoration {
+        top: -105px; right: -68px; width: 245px; height: 245px;
+        border: 37px solid rgba(255,255,255,.08); background: transparent;
+    }
+    .page-header.page-header-hero .page-header-icon {
+        width: 58px; height: 58px; border-radius: 17px;
+        color: #FFFFFF; background: rgba(255,255,255,.14);
+        border: 1px solid rgba(255,255,255,.17);
+    }
+    .page-header.page-header-hero .page-header-title { color:#FFFFFF; font-size:1.9rem; font-weight:800; }
+    .page-header.page-header-hero .page-header-sub { color:#D9ECFA; max-width:760px; font-size:.9rem; }
+    .page-header-eyebrow {
+        margin-bottom: 1px; color:#BAE6FD; font-size:.68rem; font-weight:800;
+        letter-spacing:.14em; text-transform:uppercase;
+    }
+    .page-header.page-header-compact { margin-top:18px; padding:17px 21px; }
+    .page-header.page-header-compact .page-header-icon { width:44px; height:44px; font-size:1.25rem; }
+    .page-header.page-header-compact .page-header-title { font-size:1.3rem; }
     .page-header-decoration {
         position: absolute; top: -50%; right: -6%;
         width: 220px; height: 220px; border-radius: 50%;
@@ -3845,7 +3874,7 @@ elif page == "🏠 Home":
     st.divider()
 
     # ---- Hiring stage progress: Screened -> Shortlisted -> Interviewed -> Selected ----
-    page_header("📶", "Hiring Pipeline", "Candidate volume and conversion at every hiring stage.")
+    page_header("📶", "Hiring Pipeline", "Candidate volume and conversion at every hiring stage.", compact=True)
     _funnel_stages = [
         ("Screened", len(valid_candidates)),
         ("Shortlisted (≥70)", len(shortlisted_candidates)),
@@ -3885,7 +3914,7 @@ elif page == "🏠 Home":
     timeline_col, chart_col = st.columns([1, 1.4])
 
     with timeline_col:
-        page_header("🕒", "Recent Activity", "")
+        page_header("🕒", "Recent Activity", "", compact=True)
         events = []
         for c in all_candidates:
             if c.get("screened_at"):
@@ -3915,7 +3944,7 @@ elif page == "🏠 Home":
                 """, unsafe_allow_html=True)
 
     with chart_col:
-        page_header("📊", "Recruitment Overview", "")
+        page_header("📊", "Recruitment Overview", "", compact=True)
         if not valid_candidates:
             st.info("Charts will appear here once you've screened at least one candidate.")
         else:
@@ -4357,7 +4386,7 @@ elif page == "👥 Candidates":
             if len(compare_candidates) < 2:
                 st.warning("Select at least 2 candidates from the grid to compare.")
             else:
-                page_header("⚖️", f"Comparing {len(compare_candidates)} Candidates")
+                page_header("⚖️", f"Comparing {len(compare_candidates)} Candidates", compact=True)
                 cols = st.columns(len(compare_candidates))
                 for col, c in zip(cols, compare_candidates):
                     p, s = c["profile"], c["score"]
@@ -5037,7 +5066,7 @@ elif page == "🗣️ Interview":
 elif page == "🤖 AI Insights":
     valid_candidates = [c for c in st.session_state.candidates if not c["score"].get("error")]
 
-    page_header("🤖", "AI Recruiting Assistant")
+    page_header("🤖", "AI Recruiting Assistant", "Ask questions grounded in your screening data and get focused recruiting guidance.")
     if valid_candidates:
         st.caption(
             f"Ask about your {len(valid_candidates)} screened candidate(s) — answers are grounded "
@@ -5263,16 +5292,10 @@ elif page == "📊 Reports":
 
     # Render the page chrome before applying the interactive report scope so
     # the title stays visually stable during filter reruns.
-    st.markdown("""
-    <div style="background:#FFFFFF; border:1px solid #E3E7EF; border-radius:16px; padding:26px 30px; margin-bottom:22px; box-shadow:0 1px 3px rgba(15,23,42,0.05);">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:1.6rem; color:#131A2E; margin-bottom:6px;">
-            📊 Reports
-        </div>
-        <div style="font-family:'Inter',sans-serif; font-size:0.95rem; color:#5B6472; max-width:820px; line-height:1.6;">
-            Choose one job role to see its shortlist, selections, interviews, charts, and downloadable reports.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    page_header(
+        "📊", "Reports",
+        "Choose one job role to see its shortlist, selections, interviews, charts, and downloadable reports.",
+    )
 
     _report_roles = sorted({
         (row.get("job_role") or "").strip()
@@ -5348,7 +5371,7 @@ elif page == "📊 Reports":
     st.markdown('<div style="height:6px;"></div>', unsafe_allow_html=True)
 
     # ---- Charts ----
-    page_header("📈", "Recruitment Charts", "Visual breakdown of your candidates and interviews.")
+    page_header("📈", "Recruitment Charts", "Visual breakdown of your candidates and interviews.", compact=True)
     if not report_valid_candidates:
         st.info("Screen some resumes to see report charts here.")
     else:
@@ -5446,7 +5469,7 @@ elif page == "📊 Reports":
 
     st.write("")
     st.divider()
-    page_header("⬇️", "Export Reports", "Download candidate, shortlist, and interview data — no tabs, everything on one page.")
+    page_header("⬇️", "Export Reports", "Download candidate, shortlist, and interview data — no tabs, everything on one page.", compact=True)
 
     # ---- Candidate Report ----
     with st.container():
