@@ -1566,6 +1566,10 @@ def _render_auth_gate():
     if not db.is_configured():
         return  # no backend configured — skip auth entirely, behave as before
 
+    if st.session_state.get("show_account_gate"):
+        _render_account_type_gate()
+        st.stop()
+
     if not auth.is_logged_in() and st.session_state.get("entry_role") != "recruiter":
         _render_account_type_gate()
         st.stop()
@@ -1670,10 +1674,7 @@ def _render_account_type_gate():
     </style>
     """)
 
-    _account_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo_header.png")
     with st.container(horizontal_alignment="center", gap=None, key="account_gate_intro"):
-        if os.path.exists(_account_logo_path):
-            st.image(_account_logo_path, width=180)
         st.markdown(
             '<div class="account-kicker"><span class="account-kicker-dot"></span>Intelligent candidate discovery</div>',
             unsafe_allow_html=True,
@@ -1702,6 +1703,7 @@ def _render_account_type_gate():
                 unsafe_allow_html=True,
             )
             if st.button("Continue as candidate", type="primary", icon=":material/arrow_forward:", width="stretch", key="account_candidate_continue"):
+                st.session_state.pop("show_account_gate", None)
                 st.query_params["candidate"] = "1"
                 st.rerun()
     with right:
@@ -1719,6 +1721,7 @@ def _render_account_type_gate():
                 unsafe_allow_html=True,
             )
             if st.button("Continue as recruiter", icon=":material/arrow_forward:", width="stretch", key="account_recruiter_continue"):
+                st.session_state.pop("show_account_gate", None)
                 st.session_state.entry_role = "recruiter"
                 st.session_state.auth_screen = "choose_company"
                 st.rerun()
@@ -2705,7 +2708,7 @@ if "tagline_quote" not in st.session_state:
     ])
 
 with st.container(key="topnavbar"):
-    nav_logo, nav_action = st.columns([5.2, 1.3], vertical_alignment="center")
+    nav_logo, nav_action = st.columns([4.8, 2.1], vertical_alignment="center")
 
     with nav_logo:
         current_label = st.session_state.get("current_page", "🏠 Home")
@@ -2723,9 +2726,16 @@ with st.container(key="topnavbar"):
         """, unsafe_allow_html=True)
 
     with nav_action:
-        if st.button("➕ Quick Action", key="nav_quick_action", width="stretch"):
-            st.session_state.current_page = "📤 Resume Screening"
-            st.rerun()
+        with st.container(horizontal=True, horizontal_alignment="right"):
+            if st.button("Account selection", icon=":material/arrow_back:", key="nav_account_selection"):
+                auth.sign_out()
+                st.session_state.show_account_gate = True
+                st.session_state.pop("entry_role", None)
+                st.session_state.auth_screen = "choose_company"
+                st.rerun()
+            if st.button("Quick action", icon=":material/add:", key="nav_quick_action"):
+                st.session_state.current_page = "📤 Resume Screening"
+                st.rerun()
 
 # ============================================================
 # PAGE 1 — UPLOAD & SCREEN

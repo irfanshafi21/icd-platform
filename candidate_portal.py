@@ -394,6 +394,15 @@ def render_candidate_portal() -> None:
     logo = _logo_data_uri()
     logo_html = f'<img src="{logo}" alt="ICD Platform">' if logo else "ICD Platform"
     st.html(f'<div class="portal-nav"><div class="portal-brand">{logo_html}</div><div class="portal-user"><span class="portal-user-dot"></span>{html.escape(profile.get("full_name") or user.get("email") or "Candidate")}</div></div>')
+    if st.button(
+        "Back to account selection",
+        icon=":material/arrow_back:",
+        key="candidate_portal_account_selection",
+    ):
+        _sign_out()
+        st.session_state.show_account_gate = True
+        st.query_params.clear()
+        st.rerun()
     st.html(f'<section class="portal-hero"><div class="portal-eyebrow">Welcome, {html.escape(profile.get("full_name") or "candidate")}</div><h1>Discover roles built for your skills</h1><p>Browse verified openings, apply securely with your resume, and follow every application from one place.</p></section>')
     jobs_tab, applications_tab = st.tabs(["Find jobs", "My applications"], on_change="rerun")
     if applications_tab.open:
