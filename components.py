@@ -138,7 +138,7 @@ def stat_card_html(icon, label, value, sub=None, color="#0C447C") -> str:
     icon badge (color varies per card so the grid isn't monochrome)."""
     sub_html = f'<div class="home-stat-sub">{sub}</div>' if sub else ""
     return f"""
-    <div class="home-stat-card">
+    <div class="home-stat-card" style="--stat-color:{color};">
         <div style="display:flex; align-items:center; justify-content:space-between;">
             <div class="home-stat-label">{label}</div>
             <span class="home-stat-icon" style="background:{color}1A; color:{color}; width:34px; height:34px;

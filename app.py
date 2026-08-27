@@ -1766,6 +1766,49 @@ def _render_account_type_gate():
         '</div>',
         unsafe_allow_html=True,
     )
+    # Hide the stale account-selection tree immediately after the candidate
+    # click. Streamlit keeps the previous tree visible while the next route
+    # reruns; this small neutral veil prevents its raw HTML/icon text from
+    # flashing and removes itself as soon as the candidate page is mounted.
+    st.html(
+        """
+        <style>
+        html.icd-candidate-routing body::after {
+            content:"Opening candidate workspace"; position:fixed; inset:0; z-index:2147483647;
+            display:grid; place-items:center; color:#185FA5; font:700 14px/1.4 sans-serif;
+            letter-spacing:.02em; background:#F5F9FE;
+        }
+        html.icd-candidate-routing body::before {
+            content:""; position:fixed; left:calc(50% - 17px); top:calc(50% - 48px);
+            z-index:2147483647; width:34px; height:34px; border-radius:50%;
+            border:3px solid #D9EAF9; border-top-color:#2684D8; animation:icdRouteSpin .7s linear infinite;
+        }
+        @keyframes icdRouteSpin { to { transform:rotate(360deg); } }
+        </style>
+        <script>
+        (() => {
+          const button = document.querySelector('.st-key-account_candidate_continue button');
+          if (!button || button.dataset.icdRoutingBound) return;
+          button.dataset.icdRoutingBound = '1';
+          button.addEventListener('click', () => {
+            document.documentElement.classList.add('icd-candidate-routing');
+            const observer = new MutationObserver(() => {
+              if (document.querySelector('.st-key-candidate_auth_form, .portal-nav')) {
+                document.documentElement.classList.remove('icd-candidate-routing');
+                observer.disconnect();
+              }
+            });
+            observer.observe(document.body, {childList:true, subtree:true});
+            setTimeout(() => {
+              document.documentElement.classList.remove('icd-candidate-routing');
+              observer.disconnect();
+            }, 12000);
+          }, {once:true});
+        })();
+        </script>
+        """,
+        unsafe_allow_javascript=True,
+    )
 
 
 _AUTH_CSS = """
@@ -2789,11 +2832,39 @@ with st.container(key="topnavbar"):
 # PAGE 1 — UPLOAD & SCREEN
 # ============================================================
 if page == "📤 Resume Screening":
-    page_header("📤", "Resume Screening", "Set your job requirements and priorities, then upload resumes to screen.")
-    st.markdown('<div class="control-panel-header">⚙️ Recruiter Control Panel</div>', unsafe_allow_html=True)
-    st.write("")
+    st.html("""
+    <style>
+    .screening-hero {position:relative;overflow:hidden;padding:28px 31px;margin:0 0 20px;border-radius:22px;
+      color:#fff;background:linear-gradient(130deg,#0B2A52 0%,#185FA5 58%,#0891B2 100%);
+      box-shadow:0 16px 36px rgba(18,49,74,.15)}
+    .screening-hero:after{content:"";position:absolute;width:230px;height:230px;border-radius:50%;right:-75px;top:-115px;
+      border:34px solid rgba(255,255,255,.08)}
+    .screening-eyebrow{font-size:.7rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#BAE6FD}
+    .screening-title{font-size:1.9rem;font-weight:850;letter-spacing:-.035em;margin:7px 0 6px}
+    .screening-copy{max-width:730px;color:#D9ECFA;font-size:.9rem;line-height:1.55}
+    .st-key-screening_setup{padding:22px 22px 17px!important;border:1px solid #DCE6F1;border-radius:20px;
+      background:linear-gradient(180deg,#FFFFFF,#F8FBFF);box-shadow:0 9px 26px rgba(15,49,74,.065);margin-bottom:20px}
+    .st-key-screening_setup .panel-subhead{color:#173B60;font-size:.84rem;margin-bottom:13px}
+    .st-key-screening_setup .stTextInput input,.st-key-screening_setup textarea,.st-key-screening_setup [data-baseweb="select"]>div{
+      background:#FFFFFF!important;border-color:#D9E5F0!important;border-radius:11px!important}
+    .st-key-screening_upload_panel{padding:20px 22px 16px!important;border:1px solid #DCE6F1!important;border-radius:20px!important;
+      background:#FFFFFF!important;box-shadow:0 8px 24px rgba(15,49,74,.055)}
+    .st-key-screen_candidates_primary button{min-height:54px!important;border:0!important;border-radius:14px!important;
+      font-weight:800!important;background:linear-gradient(135deg,#2684D8,#0F5F9F)!important;
+      box-shadow:0 11px 24px rgba(21,101,173,.22)!important}
+    .screening-step-label{display:flex;align-items:center;gap:9px;color:#102A43;font-size:1rem;font-weight:800;margin-bottom:4px}
+    .screening-step-label span{display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#E6F2FF;color:#1769AA;font-size:.72rem}
+    .screening-step-copy{color:#718096;font-size:.78rem;margin-bottom:13px}
+    </style>
+    <section class="screening-hero"><div class="screening-eyebrow">AI-powered talent evaluation</div>
+      <div class="screening-title">Resume screening workspace</div>
+      <div class="screening-copy">Choose a job, tune its priorities, and evaluate every resume through one fast, consistent screening flow.</div>
+    </section>
+    """)
 
-    p1, p2, p3, p4 = st.columns([1.3, 1, 1.1, 0.7], gap="medium")
+    setup_panel = st.container(key="screening_setup")
+    setup_panel.html('<div class="screening-step-label"><span>1</span>Configure screening criteria</div><div class="screening-step-copy">Select the role and define how candidates should be ranked.</div>')
+    p1, p2, p3, p4 = setup_panel.columns([1.3, 1, 1.1, 0.7], gap="medium")
 
     with p1:
         st.markdown('<div class="panel-subhead">📋 Job Description</div>', unsafe_allow_html=True)
@@ -2867,9 +2938,8 @@ if page == "📤 Resume Screening":
         st.session_state.top_n = top_n
         st.markdown(f'<div style="text-align:center; font-size:1.6rem; font-weight:800; color:#185FA5;">{top_n}</div>', unsafe_allow_html=True)
 
-    st.divider()
-
-    st.markdown('<div class="panel-subhead">📤 Upload Resumes</div>', unsafe_allow_html=True)
+    upload_panel = st.container(border=True, key="screening_upload_panel")
+    upload_panel.html('<div class="screening-step-label"><span>2</span>Add candidate resumes</div><div class="screening-step-copy">Upload individual PDF/DOCX files or a prepared ZIP for this job role.</div>')
     pending_application_items = (
         st.session_state.get("pending_application_resumes", [])
         if st.session_state.get("pending_application_job_id") == st.session_state.selected_job_id
@@ -2882,7 +2952,7 @@ if page == "📤 Resume Screening":
             icon=":material/task_alt:",
         )
     zip_tab_label = "Prepared applications ZIP" if pending_application_items else "📁 Upload a folder (as .zip)"
-    tab_files, tab_zip = st.tabs(
+    tab_files, tab_zip = upload_panel.tabs(
         ["Individual files", zip_tab_label],
         default=zip_tab_label if pending_application_items else "Individual files",
     )
@@ -2988,9 +3058,11 @@ if page == "📤 Resume Screening":
 
     jd = f"Job Role: {job_role}\n\nKey Requirements:\n{job_details}".strip()
     run = st.button(
-        "🚀 Screen Candidates",
+        "Screen candidates",
         type="primary",
         width="stretch",
+        icon=":material/rocket_launch:",
+        key="screen_candidates_primary",
         disabled=not (raw_items and job_role.strip() and check_api_key()),
     )
 
@@ -3707,19 +3779,28 @@ elif page == "🏠 Home":
     decided = len(selected_candidates) + len(rejected_candidates)
     success_rate = round(len(selected_candidates) / decided * 100) if decided else None
 
-    # ---- Welcome / product description ----
-    st.markdown("""
-    <div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; padding:26px 30px; margin-bottom:22px; box-shadow:0 1px 3px rgba(15,23,42,0.05);">
-        <div style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:1.6rem; color:#0B1C30; margin-bottom:6px;">
-            Welcome back to ICD Platform
-        </div>
-        <div style="font-family:'Inter',sans-serif; font-size:0.95rem; color:#3E484F; max-width:820px; line-height:1.6;">
-            The Intelligent Candidate Discovery Platform helps you discover, evaluate, and manage candidates
-            faster by using AI to parse resumes, score candidates against your job requirements, surface
-            interview-ready shortlists, and track every stage of recruitment in one place.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # ---- Welcome / command-center hero ----
+    st.html(f"""
+    <style>
+    .home-command-hero{{position:relative;overflow:hidden;padding:30px 32px;margin:0 0 22px;border-radius:23px;color:#fff;
+      background:linear-gradient(130deg,#0B2A52 0%,#185FA5 58%,#0891B2 100%);box-shadow:0 17px 38px rgba(18,49,74,.16)}}
+    .home-command-hero:after{{content:"";position:absolute;width:270px;height:270px;right:-65px;top:-125px;border-radius:50%;
+      border:42px solid rgba(255,255,255,.08)}}
+    .home-command-eyebrow{{color:#BAE6FD;font-size:.7rem;font-weight:850;letter-spacing:.14em;text-transform:uppercase}}
+    .home-command-title{{font-size:clamp(1.75rem,3vw,2.45rem);font-weight:850;letter-spacing:-.04em;margin:7px 0 8px}}
+    .home-command-copy{{max-width:740px;color:#D9ECFA;font-size:.91rem;line-height:1.58}}
+    .home-command-pills{{display:flex;flex-wrap:wrap;gap:8px;margin-top:19px}}
+    .home-command-pill{{padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);
+      color:#F4FAFF;font-size:.73rem;font-weight:750}}
+    .home-stat-card{{border-top:3px solid var(--stat-color,#378ADD)!important;min-height:118px;padding:17px 18px!important}}
+    </style>
+    <section class="home-command-hero"><div class="home-command-eyebrow">Recruitment command center</div>
+      <div class="home-command-title">Welcome back to ICD Platform</div>
+      <div class="home-command-copy">Track hiring momentum, focus on the strongest candidates, and move every open role from screening to selection with clarity.</div>
+      <div class="home-command-pills"><span class="home-command-pill">{len(active_jobs)} active roles</span>
+      <span class="home-command-pill">{len(shortlisted_candidates)} shortlisted</span><span class="home-command-pill">{len(scheduled_interviews)} upcoming interviews</span></div>
+    </section>
+    """)
 
     # ---- Stat cards ----
     st.markdown("""
