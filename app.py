@@ -979,10 +979,10 @@ if not st.session_state.splash_shown:
         #icd-splash-overlay {{
             position: fixed; inset: 0; z-index: 999999;
             background: #FFFFFF; display: flex; align-items: center; justify-content: center;
-            animation: icdSplashFade 0.35s ease 0.65s forwards;
+            animation: icdSplashFade 0.45s ease 5s forwards;
         }}
         #icd-splash-overlay video {{
-            width: min(720px, 88vw); height: auto; max-height: 70vh; object-fit: contain;
+            width: 100vw; height: 100vh; object-fit: cover;
         }}
         @keyframes icdSplashFade {{
             to {{ opacity: 0; visibility: hidden; pointer-events: none; }}
@@ -4868,25 +4868,53 @@ elif page == "📊 Reports":
 
     report_valid_candidates = [c for c in st.session_state.candidates if not c["score"].get("error")]
     report_interviews = get_interviews()
-    _report_job_skills = extract_keywords(f"{st.session_state.job_role} {st.session_state.job_details}") if st.session_state.job_details else []
 
-    _rep_selected = [c for c in report_valid_candidates if c.get("status") == "Selected"]
-    _rep_rejected = [c for c in report_valid_candidates if c.get("status") == "Rejected"]
-    _rep_shortlisted = [c for c in report_valid_candidates if c["score"].get("overall_score", 0) >= 70]
-    _rep_avg_ats = round(sum(c["score"].get("overall_score", 0) for c in report_valid_candidates) / len(report_valid_candidates), 1) if report_valid_candidates else 0
-
-    # ---- Welcome / page description (same style as Home) ----
+    # Render the page chrome before applying the interactive report scope so
+    # the title stays visually stable during filter reruns.
     st.markdown("""
     <div style="background:#FFFFFF; border:1px solid #E3E7EF; border-radius:16px; padding:26px 30px; margin-bottom:22px; box-shadow:0 1px 3px rgba(15,23,42,0.05);">
         <div style="font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:1.6rem; color:#131A2E; margin-bottom:6px;">
             📊 Reports
         </div>
         <div style="font-family:'Inter',sans-serif; font-size:0.95rem; color:#5B6472; max-width:820px; line-height:1.6;">
-            A live overview of your screening data, plus exports of candidate, shortlist, selected-candidate,
-            and interview reports as PDF, Excel, or CSV.
+            Choose one job role to see its shortlist, selections, interviews, charts, and downloadable reports.
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    _report_roles = sorted({
+        (row.get("job_role") or "").strip()
+        for row in [*report_valid_candidates, *report_interviews]
+        if (row.get("job_role") or "").strip()
+    })
+    _report_role = st.selectbox(
+        "Job role report",
+        ["All job roles", *_report_roles],
+        key="report_job_role_filter",
+        help="Charts, totals, and every export below use this job role.",
+    )
+    if _report_role != "All job roles":
+        report_valid_candidates = [
+            c for c in report_valid_candidates
+            if (c.get("job_role") or "").strip() == _report_role
+        ]
+        report_interviews = [
+            i for i in report_interviews
+            if (i.get("job_role") or "").strip() == _report_role
+        ]
+        st.caption(f"Showing shortlisted, selected, and interview reporting for **{_report_role}** only.")
+    else:
+        st.caption("Showing combined reporting across every job role.")
+
+    _report_job_title = _report_role if _report_role != "All job roles" else st.session_state.job_role
+    _report_job_skills = extract_keywords(
+        f"{_report_job_title} {st.session_state.job_details}"
+    ) if st.session_state.job_details else []
+
+    _rep_selected = [c for c in report_valid_candidates if c.get("status") == "Selected"]
+    _rep_rejected = [c for c in report_valid_candidates if c.get("status") == "Rejected"]
+    _rep_shortlisted = [c for c in report_valid_candidates if c["score"].get("overall_score", 0) >= 70]
+    _rep_avg_ats = round(sum(c["score"].get("overall_score", 0) for c in report_valid_candidates) / len(report_valid_candidates), 1) if report_valid_candidates else 0
 
     # ---- Stat cards (same styling as Home) ----
     st.markdown("""
@@ -5040,7 +5068,7 @@ elif page == "📊 Reports":
             picked_c = next(c for c in report_valid_candidates if c["name"] == pick)
             if st.button("📄 Generate PDF", key="gen_candidate_pdf"):
                 pdf_bytes = reports.build_candidate_report_pdf(
-                    picked_c, st.session_state.job_role, st.session_state.job_details,
+                    picked_c, _report_job_title, st.session_state.job_details,
                     _report_job_skills, st.session_state.weights,
                 )
                 st.download_button("⬇️ Download Candidate Report (PDF)", data=pdf_bytes,
@@ -5054,17 +5082,21 @@ elif page == "📊 Reports":
         if not report_valid_candidates:
             st.info("No screened candidates yet.")
         else:
-            st.caption(f"{len(report_valid_candidates)} candidate(s) in the current shortlist")
+            _shortlisted_for_report = [
+                c for c in report_valid_candidates
+                if c["score"].get("overall_score", 0) >= 70
+            ]
+            st.caption(f"{len(_shortlisted_for_report)} shortlisted candidate(s) in this job-role report")
             fmt = st.radio("Format", ["PDF", "Excel", "CSV"], horizontal=True, key="shortlist_fmt")
             if st.button("📄 Generate Report", key="gen_shortlist"):
                 if fmt == "PDF":
                     data = reports.build_shortlist_report_pdf(
-                        report_valid_candidates, st.session_state.job_role, st.session_state.weights,
+                        _shortlisted_for_report, _report_job_title, st.session_state.weights,
                         st.session_state.job_details, _report_job_skills,
                     )
                     st.download_button("⬇️ Download Shortlist Report (PDF)", data=data, file_name="shortlist_report.pdf", mime="application/pdf", type="primary")
                 else:
-                    df = reports.candidates_to_dataframe(report_valid_candidates)
+                    df = reports.candidates_to_dataframe(_shortlisted_for_report)
                     if fmt == "Excel":
                         data = reports.df_to_excel_bytes(df, sheet_name="Shortlist")
                         st.download_button("⬇️ Download Shortlist Report (Excel)", data=data, file_name="shortlist_report.xlsx",
@@ -5087,7 +5119,7 @@ elif page == "📊 Reports":
             if st.button("📄 Generate Report", key="gen_selected"):
                 if fmt3 == "PDF":
                     data = reports.build_shortlist_report_pdf(
-                        _selected_for_report, st.session_state.job_role, st.session_state.weights,
+                        _selected_for_report, _report_job_title, st.session_state.weights,
                         st.session_state.job_details, _report_job_skills,
                     )
                     st.download_button("⬇️ Download Selected Candidates Report (PDF)", data=data,
@@ -5115,7 +5147,7 @@ elif page == "📊 Reports":
             if st.button("📄 Generate Report", key="gen_interview"):
                 if fmt2 == "PDF":
                     data = reports.build_interview_report_pdf(
-                        report_interviews, st.session_state.job_role, st.session_state.job_details,
+                        report_interviews, _report_job_title, st.session_state.job_details,
                         _report_job_skills, st.session_state.weights,
                     )
                     st.download_button("⬇️ Download Interview Report (PDF)", data=data, file_name="interview_report.pdf", mime="application/pdf", type="primary")
@@ -5265,6 +5297,153 @@ elif page == "📄 Offer Letter":
         st.info("No candidates marked **Selected** yet — mark a candidate's decision as Selected on the "
                  "**Shortlisted** page, then come back here to create their offer letter.")
     else:
+        st.markdown("##### :material/forward_to_inbox: Send multiple offer letters")
+        st.caption(
+            "Select several candidates once. Each person receives their own PDF using the job title, "
+            "location, salary, and benefits from their linked job posting."
+        )
+
+        _bulk_candidate_by_id = {str(c["id"]): c for c in selected_candidates}
+        _bulk_candidate_ids = list(_bulk_candidate_by_id)
+        _jobs_by_id = {str(job["id"]): job for job in get_jobs()}
+        with st.form("bulk_offer_form", border=True):
+            _bulk_offer_ids = st.multiselect(
+                "Candidates",
+                _bulk_candidate_ids,
+                format_func=lambda candidate_id: (
+                    f"{_bulk_candidate_by_id[candidate_id]['name']} · "
+                    f"{_bulk_candidate_by_id[candidate_id].get('job_role') or 'Role not specified'}"
+                ),
+                placeholder="Choose selected candidates",
+            )
+            _bulk_col1, _bulk_col2 = st.columns(2)
+            _bulk_start_date = _bulk_col1.date_input(
+                "Start date", value=(datetime.now() + timedelta(days=14)).date(), key="bulk_offer_start_date"
+            )
+            _bulk_accept_by = _bulk_col2.date_input(
+                "Accept by", value=(datetime.now() + timedelta(days=7)).date(), key="bulk_offer_accept_by"
+            )
+            _bulk_col3, _bulk_col4 = st.columns(2)
+            _bulk_manager = _bulk_col3.text_input("Reporting manager", key="bulk_offer_manager")
+            _bulk_department = _bulk_col4.text_input("Department (optional)", key="bulk_offer_department")
+            _bulk_employment_type = st.selectbox(
+                "Employment type", ["Full-time", "Part-time", "Contract", "Internship"],
+                key="bulk_offer_employment_type",
+            )
+            _bulk_confirm = st.checkbox(
+                "I reviewed the candidate emails and want to send these offer letters now.",
+                key="bulk_offer_confirm",
+            )
+            _bulk_send = st.form_submit_button(
+                "Send selected offer letters",
+                icon=":material/send:",
+                type="primary",
+                width="stretch",
+            )
+
+        if _bulk_send:
+            if not _bulk_offer_ids:
+                st.error("Select at least one candidate.")
+            elif not _bulk_confirm:
+                st.error("Confirm the bulk send after reviewing the recipients.")
+            elif not email_utils.is_configured():
+                st.error("Email sending is not configured. Add Gmail relay or SMTP details first.")
+            else:
+                _bulk_results = []
+                _bulk_progress = st.progress(0, text="Preparing offer letters...")
+                for _bulk_index, _candidate_id in enumerate(_bulk_offer_ids, start=1):
+                    _bulk_candidate = _bulk_candidate_by_id[_candidate_id]
+                    _bulk_email = (_bulk_candidate.get("profile", {}) or {}).get("email", "").strip()
+                    if not _bulk_email:
+                        _bulk_results.append((_bulk_candidate["name"], False, "Missing candidate email"))
+                        _bulk_progress.progress(
+                            _bulk_index / len(_bulk_offer_ids),
+                            text=f"Processed {_bulk_index} of {len(_bulk_offer_ids)}",
+                        )
+                        continue
+
+                    _bulk_job = _jobs_by_id.get(str(_bulk_candidate.get("job_id")), {})
+                    _bulk_job_title = (
+                        _bulk_job.get("title") or _bulk_candidate.get("job_role") or st.session_state.job_role
+                    )
+                    _bulk_offer = {
+                        "company_name": offer_company_name,
+                        "company_phone": saved.get("offer_company_phone", ""),
+                        "company_email": saved.get("offer_company_email", ""),
+                        "date": datetime.now().strftime("%d %B %Y"),
+                        "job_title": _bulk_job_title,
+                        "location": _bulk_job.get("location", ""),
+                        "salary": _bulk_job.get("salary_range", ""),
+                        "department": _bulk_department,
+                        "employment_type": _bulk_employment_type,
+                        "probation_period": "",
+                        "work_hours": "",
+                        "benefits": _bulk_job.get("benefits", ""),
+                        "start_date": _bulk_start_date.strftime("%B %d, %Y"),
+                        "accept_by": _bulk_accept_by.strftime("%B %d, %Y"),
+                        "reporting_manager": _bulk_manager,
+                        "hr_name": saved.get("offer_hr_name", ""),
+                        "hr_title": saved.get("offer_hr_title", "HR Manager"),
+                        "signature_style": saved.get("offer_signature_style", "Elegant Script"),
+                    }
+                    if using_company_account:
+                        _bulk_pdf = reports.build_offer_letter_pdf(
+                            _bulk_candidate, _bulk_offer, logo_bytes=offer_logo_bytes
+                        )
+                    else:
+                        _bulk_pdf = reports.build_offer_letter_pdf(
+                            _bulk_candidate, _bulk_offer, logo_path=saved.get("offer_logo_path") or None
+                        )
+                    _bulk_filename = f"Offer_Letter_{_bulk_candidate['name'].replace(' ', '_')}.pdf"
+                    _bulk_subject = f"Job Offer — {_bulk_job_title} at {offer_company_name}"
+                    _bulk_first_name = _bulk_candidate["name"].split()[0]
+                    _bulk_body = (
+                        f"Hi {_bulk_first_name},\n\n"
+                        f"Congratulations! We are delighted to offer you the position of {_bulk_job_title} "
+                        f"at {offer_company_name}. Your personalized offer letter is attached.\n\n"
+                        f"Proposed start date: {_bulk_offer['start_date']}\n"
+                        f"Please sign and return the attached letter by {_bulk_offer['accept_by']}.\n\n"
+                        f"Best regards,\n{saved.get('offer_hr_name', '')}\n{saved.get('offer_hr_title', '')}"
+                    )
+                    _bulk_ok, _bulk_message = email_utils.send_email_with_pdf(
+                        _bulk_email,
+                        _bulk_subject,
+                        _bulk_body,
+                        _bulk_pdf,
+                        _bulk_filename,
+                        provider="Gmail",
+                        from_email=saved.get("sender_email") or None,
+                        logo_bytes=offer_logo_bytes,
+                        company_name=_company.get("name") or offer_company_name or None,
+                        badge_text="JOB OFFER",
+                    )
+                    _bulk_results.append((_bulk_candidate["name"], _bulk_ok, _bulk_message))
+                    if _bulk_ok:
+                        _log_notification(f"Offer letter sent to {_bulk_email}.", "📄")
+                    _bulk_progress.progress(
+                        _bulk_index / len(_bulk_offer_ids),
+                        text=f"Processed {_bulk_index} of {len(_bulk_offer_ids)}",
+                    )
+
+                _bulk_success_count = sum(1 for _, ok, _ in _bulk_results if ok)
+                if _bulk_success_count == len(_bulk_results):
+                    st.success(f"Sent {_bulk_success_count} offer letter(s) successfully.")
+                else:
+                    st.warning(
+                        f"Sent {_bulk_success_count} of {len(_bulk_results)} offer letter(s). "
+                        "Review the results below."
+                    )
+                st.dataframe(
+                    [
+                        {"Candidate": name, "Status": "Sent" if ok else "Failed", "Details": message}
+                        for name, ok, message in _bulk_results
+                    ],
+                    hide_index=True,
+                    width="stretch",
+                )
+
+        st.divider()
+        st.markdown("##### :material/draft: Create one offer letter")
         names = [c["name"] for c in selected_candidates]
         pick = st.selectbox("Select a candidate", names, key="offer_candidate_pick")
         c = next(cc for cc in selected_candidates if cc["name"] == pick)
