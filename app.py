@@ -3363,46 +3363,121 @@ elif page == "📋 Jobs":
         if not show_archived:
             jobs = [j for j in jobs if j.get("status") == "active"]
 
+        st.html("""
+        <style>
+        [class*="st-key-job_card_"] {
+            position:relative;padding:25px 26px 22px!important;margin-bottom:20px;border-radius:22px!important;
+            background:linear-gradient(145deg,#FFFFFF 0%,#F9FBFE 100%)!important;
+            border:1px solid #DCE5EF!important;border-left:5px solid var(--job-accent,#2F80ED)!important;
+            box-shadow:0 10px 30px rgba(15,49,74,.07)!important;overflow:hidden;
+            transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+        }
+        [class*="st-key-job_card_"]:hover {transform:translateY(-3px);box-shadow:0 18px 40px rgba(15,49,74,.12)!important;}
+        .job-manage-header{display:flex;align-items:flex-start;gap:15px;margin-bottom:16px}.job-manage-icon{width:52px;height:52px;
+            border-radius:15px;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--job-accent) 12%,white);
+            color:var(--job-accent);font-family:'Material Symbols Rounded';font-size:27px;flex:0 0 auto}
+        .job-manage-heading{min-width:0;flex:1}.job-manage-title-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+        .job-manage-title{font-family:'Plus Jakarta Sans',sans-serif;color:#14213B;font-size:1.28rem;font-weight:850;
+            letter-spacing:-.025em;line-height:1.25}.job-manage-status{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;
+            border-radius:999px;font-size:.67rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+        .job-manage-status.active{color:#087B55;background:#DCFCE7}.job-manage-status.archived{color:#64748B;background:#E2E8F0}
+        .job-manage-status span{width:6px;height:6px;border-radius:50%;background:currentColor}.job-manage-meta{display:flex;flex-wrap:wrap;
+            gap:8px;margin-top:8px}.job-meta-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:9px;
+            background:#F1F5F9;color:#56667E;font-size:.73rem;font-weight:650}.job-meta-pill span{font-family:'Material Symbols Rounded';
+            color:var(--job-accent);font-size:15px}.job-manage-description{color:#64748B;font-size:.84rem;line-height:1.58;
+            margin:2px 0 15px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .job-skill-label{color:#475569;font-size:.71rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px}
+        [class*="st-key-job_screen_"] button{min-height:48px!important;border-radius:12px!important;color:#fff!important;border:0!important;
+            background:linear-gradient(135deg,var(--job-accent,#378ADD),color-mix(in srgb,var(--job-accent,#185FA5) 72%,#082D55))!important;
+            font-weight:780!important;box-shadow:0 9px 20px color-mix(in srgb,var(--job-accent,#185FA5) 18%,transparent)!important}
+        [class*="st-key-job_actions_"]{padding-top:14px!important;margin-top:3px;border-top:1px solid #E7EDF4}
+        [class*="st-key-job_actions_"] button{min-height:42px!important;border-radius:10px!important;background:#fff!important;
+            border:1px solid #DCE5EF!important;color:#40516A!important;font-size:.78rem!important;font-weight:700!important}
+        [class*="st-key-job_actions_"] button:hover{color:var(--job-accent)!important;border-color:color-mix(in srgb,var(--job-accent) 42%,#DCE5EF)!important;
+            background:color-mix(in srgb,var(--job-accent) 5%,white)!important}
+        [class*="st-key-job_card_"] [data-testid="stExpander"]{margin-top:12px;background:#F8FAFC!important;border:1px solid #E2E8F0!important;
+            border-radius:13px!important}[class*="st-key-job_card_"] [data-testid="stExpander"] summary{color:#334155!important;font-weight:720!important}
+        @media(max-width:640px){[class*="st-key-job_card_"]{padding:20px 17px 18px!important;border-radius:17px!important}
+            .job-manage-icon{width:44px;height:44px;border-radius:12px}.job-manage-title{font-size:1.08rem}}
+        @media(prefers-reduced-motion:reduce){[class*="st-key-job_card_"]{transition:none!important;transform:none!important}}
+        </style>
+        """)
+
         if not jobs:
             st.info("No job postings yet. Click **Create New Job** to add one.")
         else:
             for job in jobs:
                 is_archived = job.get("status") == "archived"
-                with st.container(border=True):
-                    jc1, jc2 = st.columns([3, 1.6])
-                    with jc1:
-                        st.markdown(f"**{job['title']}**{'  🗄️ Archived' if is_archived else ''}")
-                        meta = " · ".join(filter(None, [job.get("department"), job.get("location"), job.get("employment_type")]))
-                        st.caption(meta or "—")
-                        if job.get("required_skills"):
-                            components.chip_list(job["required_skills"][:8], variant="keyword")
-                    with jc2:
+                _job_slug = "".join(ch if ch.isalnum() else "_" for ch in str(job["id"])).strip("_") or "job"
+                _job_card_key = f"job_card_{_job_slug}"
+                _job_accent, _job_tint = job_role_theme(job.get("title") or "Job")
+                _job_title = html.escape(str(job.get("title") or "Untitled role"))
+                _job_description = html.escape(str(job.get("description") or "Add a description to help recruiters understand this role at a glance."))
+                _job_status_class = "archived" if is_archived else "active"
+                _job_status_label = "Archived" if is_archived else "Active"
+                _meta_items = []
+                for _icon, _value in [
+                    ("domain", job.get("department")),
+                    ("location_on", job.get("location")),
+                    ("schedule", job.get("employment_type")),
+                    ("workspace_premium", job.get("experience_level")),
+                ]:
+                    if _value:
+                        _meta_items.append(
+                            f'<span class="job-meta-pill"><span>{_icon}</span>{html.escape(str(_value))}</span>'
+                        )
+                _job_style = f'<style>.st-key-{_job_card_key}{{--job-accent:{_job_accent};}}</style>'
+                with st.container(key=_job_card_key):
+                    st.html(
+                        _job_style +
+                        f'<div class="job-manage-header"><div class="job-manage-icon">work</div>'
+                        f'<div class="job-manage-heading"><div class="job-manage-title-row">'
+                        f'<div class="job-manage-title">{_job_title}</div>'
+                        f'<div class="job-manage-status {_job_status_class}"><span></span>{_job_status_label}</div>'
+                        f'</div><div class="job-manage-meta">{"".join(_meta_items)}</div></div></div>'
+                        f'<div class="job-manage-description">{_job_description}</div>'
+                        '<div class="job-skill-label">Required skills</div>'
+                    )
+                    if job.get("required_skills"):
+                        components.chip_list(job["required_skills"][:8], variant="keyword")
+                    else:
+                        st.caption("No required skills added yet.")
+
+                    with st.container(key=f"job_screen_{_job_slug}"):
+                        if st.button(
+                            "Use this job for resume screening", key=f"use_job_{job['id']}",
+                            icon=":material/document_scanner:", type="primary", width="stretch",
+                        ):
+                            _select_job_for_screening(job)
+                            st.rerun()
+
+                    with st.container(key=f"job_actions_{_job_slug}"):
                         b1, b2, b3, b4 = st.columns(4)
-                        if b1.button("✏️", key=f"edit_job_{job['id']}", help="Edit"):
+                        if b1.button("Edit", key=f"edit_job_{job['id']}", icon=":material/edit:", help="Edit job", width="stretch"):
                             st.session_state.editing_job_id = job["id"]
                             st.session_state.jobs_view = "form"
                             st.rerun()
-                        if b2.button("📋", key=f"dup_job_{job['id']}", help="Duplicate"):
+                        if b2.button("Duplicate", key=f"dup_job_{job['id']}", icon=":material/content_copy:", help="Duplicate job", width="stretch"):
                             dup = {k: v for k, v in job.items() if k not in ("id", "created_at", "updated_at")}
                             dup["title"] = dup["title"] + " (Copy)"
                             _, saved_remote = create_job(dup)
                             if db.is_configured() and not saved_remote:
                                 st.warning(f"Saved locally only — Supabase error: {db.get_last_error()}")
                             st.rerun()
-                        if b3.button("↩️" if is_archived else "🗄️", key=f"arch_job_{job['id']}", help="Unarchive" if is_archived else "Archive"):
+                        if b3.button(
+                            "Restore" if is_archived else "Archive", key=f"arch_job_{job['id']}",
+                            icon=":material/unarchive:" if is_archived else ":material/archive:",
+                            help="Unarchive" if is_archived else "Archive", width="stretch",
+                        ):
                             update_job_record(job["id"], {"status": "active" if is_archived else "archived"})
                             st.rerun()
-                        if b4.button("🗑️", key=f"del_job_{job['id']}", help="Delete permanently"):
+                        if b4.button("Delete", key=f"del_job_{job['id']}", icon=":material/delete:", help="Delete permanently", width="stretch"):
                             remove_job(job["id"])
                             st.rerun()
 
-                    if st.button("Use this job for screening →", key=f"use_job_{job['id']}"):
-                        _select_job_for_screening(job)
-                        st.rerun()
-
                     # ---- Public apply link / QR code / auto-zip-on-deadline ----
                     if db.is_configured():
-                        with st.expander("🔗 Public apply link & QR code"):
+                        with st.expander("Application link, QR code and publishing", icon=":material/qr_code_2:"):
                             base_url = _public_app_base_url()
                             apply_url = f"{base_url}?apply={job['id']}"
                             if not base_url:
