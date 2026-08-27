@@ -13,6 +13,11 @@ gatherUsageStats = false
 
 [theme]
 base = "light"
+primaryColor = "#1769AA"
+linkColor = "#1769AA"
+blueColor = "#1769AA"
+blueBackgroundColor = "#E6F2FF"
+blueTextColor = "#0C447C"
 font = "sans-serif"
 headingFont = "sans-serif"
 baseFontSize = 16

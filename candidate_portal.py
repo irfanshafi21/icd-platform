@@ -53,6 +53,30 @@ def _styles() -> None:
     .job-meta { color:#64748B; font-size:.82rem; line-height:1.5; min-height:40px; }
     .job-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; min-height:31px; }
     .job-chips span { color:#0C4A6E; background:#E0F2FE; padding:5px 9px; border-radius:999px; font-size:.7rem; font-weight:750; }
+    [class*="st-key-candidate_apply_"] button { color:#fff!important; border:0!important; min-height:49px!important;
+      border-radius:13px!important; font-weight:780!important; background:linear-gradient(135deg,#2684D8,#0F5F9F)!important;
+      box-shadow:0 9px 20px rgba(21,101,173,.18)!important; transition:transform .16s ease,box-shadow .16s ease!important; }
+    [class*="st-key-candidate_apply_"] button:hover { transform:translateY(-2px); box-shadow:0 13px 27px rgba(21,101,173,.26)!important; }
+    .candidate-applications-head { display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin:8px 0 24px; }
+    .candidate-applications-head h2 { margin:0 0 7px;color:#102A43;font-size:1.7rem;letter-spacing:-.025em; }
+    .candidate-applications-head p { margin:0;color:#64748B;font-size:.86rem;line-height:1.55; }
+    .application-card { display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:17px;align-items:start;
+      padding:22px 23px;margin:0 0 16px;border:1px solid #DCE6F1;border-left:5px solid #2F80ED;border-radius:18px;
+      background:linear-gradient(135deg,#FFFFFF 0%,#F6FAFF 100%);box-shadow:0 8px 25px rgba(15,49,74,.065); }
+    .application-company-logo { width:58px;height:58px;border:1px solid #D7E5F4;border-radius:15px;background:#fff;
+      display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:0 5px 14px rgba(15,49,74,.07); }
+    .application-company-logo img { width:100%;height:100%;object-fit:contain;padding:7px; }
+    .application-company-logo span { color:#1769AA;font-size:1.15rem;font-weight:850; }
+    .application-company { color:#1769AA;font-size:.72rem;font-weight:820;text-transform:uppercase;letter-spacing:.09em;margin-bottom:4px; }
+    .application-title { color:#102A43;font-size:1.23rem;font-weight:850;line-height:1.25;margin-bottom:9px; }
+    .application-meta { display:flex;flex-wrap:wrap;gap:7px 14px;color:#64748B;font-size:.78rem; }
+    .application-meta span { display:inline-flex;align-items:center;gap:5px; }
+    .application-meta i { font-family:'Material Symbols Rounded';font-style:normal;color:#3B82C4;font-size:16px; }
+    .application-resume { margin-top:13px;padding-top:12px;border-top:1px solid #E2EAF3;color:#52627A;font-size:.77rem; }
+    .application-resume strong { color:#334155; }
+    .application-status { display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;
+      font-size:.72rem;font-weight:800;white-space:nowrap;background:#E6F2FF;color:#0C5E9F;border:1px solid #CDE5FA; }
+    .application-status i { font-family:'Material Symbols Rounded';font-style:normal;font-size:16px; }
     .st-key-candidate_auth_value { min-height:560px; padding:42px 40px!important; border-radius:28px!important;
       color:#fff; overflow:hidden; position:relative;
       background:linear-gradient(145deg,#09264B 0%,#124E88 55%,#0788A7 100%)!important;
@@ -102,6 +126,8 @@ def _styles() -> None:
       .stMainBlockContainer{padding:1rem .85rem 2rem}.portal-hero{padding:25px 20px}.portal-brand img{width:104px}
       .st-key-candidate_auth_value,.st-key-candidate_auth_form{min-height:auto;padding:28px 23px!important;border-radius:21px!important}
       .candidate-auth-logo-wrap{margin-bottom:28px}.candidate-auth-copy{font-size:.91rem}.candidate-auth-heading{font-size:2rem}
+      .application-card{grid-template-columns:52px minmax(0,1fr);padding:18px 16px}.application-company-logo{width:48px;height:48px}
+      .application-status{grid-column:2;justify-self:start}.candidate-applications-head{display:block}
     }
     @media(prefers-reduced-motion:reduce){.st-key-candidate_auth_form button{transition:none!important;transform:none!important}}
     </style>
@@ -390,27 +416,46 @@ def _job_card(job: dict, index: int) -> None:
 
 def _render_my_applications(user: dict) -> None:
     applications = db.fetch_candidate_applications(user["id"])
-    st.subheader(f"My applications ({len(applications)})")
-    st.caption("Your status updates automatically when the recruiter moves your application forward.")
+    st.html(
+        '<section class="candidate-applications-head"><div>'
+        f'<h2>My applications <span style="color:#1769AA">({len(applications)})</span></h2>'
+        '<p>Track every application and see when a recruiter moves you to the next stage.</p>'
+        '</div></section>'
+    )
     if not applications:
         st.info("You have not applied for a published role yet.", icon=":material/inbox:")
         return
-    status_colors = {
-        "Submitted": "blue", "Under Review": "orange", "Shortlisted": "green",
-        "Interview Scheduled": "violet", "Selected": "green", "Hired": "green", "Rejected": "red",
+    status_icons = {
+        "Submitted": "send", "Under Review": "visibility", "Shortlisted": "star",
+        "Interview Scheduled": "event", "Selected": "check_circle", "Hired": "workspace_premium", "Rejected": "cancel",
     }
     for application in applications:
         job = application.get("jobs") or {}
         company = job.get("companies") or {}
-        with st.container(border=True):
-            header, badge = st.columns([4, 1], vertical_alignment="center")
-            with header:
-                st.markdown(f"#### {job.get('title') or 'Position'}")
-                st.caption(" · ".join(filter(None, [company.get("name"), job.get("location"), str(application.get("applied_at") or "")[:10]])))
-            with badge:
-                status = application.get("status") or "Submitted"
-                st.badge(status, color=status_colors.get(status, "gray"))
-            st.caption(f"Resume: {application.get('resume_filename') or 'Uploaded resume'}")
+        company_name = html.escape(company.get("name") or "Hiring organization")
+        title = html.escape(job.get("title") or "Position")
+        location = html.escape(job.get("location") or "Location not specified")
+        applied = html.escape(str(application.get("applied_at") or "")[:10] or "Recently")
+        resume = html.escape(application.get("resume_filename") or "Uploaded resume")
+        status = html.escape(application.get("status") or "Submitted")
+        logo_uri = _company_logo_data_uri(company.get("logo_base64") or "")
+        logo = (
+            f'<img src="{logo_uri}" alt="{company_name} logo">'
+            if logo_uri else f'<span>{html.escape((company_name[:1] or "C").upper())}</span>'
+        )
+        icon = status_icons.get(application.get("status") or "Submitted", "schedule")
+        st.html(
+            '<article class="application-card">'
+            f'<div class="application-company-logo">{logo}</div>'
+            '<div><div class="application-company">' + company_name + '</div>'
+            f'<div class="application-title">{title}</div>'
+            '<div class="application-meta">'
+            f'<span><i>location_on</i>{location}</span><span><i>calendar_today</i>Applied {applied}</span>'
+            '</div>'
+            f'<div class="application-resume"><strong>Resume:</strong> {resume}</div></div>'
+            f'<div class="application-status"><i>{icon}</i>{status}</div>'
+            '</article>'
+        )
 
 
 def render_candidate_portal() -> None:

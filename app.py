@@ -943,11 +943,13 @@ if any(route in _qp for route in ("apply", "portal", "candidate")):
     # status pages therefore cannot briefly unmount CSS while stale elements
     # from the previous route are still fading out.
     _public_title = "Apply for a role" if "apply" in _qp else "ICD candidate portal"
-    _public_layout = "centered" if "apply" in _qp or "portal" in _qp else "wide"
     st.set_page_config(
         page_title=_public_title,
         page_icon=":material/work:",
-        layout=_public_layout,
+        # Keep one shell layout across every candidate route. Changing this
+        # setting during navigation remounts Streamlit's page shell and can
+        # briefly expose the unstyled previous page.
+        layout="wide",
         initial_sidebar_state="collapsed",
     )
     import candidate_portal
