@@ -1587,9 +1587,7 @@ def _render_auth_gate():
         st.stop()
 
 
-def _render_account_type_gate():
-    """Route candidates away from the private recruiter workspace."""
-    st.html("""
+_ACCOUNT_GATE_CSS = """
     <style>
     .stApp {
         background:
@@ -1674,7 +1672,24 @@ def _render_account_type_gate():
         .st-key-account_candidate_card button,.st-key-account_recruiter_card button {transition:none !important;transform:none !important;}
     }
     </style>
-    """)
+    """
+
+
+def _continue_as_candidate():
+    """Select the candidate portal before Streamlit starts the next rerun."""
+    st.session_state.pop("show_account_gate", None)
+    st.query_params["candidate"] = "1"
+
+
+def _continue_as_recruiter():
+    """Select the recruiter flow before Streamlit starts the next rerun."""
+    st.session_state.pop("show_account_gate", None)
+    st.session_state.entry_role = "recruiter"
+    st.session_state.auth_screen = "choose_company"
+
+
+def _render_account_type_gate():
+    """Route candidates away from the private recruiter workspace."""
 
     with st.container(gap=None, key="account_gate_intro"):
         st.markdown(
@@ -1699,10 +1714,11 @@ def _render_account_type_gate():
                 '</div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Continue as candidate", type="primary", icon=":material/arrow_forward:", width="stretch", key="account_candidate_continue"):
-                st.session_state.pop("show_account_gate", None)
-                st.query_params["candidate"] = "1"
-                st.rerun()
+            st.button(
+                "Continue as candidate", type="primary", icon=":material/arrow_forward:",
+                width="stretch", key="account_candidate_continue",
+                on_click=_continue_as_candidate,
+            )
     with right:
         with st.container(height="stretch", key="account_recruiter_card"):
             st.markdown(
@@ -1717,11 +1733,10 @@ def _render_account_type_gate():
                 '</div>',
                 unsafe_allow_html=True,
             )
-            if st.button("Continue as recruiter", icon=":material/arrow_forward:", width="stretch", key="account_recruiter_continue"):
-                st.session_state.pop("show_account_gate", None)
-                st.session_state.entry_role = "recruiter"
-                st.session_state.auth_screen = "choose_company"
-                st.rerun()
+            st.button(
+                "Continue as recruiter", icon=":material/arrow_forward:", width="stretch",
+                key="account_recruiter_continue", on_click=_continue_as_recruiter,
+            )
 
     st.markdown(
         '<div class="account-trust-strip">'
@@ -1826,7 +1841,6 @@ def _auth_hero(title: str, subtitle: str):
 
 
 def _render_auth_flow():
-    st.html(_AUTH_CSS)
     screen = st.session_state.get("auth_screen", "choose_company")
     left, right = st.columns([1.08, 0.92], gap="large")
     with left:
@@ -2065,6 +2079,12 @@ def _render_signup_success():
         st.session_state.auth_screen = "choose_company"
         st.rerun()
 
+
+# Keep transition-critical styles at one stable delta path on every private-app
+# rerun. This prevents Streamlit from briefly removing the previous page's CSS
+# while its stale elements are still visible during navigation.
+st.html(_ACCOUNT_GATE_CSS)
+st.html(_AUTH_CSS)
 
 _render_auth_gate()
 
