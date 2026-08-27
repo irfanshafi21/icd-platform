@@ -1880,44 +1880,41 @@ def _render_choose_company():
     else:
         st.caption("Enter at least three characters to search.")
 
-        # ---- Fill the empty space below with a showcase of organizations
-        # already on the platform, instead of leaving it blank before search.
-        # Display-only (no click) — plain HTML/CSS, which is why this can now
-        # give every card the exact same fixed size with no overlap: there's
-        # no interactive button to overlay, so nothing needs the invisible-
-        # button trick from before. Single-row horizontal scroll via CSS. ----
+        # Show existing organizations immediately.  These used to be
+        # display-only cards, which made a company look unavailable until the
+        # recruiter typed its name and pressed Enter.  Keep the directory
+        # visible and make every card a direct path to the access-code step.
         collaborators = auth.list_companies("")
         if collaborators:
             st.html('<div class="collab-heading"><span>handshake</span>Organizations on ICD Platform</div>')
-            st.caption("Organizations already using the platform.")
+            st.caption("Choose an organization below, or search by name above.")
 
-            card_html_parts = []
-            for comp in collaborators:
-                if comp.get("logo_base64"):
-                    logo_tag = f'<img src="data:image/png;base64,{comp["logo_base64"]}" style="width:36px; height:36px; object-fit:contain;" />'
-                else:
-                    logo_tag = '<span style="font-size:1.6rem;">🏢</span>'
-                card_html_parts.append(
-                    f'<div style="flex:0 0 130px; width:130px; height:150px; border:1px solid #E2E8F0; border-radius:12px; '
-                    f'padding:14px 10px; text-align:center; background:#fff; box-sizing:border-box; '
-                    f'display:flex; flex-direction:column; align-items:center; justify-content:flex-start;">'
-                    f'<div style="height:40px; display:flex; align-items:center; justify-content:center;">{logo_tag}</div>'
-                    f'<div style="font-weight:700; font-size:0.85rem; margin-top:10px; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{comp["name"]}</div>'
-                    f'<div style="color:#64748B; font-size:0.72rem; margin-top:4px; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{comp.get("industry", "")}</div>'
-                    f'</div>'
-                )
-            strip_html = (
-                '<div class="collab-strip" style="display:flex; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; gap:12px; '
-                'padding:6px 2px 16px; scrollbar-width:auto; scrollbar-color:#94A3B8 #E2E8F0;">'
-                + "".join(card_html_parts) +
-                '</div>'
-                '<style>'
-                '.collab-strip::-webkit-scrollbar { height: 10px; }'
-                '.collab-strip::-webkit-scrollbar-track { background: #E2E8F0; border-radius: 6px; }'
-                '.collab-strip::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 6px; }'
-                '</style>'
-            )
-            st.markdown(strip_html, unsafe_allow_html=True)
+            columns = st.columns(min(3, len(collaborators)))
+            for index, comp in enumerate(collaborators):
+                with columns[index % len(columns)]:
+                    with st.container(border=True, key=f"company_directory_{comp['id']}"):
+                        if comp.get("logo_base64"):
+                            import base64 as _b64
+                            try:
+                                st.image(_b64.b64decode(comp["logo_base64"]), width=48)
+                            except Exception:
+                                st.markdown(":material/business:")
+                        else:
+                            st.markdown(":material/business:")
+                        st.markdown(f"**{comp['name']}**")
+                        if comp.get("industry"):
+                            st.caption(comp["industry"])
+                        if st.button(
+                            "Choose organization",
+                            key=f"choose_directory_company_{comp['id']}",
+                            icon=":material/arrow_forward:",
+                            width="stretch",
+                        ):
+                            st.session_state.chosen_company = comp
+                            st.session_state.auth_screen = "access_code"
+                            st.rerun()
+        else:
+            st.warning("No organizations are available yet. Create the first organization below.")
 
     st.markdown("")
     st.html('<div class="recruiter-auth-tip"><span>add_business</span><div>New to ICD Platform? Create a secure organization workspace in a few steps.</div></div>')
