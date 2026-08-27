@@ -1619,9 +1619,6 @@ def _render_account_type_gate():
         margin:0;color:#0F1D38;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2.1rem,4.5vw,3.55rem);
         font-weight:850;letter-spacing:-.045em;line-height:1.06;text-align:center;
     }
-    .account-subtitle {
-        color:#60708A;font-size:1.04rem;line-height:1.65;text-align:center;max-width:650px;margin:15px auto 0;
-    }
     .account-role-icon {
         width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;
         font-family:'Material Symbols Rounded';font-size:29px;margin-bottom:24px;
@@ -1669,7 +1666,6 @@ def _render_account_type_gate():
     .account-trust-item span {font-family:'Material Symbols Rounded';font-size:18px;color:#2482C4;}
     @media (max-width: 640px) {
         [data-testid="stMainBlockContainer"] {padding-top:1.1rem !important;padding-left:1rem !important;padding-right:1rem !important;}
-        .account-subtitle {font-size:.92rem;}
         .st-key-account_candidate_card,.st-key-account_recruiter_card {min-height:auto;padding:23px 21px !important;}
         .account-role-copy {min-height:auto;}
     }
@@ -1686,12 +1682,7 @@ def _render_account_type_gate():
             unsafe_allow_html=True,
         )
         st.markdown('<h1 class="account-title">Where talent meets opportunity</h1>', unsafe_allow_html=True)
-        st.markdown(
-            '<p class="account-subtitle">One secure platform for candidates to discover their next role and '
-            'for hiring teams to identify the people who fit best.</p>',
-            unsafe_allow_html=True,
-        )
-    st.space("medium")
+    st.space("small")
 
     left, right = st.columns(2, gap="large")
     with left:
