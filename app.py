@@ -1609,7 +1609,11 @@ def _render_account_type_gate():
         font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin:0 auto 16px;
     }
     .st-key-account_gate_intro,
-    .st-key-account_gate_intro [data-testid="stMarkdownContainer"] {text-align:center !important;}
+    .st-key-account_gate_intro > div,
+    .st-key-account_gate_intro [data-testid="stElementContainer"],
+    .st-key-account_gate_intro [data-testid="stMarkdownContainer"] {
+        width:100% !important;text-align:center !important;
+    }
     .account-kicker-dot {width:7px;height:7px;border-radius:50%;background:#0EA5E9;box-shadow:0 0 0 5px rgba(14,165,233,.12);}
     .account-title {
         margin:0;color:#0F1D38;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2.1rem,4.5vw,3.55rem);
@@ -1676,7 +1680,7 @@ def _render_account_type_gate():
     </style>
     """)
 
-    with st.container(horizontal_alignment="center", gap=None, key="account_gate_intro"):
+    with st.container(gap=None, key="account_gate_intro"):
         st.markdown(
             '<div class="account-kicker"><span class="account-kicker-dot"></span>Intelligent candidate discovery</div>',
             unsafe_allow_html=True,
