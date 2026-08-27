@@ -61,6 +61,30 @@ def _get_client():
         return None
 
 
+def _get_public_client():
+    """Return a session-local client that always keeps the public/anon role.
+
+    Candidate authentication mutates the main client session. Public job and
+    company-directory reads must not inherit that user token because company
+    ownership policies intentionally hide private company rows from candidates.
+    """
+    global _last_error
+    if "_supabase_public_client" in st.session_state:
+        return st.session_state._supabase_public_client
+    from supabase import create_client
+    url = _get_secret("SUPABASE_URL")
+    key = _get_secret("SUPABASE_KEY")
+    if not url or not key:
+        return None
+    try:
+        client = create_client(url, key)
+        st.session_state._supabase_public_client = client
+        return client
+    except Exception as e:
+        _last_error = f"Public client creation failed: {e}"
+        return None
+
+
 def _current_company_id():
     """The logged-in company's id (set by auth.py after login), or None if
     auth isn't in use. Read directly from session_state rather than
@@ -343,7 +367,7 @@ def fetch_jobs(include_archived: bool = True) -> list[dict]:
 def fetch_published_jobs(limit: int = 200) -> list[dict]:
     """Return only active jobs deliberately published to the candidate portal."""
     global _last_error
-    client = _get_client()
+    client = _get_public_client()
     if client is None:
         return []
     try:
@@ -373,7 +397,7 @@ def fetch_published_jobs(limit: int = 200) -> list[dict]:
 def fetch_public_job(job_id) -> dict | None:
     """Return one active public-application job with safe company branding."""
     global _last_error
-    client = _get_client()
+    client = _get_public_client()
     if client is None or not job_id:
         return None
     try:
