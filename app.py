@@ -1585,27 +1585,152 @@ def _render_auth_gate():
 
 def _render_account_type_gate():
     """Route candidates away from the private recruiter workspace."""
-    st.markdown('<div style="height:2rem"></div>', unsafe_allow_html=True)
-    st.markdown("## Welcome to ICD Platform", text_alignment="center")
-    st.caption("Choose how you want to continue.", text_alignment="center")
+    st.html("""
+    <style>
+    .stApp {
+        background:
+            radial-gradient(circle at 8% 7%, rgba(56, 189, 248, .15), transparent 28%),
+            radial-gradient(circle at 92% 88%, rgba(99, 102, 241, .12), transparent 30%),
+            linear-gradient(145deg, #F8FBFF 0%, #F3F7FC 48%, #F8FAFF 100%) !important;
+    }
+    [data-testid="stHeader"] { background: transparent !important; }
+    [data-testid="stMainBlockContainer"] {
+        max-width: 1120px !important;
+        padding-top: 2.4rem !important;
+        padding-bottom: 2rem !important;
+    }
+    .account-kicker {
+        display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;
+        color:#075985;background:#E0F2FE;border:1px solid #BAE6FD;font-size:.74rem;
+        font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin-bottom:16px;
+    }
+    .account-kicker-dot {width:7px;height:7px;border-radius:50%;background:#0EA5E9;box-shadow:0 0 0 5px rgba(14,165,233,.12);}
+    .account-title {
+        margin:0;color:#0F1D38;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2.1rem,4.5vw,3.55rem);
+        font-weight:850;letter-spacing:-.045em;line-height:1.06;text-align:center;
+    }
+    .account-subtitle {
+        color:#60708A;font-size:1.04rem;line-height:1.65;text-align:center;max-width:650px;margin:15px auto 0;
+    }
+    .account-role-icon {
+        width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;
+        font-family:'Material Symbols Rounded';font-size:29px;margin-bottom:24px;
+    }
+    .candidate-icon {background:linear-gradient(145deg,#DBEAFE,#E0F2FE);color:#1565C0;box-shadow:0 9px 22px rgba(37,99,235,.13);}
+    .recruiter-icon {background:linear-gradient(145deg,#EDE9FE,#E0E7FF);color:#5B3CC4;box-shadow:0 9px 22px rgba(91,60,196,.13);}
+    .account-role-label {font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px;}
+    .candidate-label {color:#1769AA}.recruiter-label {color:#6547C7}
+    .account-role-title {font-size:1.7rem;font-weight:850;color:#14213B;letter-spacing:-.025em;margin-bottom:11px;}
+    .account-role-copy {font-size:.94rem;color:#64748B;line-height:1.62;min-height:76px;margin-bottom:19px;}
+    .account-feature-list {display:grid;gap:10px;margin-bottom:24px;}
+    .account-feature {display:flex;align-items:center;gap:9px;color:#34435D;font-size:.84rem;font-weight:650;}
+    .account-feature-check {
+        width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        background:#ECFDF5;color:#059669;font-family:'Material Symbols Rounded';font-size:15px;flex:0 0 auto;
+    }
+    .st-key-account_candidate_card,
+    .st-key-account_recruiter_card {
+        border-radius:24px !important;padding:27px 28px 25px !important;background:rgba(255,255,255,.91) !important;
+        border:1px solid rgba(203,213,225,.82) !important;box-shadow:0 16px 45px rgba(15,23,42,.075) !important;
+        min-height:410px;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+        backdrop-filter:blur(12px);
+    }
+    .st-key-account_candidate_card {border-top:4px solid #2F80ED !important;}
+    .st-key-account_recruiter_card {border-top:4px solid #6D5BD0 !important;}
+    .st-key-account_candidate_card:hover,
+    .st-key-account_recruiter_card:hover {transform:translateY(-6px);box-shadow:0 24px 58px rgba(15,23,42,.13) !important;}
+    .st-key-account_candidate_card:hover {border-color:#93C5FD !important;}
+    .st-key-account_recruiter_card:hover {border-color:#C4B5FD !important;}
+    .st-key-account_candidate_card button,
+    .st-key-account_recruiter_card button {
+        min-height:50px !important;border-radius:13px !important;font-weight:750 !important;font-size:.94rem !important;
+        box-shadow:none !important;transition:transform .16s ease,box-shadow .16s ease !important;
+    }
+    .st-key-account_candidate_card button {background:linear-gradient(135deg,#378ADD,#1565AD) !important;border:0 !important;color:#fff !important;}
+    .st-key-account_recruiter_card button {background:#EEF2FF !important;border:1px solid #D8DDFB !important;color:#312E81 !important;}
+    .st-key-account_candidate_card button:hover,
+    .st-key-account_recruiter_card button:hover {transform:translateY(-2px);box-shadow:0 10px 22px rgba(30,64,175,.17) !important;}
+    .account-trust-strip {
+        margin:25px 0 0;padding:15px 20px;border-radius:16px;background:rgba(255,255,255,.66);
+        border:1px solid rgba(203,213,225,.65);display:flex;align-items:center;justify-content:center;
+        gap:clamp(18px,5vw,55px);flex-wrap:wrap;color:#5B6B83;font-size:.78rem;font-weight:650;
+    }
+    .account-trust-item {display:flex;align-items:center;gap:7px;}
+    .account-trust-item span {font-family:'Material Symbols Rounded';font-size:18px;color:#2482C4;}
+    @media (max-width: 640px) {
+        [data-testid="stMainBlockContainer"] {padding-top:1.1rem !important;padding-left:1rem !important;padding-right:1rem !important;}
+        .account-subtitle {font-size:.92rem;}
+        .st-key-account_candidate_card,.st-key-account_recruiter_card {min-height:auto;padding:23px 21px !important;}
+        .account-role-copy {min-height:auto;}
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .st-key-account_candidate_card,.st-key-account_recruiter_card,
+        .st-key-account_candidate_card button,.st-key-account_recruiter_card button {transition:none !important;transform:none !important;}
+    }
+    </style>
+    """)
+
+    _account_logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo_header.png")
+    with st.container(horizontal_alignment="center", gap=None, key="account_gate_intro"):
+        if os.path.exists(_account_logo_path):
+            st.image(_account_logo_path, width=180)
+        st.markdown(
+            '<div class="account-kicker"><span class="account-kicker-dot"></span>Intelligent candidate discovery</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown('<h1 class="account-title">Where talent meets opportunity</h1>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="account-subtitle">One secure platform for candidates to discover their next role and '
+            'for hiring teams to identify the people who fit best.</p>',
+            unsafe_allow_html=True,
+        )
+    st.space("medium")
+
     left, right = st.columns(2, gap="large")
     with left:
-        with st.container(border=True, height="stretch"):
-            st.markdown(":material/person_search:")
-            st.subheader("I’m a candidate")
-            st.write("Discover published jobs, apply securely and follow your applications.")
-            if st.button("Continue as candidate", type="primary", icon=":material/arrow_forward:", width="stretch"):
+        with st.container(height="stretch", key="account_candidate_card"):
+            st.markdown(
+                '<div class="account-role-icon candidate-icon">person_search</div>'
+                '<div class="account-role-label candidate-label">For candidates</div>'
+                '<div class="account-role-title">Find your next role</div>'
+                '<div class="account-role-copy">Explore verified openings, apply securely with your resume, '
+                'and keep every application organized in one place.</div>'
+                '<div class="account-feature-list">'
+                '<div class="account-feature"><span class="account-feature-check">check</span>Browse published opportunities</div>'
+                '<div class="account-feature"><span class="account-feature-check">check</span>Apply and track your progress</div>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("Continue as candidate", type="primary", icon=":material/arrow_forward:", width="stretch", key="account_candidate_continue"):
                 st.query_params["candidate"] = "1"
                 st.rerun()
     with right:
-        with st.container(border=True, height="stretch"):
-            st.markdown(":material/business_center:")
-            st.subheader("I’m a recruiter")
-            st.write("Select your organization and manage jobs, screening and hiring decisions.")
-            if st.button("Continue as recruiter", icon=":material/arrow_forward:", width="stretch"):
+        with st.container(height="stretch", key="account_recruiter_card"):
+            st.markdown(
+                '<div class="account-role-icon recruiter-icon">business_center</div>'
+                '<div class="account-role-label recruiter-label">For hiring teams</div>'
+                '<div class="account-role-title">Build the right team</div>'
+                '<div class="account-role-copy">Manage jobs, screen resumes intelligently, coordinate interviews, '
+                'and move top candidates through hiring faster.</div>'
+                '<div class="account-feature-list">'
+                '<div class="account-feature"><span class="account-feature-check">check</span>AI-assisted resume screening</div>'
+                '<div class="account-feature"><span class="account-feature-check">check</span>Structured hiring workflows</div>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+            if st.button("Continue as recruiter", icon=":material/arrow_forward:", width="stretch", key="account_recruiter_continue"):
                 st.session_state.entry_role = "recruiter"
                 st.session_state.auth_screen = "choose_company"
                 st.rerun()
+
+    st.markdown(
+        '<div class="account-trust-strip">'
+        '<div class="account-trust-item"><span>verified_user</span>Secure candidate data</div>'
+        '<div class="account-trust-item"><span>bolt</span>Fast, focused workflows</div>'
+        '<div class="account-trust-item"><span>insights</span>Evidence-based hiring</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
 
 
 _AUTH_CSS = "\n".join(line.strip() for line in """
