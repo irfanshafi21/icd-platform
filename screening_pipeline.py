@@ -35,6 +35,15 @@ def worker_count(item_count: int) -> int:
     return min(max(1, item_count), max(1, min(configured, 10)))
 
 
+def extraction_worker_count(item_count: int) -> int:
+    """Bound local PDF/DOCX extraction without competing with AI calls."""
+    try:
+        configured = int(os.environ.get("SCREENING_EXTRACTION_WORKERS", "4"))
+    except (TypeError, ValueError):
+        configured = 4
+    return min(max(1, item_count), max(1, min(configured, 6)))
+
+
 def cached_ai_result(candidate: dict) -> tuple[dict, dict] | None:
     """Return a copy of the reusable, pre-weighting AI result."""
     profile = candidate.get("profile") or {}

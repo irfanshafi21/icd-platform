@@ -34,6 +34,7 @@ import random
 import threading
 import itertools
 import logging
+from functools import lru_cache
 from collections import deque
 import streamlit as st
 
@@ -44,6 +45,25 @@ import streamlit as st
 # irrelevant here. Silenced at the source so it doesn't clutter the terminal.
 logging.getLogger("google_genai.models").setLevel(logging.ERROR)
 logging.getLogger("google_genai").setLevel(logging.ERROR)
+
+
+@lru_cache(maxsize=16)
+def _groq_client(api_key: str):
+    """Reuse the SDK HTTP pool across resume calls for the same key."""
+    from groq import Groq
+    return Groq(api_key=api_key)
+
+
+@lru_cache(maxsize=16)
+def _cerebras_client(api_key: str):
+    from cerebras.cloud.sdk import Cerebras
+    return Cerebras(api_key=api_key)
+
+
+@lru_cache(maxsize=16)
+def _gemini_client(api_key: str):
+    from google import genai
+    return genai.Client(api_key=api_key)
 
 # ----------------------------- API KEY HELPERS -----------------------------
 
@@ -255,15 +275,13 @@ GROQ_CHAT_MODELS = [
 
 
 def _call_groq(prompt: str, max_attempts: int = 1) -> dict:
-    from groq import Groq
-
     all_keys = _collect_keys("GROQ_API_KEY")
     if not all_keys:
         raise RuntimeError("Groq API key not configured.")
 
     last_error = None
     for api_key in _GROQ_KEY_POOL.ordered_available_keys(all_keys):
-        client = Groq(api_key=api_key)
+        client = _groq_client(api_key)
         key_exhausted = False
         for model_name in GROQ_FALLBACK_MODELS:
             for attempt in range(max_attempts):
@@ -320,15 +338,13 @@ CEREBRAS_CHAT_MODELS = ["gpt-oss-120b", "zai-glm-4.7"]
 
 
 def _call_cerebras(prompt: str, max_attempts: int = 1) -> dict:
-    from cerebras.cloud.sdk import Cerebras
-
     all_keys = _collect_keys("CEREBRAS_API_KEY")
     if not all_keys:
         raise RuntimeError("Cerebras API key not configured.")
 
     last_error = None
     for api_key in _CEREBRAS_KEY_POOL.ordered_available_keys(all_keys):
-        client = Cerebras(api_key=api_key)
+        client = _cerebras_client(api_key)
         key_exhausted = False
         for model_name in CEREBRAS_FALLBACK_MODELS:
             for attempt in range(max_attempts):
@@ -368,15 +384,13 @@ def _call_cerebras(prompt: str, max_attempts: int = 1) -> dict:
 
 
 def _call_cerebras_text(prompt: str, max_attempts: int = 1) -> str:
-    from cerebras.cloud.sdk import Cerebras
-
     all_keys = _collect_keys("CEREBRAS_API_KEY")
     if not all_keys:
         raise RuntimeError("Cerebras API key not configured.")
 
     last_error = None
     for api_key in _CEREBRAS_KEY_POOL.ordered_available_keys(all_keys):
-        client = Cerebras(api_key=api_key)
+        client = _cerebras_client(api_key)
         key_exhausted = False
         for model_name in CEREBRAS_CHAT_MODELS:
             for attempt in range(max_attempts):
@@ -416,7 +430,6 @@ GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flas
 
 
 def _call_gemini(prompt: str, max_attempts: int = 1) -> dict:
-    from google import genai
     from google.genai import types as genai_types
 
     all_keys = _collect_keys("GEMINI_API_KEY")
@@ -425,7 +438,7 @@ def _call_gemini(prompt: str, max_attempts: int = 1) -> dict:
 
     last_error = None
     for api_key in _GEMINI_KEY_POOL.ordered_available_keys(all_keys):
-        client = genai.Client(api_key=api_key)
+        client = _gemini_client(api_key)
         key_exhausted = False
         for model_name in GEMINI_FALLBACK_MODELS:
             for attempt in range(max_attempts):
@@ -954,15 +967,13 @@ Answer now."""
 
 
 def _call_groq_text(prompt: str, max_attempts: int = 1) -> str:
-    from groq import Groq
-
     all_keys = _collect_keys("GROQ_API_KEY")
     if not all_keys:
         raise RuntimeError("Groq API key not configured.")
 
     last_error = None
     for api_key in _GROQ_KEY_POOL.ordered_available_keys(all_keys):
-        client = Groq(api_key=api_key)
+        client = _groq_client(api_key)
         key_exhausted = False
         for model_name in GROQ_CHAT_MODELS:
             for attempt in range(max_attempts):
@@ -997,7 +1008,6 @@ def _call_groq_text(prompt: str, max_attempts: int = 1) -> str:
 
 
 def _call_gemini_text(prompt: str, max_attempts: int = 1) -> str:
-    from google import genai
     from google.genai import types as genai_types
 
     all_keys = _collect_keys("GEMINI_API_KEY")
@@ -1006,7 +1016,7 @@ def _call_gemini_text(prompt: str, max_attempts: int = 1) -> str:
 
     last_error = None
     for api_key in _GEMINI_KEY_POOL.ordered_available_keys(all_keys):
-        client = genai.Client(api_key=api_key)
+        client = _gemini_client(api_key)
         key_exhausted = False
         for model_name in GEMINI_FALLBACK_MODELS:
             for attempt in range(max_attempts):

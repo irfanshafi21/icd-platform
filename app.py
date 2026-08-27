@@ -54,6 +54,7 @@ from screening_pipeline import (
     cache_key as screening_cache_key,
     cached_ai_result,
     content_hash,
+    extraction_worker_count,
     job_description_hash,
     worker_count,
 )
@@ -125,11 +126,36 @@ def extract_keywords(text: str, max_keywords: int = 14) -> list[str]:
 
 # ----------------------------- JOBS storage (Supabase-backed, session-local fallback) -----------------------------
 
+def _session_cached(key: str, loader, ttl_seconds: int = 20):
+    """Cache database reads briefly so ordinary widget reruns stay instant."""
+    cache = st.session_state.setdefault("_interface_data_cache", {})
+    entry = cache.get(key)
+    now = time.monotonic()
+    if entry and now - entry[0] < ttl_seconds:
+        return entry[1]
+    value = loader()
+    cache[key] = (now, value)
+    return value
+
+
+def _invalidate_interface_cache(*prefixes: str) -> None:
+    cache = st.session_state.get("_interface_data_cache", {})
+    for key in list(cache):
+        if not prefixes or any(key.startswith(prefix) for prefix in prefixes):
+            cache.pop(key, None)
+
+
 def get_jobs(include_archived: bool = True) -> list[dict]:
     """Merge remote (Supabase) jobs with any session-local ones that fell
     back due to a save failure — this way a job never silently disappears
     just because is_configured() is True but the actual insert failed."""
-    remote = db.fetch_jobs(include_archived=include_archived) if db.is_configured() else []
+    remote = (
+        _session_cached(
+            f"jobs:{include_archived}",
+            lambda: db.fetch_jobs(include_archived=include_archived),
+        )
+        if db.is_configured() else []
+    )
     local = st.session_state.local_jobs
     if not include_archived:
         local = [j for j in local if j.get("status") == "active"]
@@ -144,6 +170,7 @@ def create_job(job: dict) -> tuple[dict, bool]:
     if db.is_configured():
         saved = db.save_job(job)
         if saved:
+            _invalidate_interface_cache("jobs:")
             return saved, True
     new_id = max([j["id"] for j in st.session_state.local_jobs], default=0) + 1
     row = {**job, "id": new_id, "created_at": datetime.now().isoformat(), "status": job.get("status", "active")}
@@ -157,12 +184,14 @@ def update_job_record(job_id, updates: dict) -> None:
     for j in st.session_state.local_jobs:
         if j["id"] == job_id:
             j.update(updates)
+    _invalidate_interface_cache("jobs:")
 
 
 def remove_job(job_id) -> None:
     if db.is_configured():
         db.delete_job(job_id)
     st.session_state.local_jobs = [j for j in st.session_state.local_jobs if j["id"] != job_id]
+    _invalidate_interface_cache("jobs:")
 
 
 # ----------------------------- CANDIDATES storage (Supabase-backed, session-local fallback) -----------------------------
@@ -276,7 +305,11 @@ def style_dashboard_figure(fig, title: str, *, height: int = 320, horizontal_leg
 def get_candidates() -> list[dict]:
     """All persisted, non-cleared candidates, merged from Supabase and any
     session-local fallback rows that failed to save remotely."""
-    remote = [_row_to_candidate(r) for r in db.fetch_screening_history()] if db.is_configured() else []
+    remote_rows = (
+        _session_cached("candidates:active", db.fetch_screening_history)
+        if db.is_configured() else []
+    )
+    remote = [_row_to_candidate(r) for r in remote_rows]
     local = st.session_state.local_candidates
     all_c = remote + local
     return sorted(all_c, key=lambda c: c.get("screened_at") or "", reverse=True)
@@ -300,6 +333,7 @@ def add_candidate_record(candidate: dict, job_role: str, job_details: str, job_i
     if db.is_configured():
         saved = db.save_screening_record(candidate, job_role, job_details, job_id=job_id, source=source)
         if saved:
+            _invalidate_interface_cache("candidates:")
             return _row_to_candidate(saved)
     with _local_candidate_id_lock:
         existing_ids = [int(str(c["id"]).replace("local-", "")) for c in st.session_state.local_candidates]
@@ -334,6 +368,7 @@ def update_candidate_record(candidate_id, updates: dict) -> None:
     for c in st.session_state.local_candidates:
         if c["id"] == candidate_id:
             c.update(updates)
+    _invalidate_interface_cache("candidates:")
 
 
 def clear_all_candidates_record(job_id=None) -> None:
@@ -345,6 +380,7 @@ def clear_all_candidates_record(job_id=None) -> None:
         st.session_state.local_candidates = []
     else:
         st.session_state.local_candidates = [c for c in st.session_state.local_candidates if c.get("job_id") != job_id]
+    _invalidate_interface_cache("candidates:")
 
 
 # ----------------------------- INTERVIEW PREP (shared between Candidates profile & Interview page) -----------------------------
@@ -943,10 +979,10 @@ if not st.session_state.splash_shown:
         #icd-splash-overlay {{
             position: fixed; inset: 0; z-index: 999999;
             background: #FFFFFF; display: flex; align-items: center; justify-content: center;
-            animation: icdSplashFade 0.6s ease 4.9s forwards;
+            animation: icdSplashFade 0.35s ease 0.65s forwards;
         }}
         #icd-splash-overlay video {{
-            width: 100%; height: 100%; object-fit: cover;
+            width: min(720px, 88vw); height: auto; max-height: 70vh; object-fit: contain;
         }}
         @keyframes icdSplashFade {{
             to {{ opacity: 0; visibility: hidden; pointer-events: none; }}
@@ -1035,6 +1071,38 @@ st.markdown("""
     .main > div { padding-top: 0.6rem; }
     .stApp { background: var(--bg); }
     section[data-testid="stMain"] .block-container { padding-top: 1rem; }
+
+    /* ---- Shared workspace polish ---- */
+    div[data-baseweb="input"], div[data-baseweb="select"] > div,
+    div[data-testid="stTextArea"] textarea, div[data-testid="stFileUploaderDropzone"] {
+        border-radius: 12px !important;
+        border-color: #D8E1EC !important;
+        background: #FFFFFF !important;
+        transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"] > div:focus-within,
+    div[data-testid="stTextArea"] textarea:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px rgba(55,138,221,.12) !important;
+    }
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: 6px; padding: 5px; border-radius: 12px; background: #EAF0F7;
+    }
+    div[data-testid="stTabs"] button[role="tab"] {
+        border-radius: 9px; padding: 9px 15px; font-weight: 650;
+    }
+    div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+        background: #FFFFFF; color: var(--primary); box-shadow: var(--shadow-1);
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-color: #DDE5EF !important; border-radius: 16px !important;
+        box-shadow: 0 5px 18px rgba(15,23,42,.045);
+    }
+    div[data-testid="stProgress"] > div > div { border-radius: 999px; }
+    div[data-testid="stAlert"] { border-radius: 13px; }
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
 
     /* ---- Hero banner ---- */
     .hero-box {
@@ -2718,28 +2786,46 @@ if page == "📤 Resume Screening":
         progress = st.progress(0, text="Extracting text from files...")
         total = len(raw_items)
 
-        # Step 1: extract text from every file up front (fast, local, no API calls)
-        file_texts = {}
-        for name, data in raw_items:
-            try:
-                file_texts[name] = extract_text_from_bytes(name, data)
-            except Exception as e:
-                file_texts[name] = None
+        # Step 1: extract and locally validate resumes concurrently. This
+        # overlaps PDF/DOCX parsing instead of making a 20-file batch wait for
+        # 20 sequential extraction passes before the first AI request starts.
+        extraction_results = {}
+        extraction_errors = {}
+
+        def _extract_and_check(name, data):
+            text = extract_text_from_bytes(name, data)
+            return text, heuristic_resume_check(text)
+
+        with ThreadPoolExecutor(max_workers=extraction_worker_count(len(raw_items))) as extraction_pool:
+            extraction_futures = {
+                extraction_pool.submit(_extract_and_check, name, data): name
+                for name, data in raw_items
+            }
+            for extracted_count, future in enumerate(as_completed(extraction_futures), start=1):
+                name = extraction_futures[future]
+                try:
+                    extraction_results[name] = future.result()
+                except Exception as e:
+                    extraction_errors[name] = str(e)
+                progress.progress(
+                    extracted_count / max(len(raw_items), 1) * 0.18,
+                    text=f"Preparing resumes {extracted_count}/{len(raw_items)}...",
+                )
+
+        confirmed_texts = {}
+        for name, _data in raw_items:
+            result = extraction_results.get(name)
+            if not result:
                 st.session_state.candidates.append({
                     "filename": name, "name": name, "raw_text": "",
-                    "profile": {}, "score": {"overall_score": 0, "error": str(e)},
+                    "profile": {}, "score": {
+                        "overall_score": 0,
+                        "error": extraction_errors.get(name, "Could not extract resume text"),
+                    },
                     "screened_at": datetime.now().isoformat(), "status": "Waiting",
                 })
-
-        # Step 1.5: "is this actually a resume?" filter — local heuristic only
-        # (section keywords + contact info), no AI verification call. Anything
-        # that does not look like a resume by the heuristic is excluded locally
-        # so the batch never spends an extra API call on a non-resume file.
-        confirmed_texts = {}
-        for name, text in file_texts.items():
-            if not text:
                 continue
-            check = heuristic_resume_check(text)
+            text, check = result
             if check["looks_like_resume"]:
                 confirmed_texts[name] = text
             else:
@@ -2875,7 +2961,8 @@ if page == "📤 Resume Screening":
                     eta_ph.markdown(f"⏱️ Estimated time remaining: **{_format_eta(avg_per_item * remaining_items)}**")
                 elif remaining_items <= 0:
                     eta_ph.markdown("⏱️ Estimated time remaining: **0s** ✅")
-                progress.progress(completed / max(total, 1), text=f"Screened {completed}/{total}...")
+                overall_progress = 0.18 + 0.82 * (completed / max(total, 1))
+                progress.progress(min(overall_progress, 1.0), text=f"Screened {completed}/{total}...")
 
         # Persist successful results in one request instead of one Supabase
         # round-trip per candidate. If the batch insert fails, fall back to the
@@ -2894,6 +2981,7 @@ if page == "📤 Resume Screening":
                 # them to the same nested candidate shape used everywhere
                 # else before rendering the results.
                 st.session_state.candidates.extend(_row_to_candidate(row) for row in saved_batch)
+                _invalidate_interface_cache("candidates:")
             else:
                 for result in completed_candidates:
                     st.session_state.candidates.append(

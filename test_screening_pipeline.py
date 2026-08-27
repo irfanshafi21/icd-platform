@@ -2,7 +2,10 @@ import os
 import unittest
 from unittest.mock import patch
 
-from screening_pipeline import cache_key, cached_ai_result, content_hash, job_description_hash, worker_count
+from screening_pipeline import (
+    cache_key, cached_ai_result, content_hash, extraction_worker_count,
+    job_description_hash, worker_count,
+)
 
 
 class ScreeningPipelineTests(unittest.TestCase):
@@ -18,6 +21,12 @@ class ScreeningPipelineTests(unittest.TestCase):
             self.assertEqual(worker_count(20), 10)
         with patch.dict(os.environ, {"SCREENING_MAX_WORKERS": "2"}):
             self.assertEqual(worker_count(1), 1)
+
+    def test_extraction_worker_count_is_bounded(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(extraction_worker_count(0), 1)
+            self.assertEqual(extraction_worker_count(3), 3)
+            self.assertEqual(extraction_worker_count(100), 4)
 
     def test_cached_result_restores_unweighted_ai_score(self):
         candidate = {"profile": {"name": "A"}, "score": {
