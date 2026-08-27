@@ -149,7 +149,11 @@ def _render_apply_header(job: dict) -> None:
     industry = html.escape(company.get("industry") or "Careers")
     logo_uri = _logo_data_uri(company.get("logo_base64") or "")
     initial = html.escape((company_name[:1] or "C").upper())
-    logo_html = f'<img src="{logo_uri}" alt="{company_name} logo">' if logo_uri else initial
+    logo_html = (
+        f'<img src="{logo_uri}" alt="{company_name} logo" '
+        'style="width:100%;height:100%;object-fit:contain;padding:5px;display:block;">'
+        if logo_uri else initial
+    )
     title = html.escape(job.get("title") or "Open position")
     deadline = str(job.get("deadline") or "")[:10]
     meta_values = [job.get("location"), job.get("employment_type"), job.get("experience_level"), job.get("salary_range")]

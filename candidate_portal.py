@@ -303,7 +303,7 @@ def _auth_panel() -> dict | None:
                         if session:
                             _write_auth_cookies(session.access_token, session.refresh_token)
                         st.session_state.candidate_otp_sent = False
-                        return {"id": response.user.id, "email": response.user.email}
+                        st.rerun()
                     st.error("That code could not be verified.")
                 except Exception as exc:
                     st.error(f"Incorrect or expired code. ({exc})")
@@ -347,7 +347,11 @@ def _job_card(job: dict, index: int) -> None:
     company_industry = html.escape(company.get("industry") or "Careers")
     logo_uri = _company_logo_data_uri(company.get("logo_base64") or "")
     company_initial = html.escape((company_name[:1] or "C").upper())
-    company_logo = f'<img class="job-logo" src="{logo_uri}" alt="{company_name} logo">' if logo_uri else f'<span class="job-logo-fallback">{company_initial}</span>'
+    company_logo = (
+        f'<img class="job-logo" src="{logo_uri}" alt="{company_name} logo" '
+        'style="width:48px;height:48px;object-fit:contain;padding:5px;display:block;">'
+        if logo_uri else f'<span class="job-logo-fallback">{company_initial}</span>'
+    )
     meta = " · ".join(filter(None, [job.get("location"), job.get("employment_type"), job.get("experience_level")])) or "Role details available"
     chips = "".join(f"<span>{html.escape(str(skill))}</span>" for skill in (job.get("required_skills") or [])[:5])
     st.html(f'<div class="job-card"><div class="job-brand">{company_logo}<div><div class="job-company">{company_name}</div><div class="job-industry">{company_industry}</div></div></div><div class="job-title">{title}</div><div class="job-meta">{html.escape(meta)}</div><div class="job-chips">{chips}</div></div>')
@@ -392,7 +396,10 @@ def render_candidate_portal() -> None:
     if not profile:
         return
     logo = _logo_data_uri()
-    logo_html = f'<img src="{logo}" alt="ICD Platform">' if logo else "ICD Platform"
+    logo_html = (
+        f'<img src="{logo}" alt="ICD Platform" style="width:124px;max-height:48px;object-fit:contain;display:block;">'
+        if logo else "ICD Platform"
+    )
     st.html(f'<div class="portal-nav"><div class="portal-brand">{logo_html}</div><div class="portal-user"><span class="portal-user-dot"></span>{html.escape(profile.get("full_name") or user.get("email") or "Candidate")}</div></div>')
     if st.button(
         "Back to account selection",
