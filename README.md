@@ -543,35 +543,13 @@ streamlit run app.py
 
 <br/>
 
-## 🖥️ Screen Preview
+## 🖥️ Product Preview
 
 <div align="center">
 
-```
-╭──────────────────────────────────────────────────────────────╮
-│  🧠 ICD Platform            🏢 Acme Corp            ⚙️ 👤    │
-├──────────────────────────────────────────────────────────────┤
-│  📊 Dashboard    📥 Screening    🎤 Interviews    📑 Reports  │
-├──────────────────────────────────────────────────────────────┤
-│                                                                │
-│   🏆 Top Candidates — Senior Backend Engineer                 │
-│   ┌────────────────────────────────────────────────────┐     │
-│   │ 🥇  Ananya R.        Score: 94  🟢 Strong Fit        │     │
-│   │     ✓ Python  ✓ AWS  ✓ Kubernetes   ✗ Go            │     │
-│   ├────────────────────────────────────────────────────┤     │
-│   │ 🥈  Rahul M.         Score: 87  🟢 Strong Fit        │     │
-│   │     ✓ Python  ✓ Docker  ✗ AWS   ✗ Kubernetes        │     │
-│   ├────────────────────────────────────────────────────┤     │
-│   │ 🥉  Priya S.         Score: 76  🟠 Good Fit          │     │
-│   │     ✓ Python  ✗ AWS   ✗ Kubernetes   ✗ Go           │     │
-│   └────────────────────────────────────────────────────┘     │
-│                                                                │
-│   💬 Ask the assistant: "who has AWS + 3+ years exp?"         │
-│                                                                │
-╰──────────────────────────────────────────────────────────────╯
-```
+<img src="assets/icd-dashboard-preview.svg" alt="ICD Platform dashboard showing hiring metrics, screening activity, and ranked candidates" width="100%"/>
 
-*A conceptual layout — actual UI renders live via Streamlit with the design tokens above.*
+<sub><b>One workspace for the entire hiring loop:</b> monitor pipeline health, inspect explainable scores, and move the right candidates forward.</sub>
 
 </div>
 
