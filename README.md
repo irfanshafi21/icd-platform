@@ -22,6 +22,16 @@
 
 <br/>
 
+<img src="https://skillicons.dev/icons?i=python,streamlit,supabase,docker,postgres,html&theme=light" />
+
+<br/><br/>
+
+[![GitHub stars](https://img.shields.io/github/stars/irfanshafi21/icd-platform?style=social)](https://github.com/irfanshafi21/icd-platform/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/irfanshafi21/icd-platform?style=social)](https://github.com/irfanshafi21/icd-platform/network)
+[![GitHub last commit](https://img.shields.io/github/last-commit/irfanshafi21/icd-platform?style=flat-square&color=185FA5)](https://github.com/irfanshafi21/icd-platform/commits/main)
+
+<br/>
+
 ### 🧠 AI-powered, multi-tenant recruitment automation
 **Resume parsing → LLM scoring → ranked, explainable shortlist — end to end.**
 
@@ -46,7 +56,48 @@
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=4&section=header" width="100%"/>
+
+<br/>
+
+## 💡 Why ICD Platform?
+
+<table>
+<tr>
+<td width="25%" align="center">
+
+### ⚡
+**Fast**
+Screen hundreds of resumes in minutes, not days
+
+</td>
+<td width="25%" align="center">
+
+### 🔍
+**Explainable**
+Every score comes with a visible skills/experience/education breakdown — no black box
+
+</td>
+<td width="25%" align="center">
+
+### 💸
+**Free-tier native**
+Runs entirely on free LLM quotas (Groq · Cerebras · Gemini) with automatic failover
+
+</td>
+<td width="25%" align="center">
+
+### 🔐
+**Private by design**
+Passwordless per-company access codes + Supabase Row-Level Security
+
+</td>
+</tr>
+</table>
+
+<br/>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -102,7 +153,7 @@
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -171,7 +222,7 @@ flowchart TB
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -277,7 +328,7 @@ sequenceDiagram
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -344,11 +395,31 @@ sequenceDiagram
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
 ## 🗂️ Module Map
+
+<div align="center">
+
+![app.py](https://img.shields.io/badge/🏠-app.py-185FA5?style=flat-square)
+![ai_engine.py](https://img.shields.io/badge/🤖-ai__engine.py-F55036?style=flat-square)
+![resume_parser.py](https://img.shields.io/badge/📄-resume__parser.py-3776AB?style=flat-square)
+![auth.py](https://img.shields.io/badge/🔐-auth.py-22C55E?style=flat-square)
+![db.py](https://img.shields.io/badge/🗄️-db.py-3ECF8E?style=flat-square)
+![components.py](https://img.shields.io/badge/🎨-components.py-5FA8FF?style=flat-square)
+![reports.py](https://img.shields.io/badge/📑-reports.py-F59E0B?style=flat-square)
+![public_portal.py](https://img.shields.io/badge/🔗-public__portal.py-3B82F6?style=flat-square)
+![inbox_intake.py](https://img.shields.io/badge/📧-inbox__intake.py-EF4444?style=flat-square)
+![linkedin_integration.py](https://img.shields.io/badge/💼-linkedin__integration.py-0A66C2?style=flat-square)
+![icd_voice.py](https://img.shields.io/badge/🎤-icd__voice.py-6C4FF6?style=flat-square)
+![email_utils.py](https://img.shields.io/badge/✉️-email__utils.py-64748B?style=flat-square)
+![local_settings.py](https://img.shields.io/badge/⚙️-local__settings.py-94A3B8?style=flat-square)
+
+</div>
+
+<br/>
 
 <table>
 <tr><th>Module</th><th>Responsibility</th></tr>
@@ -369,7 +440,7 @@ sequenceDiagram
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -414,7 +485,7 @@ streamlit run app.py
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -438,7 +509,7 @@ streamlit run app.py
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -455,7 +526,7 @@ streamlit run app.py
 
 <br/>
 
----
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
 
 <br/>
 
@@ -473,5 +544,9 @@ No license specified yet — add one (**MIT** / **Apache-2.0** are common choice
 
 ![Made with Python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg?style=flat-square)
 ![Maintained](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=flat-square)
+
+<br/>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:F1F5F9,100:DBEAFE&height=100&section=footer" width="100%"/>
 
 </div>
