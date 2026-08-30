@@ -56,6 +56,19 @@
 
 <br/>
 
+<div align="center">
+
+[![Features](https://img.shields.io/badge/✨-Features-DBEAFE?style=for-the-badge&labelColor=185FA5)](#-features)
+[![Architecture](https://img.shields.io/badge/🏗️-Architecture-DCFCE7?style=for-the-badge&labelColor=22C55E)](#️-architecture)
+[![Workflow](https://img.shields.io/badge/🔄-Workflow-FEF3E2?style=for-the-badge&labelColor=F59E0B)](#-core-workflow)
+[![Design](https://img.shields.io/badge/🎨-Design-DBEAFE?style=for-the-badge&labelColor=3B82F6)](#-design-system)
+[![Setup](https://img.shields.io/badge/🚀-Setup-FEE2E2?style=for-the-badge&labelColor=EF4444)](#-getting-started)
+[![Roadmap](https://img.shields.io/badge/🗺️-Roadmap-F1F5F9?style=for-the-badge&labelColor=64748B)](#️-roadmap)
+
+</div>
+
+<br/>
+
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=4&section=header" width="100%"/>
 
 <br/>
@@ -527,6 +540,126 @@ streamlit run app.py
 <br/>
 
 <img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
+
+<br/>
+
+## 🖥️ Screen Preview
+
+<div align="center">
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│  🧠 ICD Platform            🏢 Acme Corp            ⚙️ 👤    │
+├──────────────────────────────────────────────────────────────┤
+│  📊 Dashboard    📥 Screening    🎤 Interviews    📑 Reports  │
+├──────────────────────────────────────────────────────────────┤
+│                                                                │
+│   🏆 Top Candidates — Senior Backend Engineer                 │
+│   ┌────────────────────────────────────────────────────┐     │
+│   │ 🥇  Ananya R.        Score: 94  🟢 Strong Fit        │     │
+│   │     ✓ Python  ✓ AWS  ✓ Kubernetes   ✗ Go            │     │
+│   ├────────────────────────────────────────────────────┤     │
+│   │ 🥈  Rahul M.         Score: 87  🟢 Strong Fit        │     │
+│   │     ✓ Python  ✓ Docker  ✗ AWS   ✗ Kubernetes        │     │
+│   ├────────────────────────────────────────────────────┤     │
+│   │ 🥉  Priya S.         Score: 76  🟠 Good Fit          │     │
+│   │     ✓ Python  ✗ AWS   ✗ Kubernetes   ✗ Go           │     │
+│   └────────────────────────────────────────────────────┘     │
+│                                                                │
+│   💬 Ask the assistant: "who has AWS + 3+ years exp?"         │
+│                                                                │
+╰──────────────────────────────────────────────────────────────╯
+```
+
+*A conceptual layout — actual UI renders live via Streamlit with the design tokens above.*
+
+</div>
+
+<br/>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
+
+<br/>
+
+## ⚖️ ICD Platform vs. Traditional ATS
+
+<div align="center">
+
+| Capability | 🧠 ICD Platform | 📋 Traditional ATS |
+|:---|:---:|:---:|
+| AI-based semantic scoring | ✅ | ⚠️ Keyword match only |
+| Explainable skill/gap breakdown | ✅ | ❌ |
+| Free-tier LLM stack (no vendor lock-in) | ✅ | ❌ |
+| Multi-provider auto-failover | ✅ | ❌ |
+| Public no-login apply portal | ✅ | ⚠️ Varies |
+| Email-inbox auto-intake | ✅ | ⚠️ Enterprise tier only |
+| AI interview question generation | ✅ | ❌ |
+| Prompt-grounded chat assistant | ✅ | ❌ |
+| Self-hostable / deployable in a day | ✅ | ❌ |
+| Passwordless per-tenant access | ✅ | ⚠️ Varies |
+
+</div>
+
+<br/>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
+
+<br/>
+
+## 🗺️ Roadmap
+
+- [x] Multi-provider LLM failover with quota-aware key rotation
+- [x] Public apply portal + QR code generation
+- [x] IMAP inbox auto-intake
+- [x] LinkedIn feed job-posting
+- [x] Browser-based voice assistant
+- [ ] SMS/WhatsApp candidate notifications
+- [ ] Bulk job-description templates library
+- [ ] Analytics: time-to-hire, source-of-hire tracking
+- [ ] Role-based sub-accounts within a company tenant
+- [ ] Native LinkedIn Jobs board listing (pending Talent Solutions access)
+
+<br/>
+
+<img src="https://capsule-render.vercel.app/api?type=rect&color=0:DBEAFE,100:F1F5F9&height=3&section=header" width="100%"/>
+
+<br/>
+
+## ❓ FAQ
+
+<details>
+<summary><b>Does this need a paid API key to run?</b></summary>
+<br/>
+No — Groq, Cerebras, and Gemini all offer free tiers sufficient to run and demo the platform. Configuring more than one enables automatic failover.
+</details>
+
+<details>
+<summary><b>Can scanned or image-only resumes be screened?</b></summary>
+<br/>
+Not in the current fast-build configuration. OCR/Tesseract was intentionally removed to keep startup and screening time low — only text-based PDF and DOCX are supported.
+</details>
+
+<details>
+<summary><b>How is one company's data kept separate from another's?</b></summary>
+<br/>
+Every company gets a hidden, auto-generated Supabase Auth account behind the scenes. Supabase Row-Level Security policies scope every read/write to that account, so companies never see each other's candidates, jobs, or reports — even though the human-facing login is just a 4-digit code.
+</details>
+
+<details>
+<summary><b>Does the chat assistant use RAG or a vector database?</b></summary>
+<br/>
+No. It's prompt-grounded directly on the currently fetched candidate pool for the active job — simpler, cheaper, and sufficient at the scale this app operates at.
+</details>
+
+<details>
+<summary><b>Can this post jobs directly to LinkedIn's Jobs board?</b></summary>
+<br/>
+No — it posts a normal update to a connected personal LinkedIn feed. A listing on LinkedIn's actual Jobs board requires invite-only Talent Solutions partner access, which this project doesn't have.
+</details>
+
+<br/>
+
+---
 
 <br/>
 
