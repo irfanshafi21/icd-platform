@@ -1,6 +1,8 @@
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Poppins&size=32&duration=3000&pause=1000&color=185FA5&center=true&vCenter=true&width=700&lines=Intelligent+Candidate+Discovery;AI-Powered+Resume+Screening;From+Resume+to+Shortlist+in+Seconds" alt="Typing SVG" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:DBEAFE,100:F1F5F9&height=180&section=header&text=ICD%20Platform&fontSize=42&fontColor=185FA5&fontAlignY=40&desc=Intelligent%20Candidate%20Discovery&descAlignY=62&descSize=18&descColor=3E484F" width="100%"/>
+
+<img src="https://readme-typing-svg.demolab.com?font=Poppins&size=26&duration=3000&pause=1000&color=185FA5&center=true&vCenter=true&width=700&lines=AI-Powered+Resume+Screening;From+Resume+to+Shortlist+in+Seconds;Explainable+%C2%B7+Multi-Tenant+%C2%B7+Free-Tier+LLMs" alt="Typing SVG" />
 
 <br/>
 
@@ -293,19 +295,22 @@ sequenceDiagram
 
 <table>
 <tr><th>Swatch</th><th>Token</th><th>Hex</th><th>Used For</th></tr>
-<tr><td>![#185FA5](https://img.shields.io/badge/-%20-185FA5?style=flat-square)</td><td><code>primary</code></td><td><code>#185FA5</code></td><td>Primary actions, headers, brand accents</td></tr>
-<tr><td>![#5FA8FF](https://img.shields.io/badge/-%20-5FA8FF?style=flat-square)</td><td><code>primary_light</code></td><td><code>#5FA8FF</code></td><td>Hover states, secondary highlights</td></tr>
-<tr><td>![#22C55E](https://img.shields.io/badge/-%20-22C55E?style=flat-square)</td><td><code>success</code></td><td><code>#22C55E</code></td><td>Selected · Completed · Active · Strong Fit</td></tr>
-<tr><td>![#DCFCE7](https://img.shields.io/badge/-%20-DCFCE7?style=flat-square)</td><td><code>success_bg</code></td><td><code>#DCFCE7</code></td><td>Success chip/badge background</td></tr>
-<tr><td>![#F59E0B](https://img.shields.io/badge/-%20-F59E0B?style=flat-square)</td><td><code>warning</code></td><td><code>#F59E0B</code></td><td>Waiting · Pending · Good Fit</td></tr>
-<tr><td>![#FEF3E2](https://img.shields.io/badge/-%20-FEF3E2?style=flat-square)</td><td><code>warning_bg</code></td><td><code>#FEF3E2</code></td><td>Warning chip/badge background</td></tr>
-<tr><td>![#EF4444](https://img.shields.io/badge/-%20-EF4444?style=flat-square)</td><td><code>danger</code></td><td><code>#EF4444</code></td><td>Rejected · Cancelled · Weak Fit</td></tr>
-<tr><td>![#FEE2E2](https://img.shields.io/badge/-%20-FEE2E2?style=flat-square)</td><td><code>danger_bg</code></td><td><code>#FEE2E2</code></td><td>Danger chip/badge background</td></tr>
-<tr><td>![#3B82F6](https://img.shields.io/badge/-%20-3B82F6?style=flat-square)</td><td><code>info</code></td><td><code>#3B82F6</code></td><td>Scheduled · informational states</td></tr>
-<tr><td>![#DBEAFE](https://img.shields.io/badge/-%20-DBEAFE?style=flat-square)</td><td><code>info_bg</code></td><td><code>#DBEAFE</code></td><td>Info chip/badge background</td></tr>
-<tr><td>![#F1F5F9](https://img.shields.io/badge/-%20-F1F5F9?style=flat-square)</td><td><code>neutral_bg</code></td><td><code>#F1F5F9</code></td><td>Neutral surfaces, Archived state</td></tr>
-<tr><td>![#3E484F](https://img.shields.io/badge/-%20-3E484F?style=flat-square)</td><td><code>neutral_text</code></td><td><code>#3E484F</code></td><td>Body text on neutral surfaces</td></tr>
+<tr><td bgcolor="#185FA5">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>primary</code></td><td><code>#185FA5</code></td><td>Primary actions, headers, brand accents</td></tr>
+<tr><td bgcolor="#5FA8FF">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>primary_light</code></td><td><code>#5FA8FF</code></td><td>Hover states, secondary highlights</td></tr>
+<tr><td bgcolor="#22C55E">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>success</code></td><td><code>#22C55E</code></td><td>Selected · Completed · Active · Strong Fit</td></tr>
+<tr><td bgcolor="#DCFCE7">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>success_bg</code></td><td><code>#DCFCE7</code></td><td>Success chip/badge background</td></tr>
+<tr><td bgcolor="#F59E0B">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>warning</code></td><td><code>#F59E0B</code></td><td>Waiting · Pending · Good Fit</td></tr>
+<tr><td bgcolor="#FEF3E2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>warning_bg</code></td><td><code>#FEF3E2</code></td><td>Warning chip/badge background</td></tr>
+<tr><td bgcolor="#EF4444">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>danger</code></td><td><code>#EF4444</code></td><td>Rejected · Cancelled · Weak Fit</td></tr>
+<tr><td bgcolor="#FEE2E2">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>danger_bg</code></td><td><code>#FEE2E2</code></td><td>Danger chip/badge background</td></tr>
+<tr><td bgcolor="#3B82F6">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>info</code></td><td><code>#3B82F6</code></td><td>Scheduled · informational states</td></tr>
+<tr><td bgcolor="#DBEAFE">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>info_bg</code></td><td><code>#DBEAFE</code></td><td>Info chip/badge background</td></tr>
+<tr><td bgcolor="#F1F5F9">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>neutral_bg</code></td><td><code>#F1F5F9</code></td><td>Neutral surfaces, Archived state</td></tr>
+<tr><td bgcolor="#3E484F">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td><code>neutral_text</code></td><td><code>#3E484F</code></td><td>Body text on neutral surfaces</td></tr>
 </table>
+
+> [!NOTE]
+> GitHub strips custom page-level CSS/backgrounds from README files for security, so a full-page background color isn't achievable in a `.md` file. The swatches above use each table cell's native `bgcolor` attribute instead — the closest GitHub-safe equivalent.
 
 <br/>
 
@@ -464,7 +469,7 @@ No license specified yet — add one (**MIT** / **Apache-2.0** are common choice
 
 <br/>
 
-**Built by Mohamed Irfan Shafi using Streamlit, Supabase, and free-tier LLMs**
+**Built with ❤️ using Streamlit, Supabase, and free-tier LLMs**
 
 ![Made with Python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg?style=flat-square)
 ![Maintained](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=flat-square)
