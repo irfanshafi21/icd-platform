@@ -20,6 +20,114 @@ ICD Platform takes a stack of resumes and a job description and returns a ranked
 | Email | SMTP or Google Apps Script, with branded HTML templates |
 | Deployment | Docker on Render |
 
+### System architecture
+
+```mermaid
+flowchart TB
+    subgraph Sourcing["Sourcing Channels"]
+        A1[Manual Upload]
+        A2["Public Portal<br/>(link / QR code)"]
+        A3["Email Inbox<br/>(IMAP intake)"]
+    end
+
+    subgraph Core["Core Pipeline"]
+        B1["resume_parser.py<br/>extract text + local heuristics"]
+        B2["ai_engine.py<br/>AI parse + score + ATS analysis"]
+        B3["db.py<br/>Supabase (RLS, per-company)"]
+    end
+
+    subgraph App["Application Layer"]
+        C1["app.py<br/>Dashboard, Ranking, Chat Assistant"]
+        C2["Interview Prep<br/>AI-generated questions"]
+        C3["reports.py<br/>PDF / Excel / CSV"]
+    end
+
+    subgraph Out["Outbound"]
+        D1["email_utils.py<br/>OTP + notifications"]
+        D2["linkedin_integration.py<br/>post to feed"]
+    end
+
+    A1 --> B1
+    A2 --> B1
+    A3 --> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --> C1
+    C1 --> C2
+    C1 --> C3
+    C1 -.-> D1
+    C1 -.-> D2
+
+    style Sourcing fill:#DBEAFE,stroke:#3B82F6
+    style Core fill:#DCFCE7,stroke:#22C55E
+    style App fill:#F1F5F9,stroke:#185FA5
+    style Out fill:#FEF3E2,stroke:#F59E0B
+```
+
+### End-to-end sequence
+
+```mermaid
+sequenceDiagram
+    participant Candidate
+    participant Portal as public_portal.py
+    participant Parser as resume_parser.py
+    participant AI as ai_engine.py
+    participant DB as db.py (Supabase)
+    participant Recruiter
+    participant Reports as reports.py
+
+    Candidate->>Portal: Apply (resume + OTP verify)
+    Portal->>Parser: raw file bytes
+    Parser->>Parser: extract_text_from_bytes()
+    Parser->>Parser: heuristic_resume_check()
+    Parser->>AI: cleaned resume text
+    AI->>AI: parse_resume_with_ai()
+    AI->>AI: score_candidate()
+    AI->>DB: save_screening_record()
+    Recruiter->>DB: fetch_screening_history()
+    DB-->>Recruiter: ranked candidate list
+    Recruiter->>AI: generate_interview_questions()
+    Recruiter->>Reports: build_shortlist_report_pdf()
+    Reports-->>Recruiter: downloadable PDF/Excel
+```
+
+### Design system
+
+The UI follows a single, centralized token set (`components.py`) so every page — Screening, Dashboard, Interview Prep, Reports — renders status and feedback consistently.
+
+**Color palette**
+
+| Token | Hex | Usage |
+|---|---|---|
+| 🔵 `primary` | `#185FA5` | Primary actions, headers, brand accents |
+| 🔵 `primary_light` | `#5FA8FF` | Hover states, secondary highlights |
+| 🟢 `success` | `#22C55E` | Selected / Completed / Active / Strong Fit |
+| 🟢 `success_bg` | `#DCFCE7` | Success chip/badge background |
+| 🟠 `warning` | `#F59E0B` | Waiting / Pending / Good Fit |
+| 🟠 `warning_bg` | `#FEF3E2` | Warning chip/badge background |
+| 🔴 `danger` | `#EF4444` | Rejected / Cancelled / Weak Fit |
+| 🔴 `danger_bg` | `#FEE2E2` | Danger chip/badge background |
+| 🔵 `info` | `#3B82F6` | Scheduled / informational states |
+| 🔵 `info_bg` | `#DBEAFE` | Info chip/badge background |
+| ⚪ `neutral_bg` | `#F1F5F9` | Neutral surfaces, Archived state |
+| ⚪ `neutral_text` | `#3E484F` | Body text on neutral surfaces |
+
+**Status → color mapping** (`STATUS_VARIANTS` in `components.py`) ensures the same label always renders identically everywhere in the app:
+
+```
+Selected, Completed, Active, Strong Fit  → success (green)
+Rejected, Cancelled, Weak Fit            → danger (red)
+Scheduled                                → info (blue)
+Good Fit, Waiting                        → warning (amber)
+Pending, Archived                        → neutral (grey)
+```
+
+**UI conventions**
+- Buttons: rounded 8px corners, subtle scale-down on click, visible focus outline (`#378ADD`) for accessibility
+- Status chips/badges: consistent pill shape across every page, colored per `STATUS_VARIANTS`
+- Stat cards: icon + label + value + optional sub-text, using `primary` as the default accent color
+- All shared markup lives in `components.py` — no raw HTML/CSS duplicated across pages
+
 ### Module map
 
 ```
