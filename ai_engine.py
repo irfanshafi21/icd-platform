@@ -23,7 +23,7 @@ Free keys:
   GROQ_API_KEY     — free at https://console.groq.com
   CEREBRAS_API_KEY — free at https://cloud.cerebras.ai
   GEMINI_API_KEY   — free at https://aistudio.google.com
-Set them in st.secrets (.streamlit/secrets.toml) or as environment variables.
+Set them in the deployment environment or the local secrets.toml file.
 """
 
 import os
@@ -34,9 +34,20 @@ import random
 import threading
 import itertools
 import logging
+import tomllib
+from pathlib import Path
 from functools import lru_cache
 from collections import deque
-import streamlit as st
+
+_LOCAL_SECRETS = {}
+for _secret_path in (Path(__file__).resolve().parent / ".streamlit" / "secrets.toml",
+                     Path(__file__).resolve().parent / "secrets.toml"):
+    if _secret_path.exists():
+        try:
+            with _secret_path.open("rb") as _secret_file:
+                _LOCAL_SECRETS.update(tomllib.load(_secret_file))
+        except (OSError, tomllib.TOMLDecodeError):
+            pass
 
 # The google.genai SDK logs an informational notice ("Direct use of automatic
 # function calling (AFC) in Models.generate_content is not recommended...")
@@ -68,20 +79,7 @@ def _gemini_client(api_key: str):
 # ----------------------------- API KEY HELPERS -----------------------------
 
 def _get_secret(name: str) -> str | None:
-    # A session-level override set on the Settings page takes priority —
-    # lets a person test/swap a key for this session without touching files.
-    try:
-        override = st.session_state.get(f"override_{name}")
-        if override:
-            return override
-    except Exception:
-        pass
-    try:
-        if name in st.secrets:
-            return st.secrets[name]
-    except Exception:
-        pass
-    return os.environ.get(name)
+    return os.environ.get(name) or _LOCAL_SECRETS.get(name)
 
 
 def _collect_keys(base_name: str) -> list[str]:

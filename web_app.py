@@ -9,6 +9,7 @@ tokens are never shared between recruiters.
 from __future__ import annotations
 
 import json
+import base64
 import os
 import secrets
 import threading
@@ -53,7 +54,15 @@ class RecruiterSession:
         self.last_seen = time.monotonic()
 
 
+class CandidateSession:
+    def __init__(self, client: Client, user: Any):
+        self.client = client
+        self.user = user
+        self.last_seen = time.monotonic()
+
+
 _sessions: dict[str, RecruiterSession] = {}
+_candidate_sessions: dict[str, CandidateSession] = {}
 _sessions_lock = threading.Lock()
 SESSION_TTL = 60 * 60 * 12
 
@@ -72,6 +81,18 @@ def _session(icd_session: str | None = Cookie(default=None)) -> RecruiterSession
         if not session or time.monotonic() - session.last_seen > SESSION_TTL:
             _sessions.pop(icd_session, None)
             raise HTTPException(401, "Recruiter session expired")
+        session.last_seen = time.monotonic()
+        return session
+
+
+def _candidate_session(icd_candidate_session: str | None = Cookie(default=None)) -> CandidateSession:
+    if not icd_candidate_session:
+        raise HTTPException(401, "Candidate login required")
+    with _sessions_lock:
+        session = _candidate_sessions.get(icd_candidate_session)
+        if not session or time.monotonic() - session.last_seen > SESSION_TTL:
+            _candidate_sessions.pop(icd_candidate_session, None)
+            raise HTTPException(401, "Candidate session expired")
         session.last_seen = time.monotonic()
         return session
 
@@ -132,6 +153,130 @@ def organizations(search: str = ""):
     return query.limit(50).execute().data or []
 
 
+def _company_branding(client: Client, company_ids: set[str]) -> dict[str, dict[str, Any]]:
+    if not company_ids:
+        return {}
+    rows = client.table("companies_public").select("*").in_("id", list(company_ids)).execute().data or []
+    return {str(row["id"]): row for row in rows}
+
+
+@app.get("/api/public/jobs")
+def public_jobs(search: str = ""):
+    client = _public_client()
+    query = (client.table("jobs").select("*").eq("status", "active")
+             .eq("published_to_portal", True).order("created_at", desc=True))
+    if search.strip():
+        query = query.ilike("title", f"%{search.strip()}%")
+    jobs = query.limit(200).execute().data or []
+    brands = _company_branding(client, {str(j.get("company_id")) for j in jobs if j.get("company_id")})
+    return [{**job, "company": brands.get(str(job.get("company_id")), {})} for job in jobs]
+
+
+@app.get("/api/public/jobs/{job_id}")
+def public_job(job_id: int):
+    client = _public_client()
+    rows = (client.table("jobs").select("*").eq("id", job_id).eq("status", "active")
+            .eq("published_to_portal", True).limit(1).execute().data or [])
+    if not rows:
+        raise HTTPException(404, "This job is no longer available")
+    job = rows[0]
+    brands = _company_branding(client, {str(job.get("company_id"))})
+    return {**job, "company": brands.get(str(job.get("company_id")), {})}
+
+
+class CandidateOtp(BaseModel):
+    email: str
+
+
+@app.post("/api/candidate/send-otp")
+def candidate_send_otp(payload: CandidateOtp):
+    email = payload.email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(400, "Enter a valid email address")
+    _public_client().auth.sign_in_with_otp({"email": email})
+    return {"ok": True, "email": email}
+
+
+class CandidateVerify(CandidateOtp):
+    token: str
+
+
+@app.post("/api/candidate/verify-otp")
+def candidate_verify_otp(payload: CandidateVerify, response: Response):
+    client = _public_client()
+    verified = client.auth.verify_otp({
+        "email": payload.email.strip().lower(), "token": payload.token.strip(), "type": "email"
+    })
+    if not verified.user:
+        raise HTTPException(401, "The verification code is incorrect or expired")
+    session_id = secrets.token_urlsafe(32)
+    with _sessions_lock:
+        _candidate_sessions[session_id] = CandidateSession(client, verified.user)
+    response.set_cookie("icd_candidate_session", session_id, httponly=True,
+                        secure=bool(CONFIG.get("RENDER")),
+                        samesite="lax", max_age=SESSION_TTL)
+    return {"ok": True}
+
+
+@app.delete("/api/candidate/session")
+def candidate_logout(response: Response, icd_candidate_session: str | None = Cookie(default=None)):
+    if icd_candidate_session:
+        with _sessions_lock:
+            _candidate_sessions.pop(icd_candidate_session, None)
+    response.delete_cookie("icd_candidate_session")
+    return {"ok": True}
+
+
+@app.get("/api/candidate/me")
+def candidate_me(session: CandidateSession = Depends(_candidate_session)):
+    user_id = str(session.user.id)
+    profiles = session.client.table("candidate_profiles").select("*").eq("user_id", user_id).limit(1).execute().data or []
+    applications = (session.client.table("public_applications")
+                    .select("id,status,applied_at,resume_filename,job_id,jobs(title,location,employment_type,company_id)")
+                    .eq("candidate_user_id", user_id).order("applied_at", desc=True).execute().data or [])
+    jobs = public_jobs()
+    return {"email": getattr(session.user, "email", ""), "profile": profiles[0] if profiles else None,
+            "applications": applications, "jobs": jobs}
+
+
+class CandidateProfile(BaseModel):
+    full_name: str
+    phone: str = ""
+
+
+@app.put("/api/candidate/profile")
+def candidate_profile(payload: CandidateProfile, session: CandidateSession = Depends(_candidate_session)):
+    row = {"user_id": str(session.user.id), "full_name": payload.full_name.strip(),
+           "email": getattr(session.user, "email", ""), "phone": payload.phone.strip()}
+    saved = session.client.table("candidate_profiles").upsert(row, on_conflict="user_id").execute().data or []
+    return saved[0] if saved else row
+
+
+@app.post("/api/candidate/applications")
+async def candidate_apply(job_id: int = Form(...), full_name: str = Form(...), phone: str = Form(""),
+                          resume: UploadFile = File(...), session: CandidateSession = Depends(_candidate_session)):
+    job = public_job(job_id)
+    content = await resume.read()
+    if not content or len(content) > 20 * 1024 * 1024:
+        raise HTTPException(400, "Upload a resume smaller than 20 MB")
+    filename = resume.filename or "resume.pdf"
+    if Path(filename).suffix.lower() not in {".pdf", ".docx"}:
+        raise HTTPException(400, "Only PDF and DOCX resumes are supported")
+    user_id = str(session.user.id)
+    existing = (session.client.table("public_applications").select("id").eq("candidate_user_id", user_id)
+                .eq("job_id", job_id).limit(1).execute().data or [])
+    if existing:
+        raise HTTPException(409, "You have already applied for this job")
+    row = {"job_id": job_id, "company_id": job.get("company_id"), "candidate_user_id": user_id,
+           "applicant_name": full_name.strip(), "applicant_email": getattr(session.user, "email", ""),
+           "applicant_phone": phone.strip(), "resume_filename": filename,
+           "resume_base64": base64.b64encode(content).decode("ascii"), "status": "Submitted"}
+    saved = session.client.table("public_applications").insert(row).execute().data or []
+    if not saved:
+        raise HTTPException(500, "The application could not be submitted")
+    return {"ok": True, "application": saved[0]}
+
+
 class RecruiterLogin(BaseModel):
     company_id: str
     access_code: str
@@ -160,7 +305,8 @@ def recruiter_login(payload: RecruiterLogin, response: Response):
     with _sessions_lock:
         _sessions[session_id] = RecruiterSession(client, company_rows[0])
     response.set_cookie(
-        "icd_session", session_id, httponly=True, secure=True, samesite="lax", max_age=SESSION_TTL
+        "icd_session", session_id, httponly=True, secure=bool(CONFIG.get("RENDER")),
+        samesite="lax", max_age=SESSION_TTL
     )
     return {"company": company_rows[0]}
 
