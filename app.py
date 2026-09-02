@@ -511,7 +511,10 @@ def show_candidate_details_dialog(candidate: dict) -> None:
 # ----------------------------- INTERVIEWS storage (Supabase-backed, session-local fallback) -----------------------------
 
 def get_interviews() -> list[dict]:
-    remote = db.fetch_interviews() if db.is_configured() else []
+    remote = (
+        _session_cached("interviews:active", db.fetch_interviews)
+        if db.is_configured() else []
+    )
     all_interviews = remote + st.session_state.local_interviews
     return sorted(all_interviews, key=lambda i: i.get("scheduled_at", ""))
 
@@ -520,10 +523,12 @@ def create_interview(interview: dict) -> tuple[dict, bool]:
     if db.is_configured():
         saved = db.save_interview(interview)
         if saved:
+            _invalidate_interface_cache("interviews:")
             return saved, True
     new_id = max([i["id"] for i in st.session_state.local_interviews], default=0) + 1
     row = {**interview, "id": new_id}
     st.session_state.local_interviews.append(row)
+    _invalidate_interface_cache("interviews:")
     return row, False
 
 
@@ -675,6 +680,7 @@ def update_interview_record(interview_id, updates: dict) -> bool:
     for i in st.session_state.local_interviews:
         if i["id"] == interview_id:
             i.update(updates)
+    _invalidate_interface_cache("interviews:")
     return ok
 
 
@@ -682,6 +688,7 @@ def remove_interview(interview_id) -> None:
     if db.is_configured():
         db.delete_interview(interview_id)
     st.session_state.local_interviews = [i for i in st.session_state.local_interviews if i["id"] != interview_id]
+    _invalidate_interface_cache("interviews:")
 
 
 # ----------------------------- PUBLIC APPLY LINK / QR / ZIP HELPERS -----------------------------
@@ -981,43 +988,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ----------------------------- SPLASH SCREEN (logo video, once per browser session) -----------------------------
-@st.cache_data
-def _load_splash_video_b64():
-    video_path = os.path.join(os.path.dirname(__file__), "assets", "logo_video.mp4")
-    try:
-        with open(video_path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
-    except FileNotFoundError:
-        return None
-
-if "splash_shown" not in st.session_state:
-    st.session_state.splash_shown = False
-
-if not st.session_state.splash_shown:
-    _splash_b64 = _load_splash_video_b64()
-    if _splash_b64:
-        st.markdown(f"""
-        <style>
-        #icd-splash-overlay {{
-            position: fixed; inset: 0; z-index: 999999;
-            background: #FFFFFF; display: flex; align-items: center; justify-content: center;
-            animation: icdSplashFade 0.45s ease 5s forwards;
-        }}
-        #icd-splash-overlay video {{
-            width: 100vw; height: 100vh; object-fit: cover;
-        }}
-        @keyframes icdSplashFade {{
-            to {{ opacity: 0; visibility: hidden; pointer-events: none; }}
-        }}
-        </style>
-        <div id="icd-splash-overlay">
-            <video autoplay muted playsinline>
-                <source src="data:video/mp4;base64,{_splash_b64}" type="video/mp4">
-            </video>
-        </div>
-        """, unsafe_allow_html=True)
-    st.session_state.splash_shown = True
+# The former splash screen embedded a 1.3 MB video and deliberately blocked
+# every new session for five seconds. The branded landing page below now acts
+# as the welcome experience, so the useful interface can paint immediately.
 
 # ----------------------------- STYLING -----------------------------
 st.markdown("""
@@ -1612,6 +1585,11 @@ components.inject_design_system_css()
 # profile exists, auth_user/auth_company stay in session_state for the rest
 # of the app (and future stages) to use.
 def _render_auth_gate():
+    # A stable explicit welcome route is useful for returning to the landing
+    # page and for lightweight previews without touching any backend service.
+    if "welcome" in st.query_params:
+        _render_account_type_gate()
+        st.stop()
     if not db.is_configured():
         return  # no backend configured — skip auth entirely, behave as before
 
@@ -1647,13 +1625,13 @@ _ACCOUNT_GATE_CSS = """
     [data-testid="stHeader"] { background: transparent !important; }
     [data-testid="stMainBlockContainer"] {
         max-width: 1120px !important;
-        padding-top: 2.4rem !important;
+        padding-top: 1.35rem !important;
         padding-bottom: 2rem !important;
     }
     .account-kicker {
         display:flex;width:max-content;align-items:center;justify-content:center;gap:8px;padding:7px 13px;border-radius:999px;
         color:#075985;background:#E0F2FE;border:1px solid #BAE6FD;font-size:.74rem;
-        font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin:0 auto 16px;
+        font-weight:800;letter-spacing:.11em;text-transform:uppercase;margin:0 auto 10px;
     }
     .st-key-account_gate_intro,
     .st-key-account_gate_intro > div,
@@ -1666,16 +1644,20 @@ _ACCOUNT_GATE_CSS = """
         margin:0;color:#0F1D38;font-family:'Plus Jakarta Sans',sans-serif;font-size:clamp(2.1rem,4.5vw,3.55rem);
         font-weight:850;letter-spacing:-.045em;line-height:1.06;text-align:center;
     }
+    .account-logo {width:132px;height:auto;display:block;margin:0 auto 9px;}
+    .account-subtitle {max-width:720px;margin:10px auto 0;color:#61708A;font-size:.94rem;line-height:1.58;text-align:center;}
+    .account-proof {display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0 0;}
+    .account-proof span {padding:7px 12px;border:1px solid #D9E7F5;border-radius:999px;background:rgba(255,255,255,.72);color:#36506E;font-size:.75rem;font-weight:720;}
     .account-role-icon {
-        width:58px;height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;
-        font-family:'Material Symbols Rounded';font-size:29px;margin-bottom:24px;
+        width:52px;height:52px;border-radius:15px;display:flex;align-items:center;justify-content:center;
+        font-family:'Material Symbols Rounded';font-size:27px;margin-bottom:16px;
     }
     .candidate-icon {background:linear-gradient(145deg,#DBEAFE,#E0F2FE);color:#1565C0;box-shadow:0 9px 22px rgba(37,99,235,.13);}
     .recruiter-icon {background:linear-gradient(145deg,#EDE9FE,#E0E7FF);color:#5B3CC4;box-shadow:0 9px 22px rgba(91,60,196,.13);}
     .account-role-label {font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:9px;}
     .candidate-label {color:#1769AA}.recruiter-label {color:#6547C7}
     .account-role-title {font-size:1.7rem;font-weight:850;color:#14213B;letter-spacing:-.025em;margin-bottom:11px;}
-    .account-role-copy {font-size:.94rem;color:#64748B;line-height:1.62;min-height:76px;margin-bottom:19px;}
+    .account-role-copy {font-size:.9rem;color:#64748B;line-height:1.55;min-height:61px;margin-bottom:14px;}
     .account-feature-list {display:grid;gap:10px;margin-bottom:24px;}
     .account-feature {display:flex;align-items:center;gap:9px;color:#34435D;font-size:.84rem;font-weight:650;}
     .account-feature-check {
@@ -1684,9 +1666,9 @@ _ACCOUNT_GATE_CSS = """
     }
     .st-key-account_candidate_card,
     .st-key-account_recruiter_card {
-        border-radius:24px !important;padding:27px 28px 25px !important;background:rgba(255,255,255,.91) !important;
+        border-radius:24px !important;padding:21px 25px 21px !important;background:rgba(255,255,255,.91) !important;
         border:1px solid rgba(203,213,225,.82) !important;box-shadow:0 16px 45px rgba(15,23,42,.075) !important;
-        min-height:410px;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+        min-height:340px;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
         backdrop-filter:blur(12px);
     }
     .st-key-account_candidate_card {border-top:4px solid #2F80ED !important;}
@@ -1711,10 +1693,28 @@ _ACCOUNT_GATE_CSS = """
     }
     .account-trust-item {display:flex;align-items:center;gap:7px;}
     .account-trust-item span {font-family:'Material Symbols Rounded';font-size:18px;color:#2482C4;}
+    .landing-section {margin:58px 0 22px;text-align:center;}
+    .landing-eyebrow {color:#2475B9;font-size:.72rem;font-weight:850;letter-spacing:.13em;text-transform:uppercase;margin-bottom:9px;}
+    .landing-title {color:#14213B;font-size:clamp(1.65rem,3vw,2.3rem);font-weight:850;letter-spacing:-.035em;line-height:1.15;}
+    .landing-copy {max-width:680px;margin:11px auto 0;color:#64748B;font-size:.94rem;line-height:1.65;}
+    .landing-feature-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 12px;}
+    .landing-feature {padding:22px;text-align:left;border:1px solid #DFE8F2;border-radius:18px;background:rgba(255,255,255,.82);box-shadow:0 9px 28px rgba(15,35,65,.045);}
+    .landing-feature-icon {width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#EAF4FF;color:#1769AA;font-family:'Material Symbols Rounded';font-size:23px;margin-bottom:15px;}
+    .landing-feature-title {color:#17243E;font-size:.98rem;font-weight:800;margin-bottom:7px;}
+    .landing-feature-copy {color:#69778C;font-size:.8rem;line-height:1.55;}
+    .landing-flow {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 40px;}
+    .landing-step {position:relative;padding:18px 16px;border-radius:16px;background:#F4F8FD;border:1px solid #E0EAF4;text-align:left;}
+    .landing-step-number {color:#2684D8;font-size:.7rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
+    .landing-step strong {display:block;color:#20304B;font-size:.88rem;margin-bottom:5px;}
+    .landing-step p {margin:0;color:#738096;font-size:.75rem;line-height:1.45;}
+    .landing-footer {margin:34px 0 5px;padding:21px 24px;border-radius:18px;background:linear-gradient(135deg,#0C315A,#1769AA);color:#E7F3FF;display:flex;align-items:center;justify-content:space-between;gap:20px;}
+    .landing-footer strong {display:block;color:#fff;font-size:1rem;margin-bottom:3px;}.landing-footer span{font-size:.78rem;opacity:.85;}
+    .landing-footer-badge {white-space:nowrap;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.13);font-size:.72rem!important;font-weight:750;}
     @media (max-width: 640px) {
         [data-testid="stMainBlockContainer"] {padding-top:1.1rem !important;padding-left:1rem !important;padding-right:1rem !important;}
         .st-key-account_candidate_card,.st-key-account_recruiter_card {min-height:auto;padding:23px 21px !important;}
         .account-role-copy {min-height:auto;}
+        .account-logo {width:138px}.landing-feature-grid,.landing-flow{grid-template-columns:1fr}.landing-footer{align-items:flex-start;flex-direction:column}
     }
     @media (prefers-reduced-motion: reduce) {
         .st-key-account_candidate_card,.st-key-account_recruiter_card,
@@ -1727,25 +1727,47 @@ _ACCOUNT_GATE_CSS = """
 def _continue_as_candidate():
     """Select the candidate portal before Streamlit starts the next rerun."""
     st.session_state.pop("show_account_gate", None)
+    st.query_params.clear()
     st.query_params["candidate"] = "1"
 
 
 def _continue_as_recruiter():
     """Select the recruiter flow before Streamlit starts the next rerun."""
     st.session_state.pop("show_account_gate", None)
+    st.query_params.pop("welcome", None)
     st.session_state.entry_role = "recruiter"
     st.session_state.auth_screen = "choose_company"
 
 
+@st.cache_data(show_spinner=False)
+def _landing_logo_data_uri() -> str:
+    """Return the small header logo once; unlike the old video this is cheap."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo_header.png")
+    try:
+        with open(path, "rb") as logo_file:
+            return "data:image/png;base64," + base64.b64encode(logo_file.read()).decode("ascii")
+    except OSError:
+        return ""
+
+
 def _render_account_type_gate():
-    """Route candidates away from the private recruiter workspace."""
+    """Fast product landing page and role chooser."""
 
     with st.container(gap=None, key="account_gate_intro"):
+        logo_uri = _landing_logo_data_uri()
+        if logo_uri:
+            st.html(f'<img class="account-logo" src="{logo_uri}" alt="ICD Platform">')
         st.markdown(
             '<div class="account-kicker"><span class="account-kicker-dot"></span>Intelligent candidate discovery</div>',
             unsafe_allow_html=True,
         )
         st.markdown('<h1 class="account-title">Where talent meets opportunity</h1>', unsafe_allow_html=True)
+        st.html(
+            '<p class="account-subtitle">One connected hiring platform for discovering roles, screening resumes, '
+            'coordinating interviews, understanding hiring data, and moving the right people from application to offer.</p>'
+            '<div class="account-proof"><span>AI-assisted matching</span><span>Secure applications</span>'
+            '<span>Live hiring insights</span></div>'
+        )
     st.space("small")
 
     left, right = st.columns(2, gap="large")
@@ -1756,17 +1778,19 @@ def _render_account_type_gate():
                 '<div class="account-role-label candidate-label">For candidates</div>'
                 '<div class="account-role-title">Find your next role</div>'
                 '<div class="account-role-copy">Explore verified openings, apply securely with your resume, '
-                'and keep every application organized in one place.</div>'
-                '<div class="account-feature-list">'
-                '<div class="account-feature"><span class="account-feature-check">check</span>Browse published opportunities</div>'
-                '<div class="account-feature"><span class="account-feature-check">check</span>Apply and track your progress</div>'
-                '</div>',
+                'and keep every application organized in one place.</div>',
                 unsafe_allow_html=True,
             )
             st.button(
                 "Continue as candidate", type="primary", icon=":material/arrow_forward:",
                 width="stretch", key="account_candidate_continue",
                 on_click=_continue_as_candidate,
+            )
+            st.html(
+                '<div class="account-feature-list" style="margin:14px 0 0">'
+                '<div class="account-feature"><span class="account-feature-check">check</span>Browse published opportunities</div>'
+                '<div class="account-feature"><span class="account-feature-check">check</span>Apply and track your progress</div>'
+                '</div>'
             )
     with right:
         with st.container(height="stretch", key="account_recruiter_card"):
@@ -1775,16 +1799,18 @@ def _render_account_type_gate():
                 '<div class="account-role-label recruiter-label">For hiring teams</div>'
                 '<div class="account-role-title">Build the right team</div>'
                 '<div class="account-role-copy">Manage jobs, screen resumes intelligently, coordinate interviews, '
-                'and move top candidates through hiring faster.</div>'
-                '<div class="account-feature-list">'
-                '<div class="account-feature"><span class="account-feature-check">check</span>AI-assisted resume screening</div>'
-                '<div class="account-feature"><span class="account-feature-check">check</span>Structured hiring workflows</div>'
-                '</div>',
+                'and move top candidates through hiring faster.</div>',
                 unsafe_allow_html=True,
             )
             st.button(
                 "Continue as recruiter", icon=":material/arrow_forward:", width="stretch",
                 key="account_recruiter_continue", on_click=_continue_as_recruiter,
+            )
+            st.html(
+                '<div class="account-feature-list" style="margin:14px 0 0">'
+                '<div class="account-feature"><span class="account-feature-check">check</span>AI-assisted resume screening</div>'
+                '<div class="account-feature"><span class="account-feature-check">check</span>Structured hiring workflows</div>'
+                '</div>'
             )
 
     st.markdown(
@@ -1794,6 +1820,42 @@ def _render_account_type_gate():
         '<div class="account-trust-item"><span>insights</span>Evidence-based hiring</div>'
         '</div>',
         unsafe_allow_html=True,
+    )
+    st.html(
+        '<section class="landing-section"><div class="landing-eyebrow">Everything in one place</div>'
+        '<div class="landing-title">A clearer journey for candidates and hiring teams</div>'
+        '<p class="landing-copy">ICD replaces disconnected spreadsheets and repetitive screening work with a focused, '
+        'transparent workflow built around each job role.</p></section>'
+        '<div class="landing-feature-grid">'
+        '<article class="landing-feature"><div class="landing-feature-icon">document_scanner</div>'
+        '<div class="landing-feature-title">Resume intelligence</div><div class="landing-feature-copy">Score skills, experience, '
+        'education, and job fit consistently across individual files or complete ZIP folders.</div></article>'
+        '<article class="landing-feature"><div class="landing-feature-icon">work</div>'
+        '<div class="landing-feature-title">Job publishing</div><div class="landing-feature-copy">Create detailed openings, '
+        'publish branded application pages, and collect candidate resumes securely.</div></article>'
+        '<article class="landing-feature"><div class="landing-feature-icon">monitoring</div>'
+        '<div class="landing-feature-title">Decision-ready reports</div><div class="landing-feature-copy">Review role-wise '
+        'shortlisted, interviewed, and selected candidates with meaningful visual insights.</div></article>'
+        '<article class="landing-feature"><div class="landing-feature-icon">event_available</div>'
+        '<div class="landing-feature-title">Interview coordination</div><div class="landing-feature-copy">Prepare questions, '
+        'schedule interviews, capture scores, and keep every decision in context.</div></article>'
+        '<article class="landing-feature"><div class="landing-feature-icon">mark_email_read</div>'
+        '<div class="landing-feature-title">Offer management</div><div class="landing-feature-copy">Create professional offers '
+        'and send them to one or multiple selected candidates in a streamlined flow.</div></article>'
+        '<article class="landing-feature"><div class="landing-feature-icon">shield_lock</div>'
+        '<div class="landing-feature-title">Private workspaces</div><div class="landing-feature-copy">Keep each organization’s '
+        'jobs, applicants, reports, and settings separated behind secure access.</div></article>'
+        '</div>'
+        '<section class="landing-section"><div class="landing-eyebrow">From opening to offer</div>'
+        '<div class="landing-title">A hiring workflow people can actually follow</div></section>'
+        '<div class="landing-flow">'
+        '<div class="landing-step"><div class="landing-step-number">Step 01</div><strong>Publish</strong><p>Create the role and share its branded apply page.</p></div>'
+        '<div class="landing-step"><div class="landing-step-number">Step 02</div><strong>Screen</strong><p>Compare every resume against the same job criteria.</p></div>'
+        '<div class="landing-step"><div class="landing-step-number">Step 03</div><strong>Interview</strong><p>Coordinate conversations and capture structured feedback.</p></div>'
+        '<div class="landing-step"><div class="landing-step-number">Step 04</div><strong>Hire</strong><p>Track selections and send professional offer letters.</p></div>'
+        '</div>'
+        '<div class="landing-footer"><div><strong>Built for focused, evidence-based hiring</strong>'
+        '<span>Choose your workspace above to get started.</span></div><span class="landing-footer-badge">ICD Platform</span></div>'
     )
     # Hide the stale account-selection tree immediately after the candidate
     # click. Streamlit keeps the previous tree visible while the next route
