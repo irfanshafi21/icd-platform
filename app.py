@@ -1707,6 +1707,23 @@ _ACCOUNT_GATE_CSS = """
     .landing-step-number {color:#2684D8;font-size:.7rem;font-weight:850;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
     .landing-step strong {display:block;color:#20304B;font-size:.88rem;margin-bottom:5px;}
     .landing-step p {margin:0;color:#738096;font-size:.75rem;line-height:1.45;}
+    .landing-outcome-band {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:22px 0 10px;border:1px solid #DCE8F4;border-radius:20px;background:rgba(255,255,255,.86);box-shadow:0 14px 36px rgba(16,43,75,.055);overflow:hidden;}
+    .landing-outcome {padding:22px 18px;text-align:center;border-right:1px solid #E4ECF4;}.landing-outcome:last-child{border-right:0}
+    .landing-outcome span {font-family:'Material Symbols Rounded';display:block;color:#2583D7;font-size:27px;margin-bottom:8px;}
+    .landing-outcome strong {display:block;color:#17243E;font-size:.88rem;margin-bottom:4px;}.landing-outcome small{color:#728096;font-size:.72rem;line-height:1.4;}
+    .landing-personas {display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:0 0 14px;}
+    .landing-persona {position:relative;overflow:hidden;padding:28px;border-radius:22px;border:1px solid #DDE7F1;background:#fff;box-shadow:0 13px 34px rgba(15,40,70,.055);}
+    .landing-persona.candidate {background:linear-gradient(145deg,#F8FCFF,#EEF7FF);border-color:#D7EAFB}.landing-persona.recruiter{background:linear-gradient(145deg,#FCFBFF,#F2EFFF);border-color:#E3DDFC}
+    .landing-persona:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-70px;top:-70px;background:rgba(55,138,221,.08)}
+    .landing-persona.recruiter:after{background:rgba(109,91,208,.08)}
+    .landing-persona-label {display:flex;align-items:center;gap:8px;color:#2475B9;font-size:.7rem;font-weight:850;letter-spacing:.11em;text-transform:uppercase;margin-bottom:12px;}.landing-persona.recruiter .landing-persona-label{color:#6547C7}
+    .landing-persona-label span{font-family:'Material Symbols Rounded';font-size:19px}.landing-persona h3{position:relative;margin:0 0 9px;color:#17243E;font-size:1.35rem;letter-spacing:-.025em}.landing-persona p{position:relative;margin:0 0 18px;color:#68778D;font-size:.84rem;line-height:1.58;max-width:90%}
+    .landing-mini-list{position:relative;display:grid;gap:9px}.landing-mini-item{display:flex;gap:9px;align-items:center;color:#354660;font-size:.78rem;font-weight:650}.landing-mini-item span{font-family:'Material Symbols Rounded';color:#0E9F75;font-size:18px}
+    .landing-trust-panel {position:relative;overflow:hidden;display:grid;grid-template-columns:.9fr 1.1fr;gap:32px;align-items:center;margin:48px 0 12px;padding:34px;border-radius:24px;background:linear-gradient(135deg,#0B294E 0%,#124F88 58%,#087F9D 100%);box-shadow:0 22px 50px rgba(10,48,84,.2);}
+    .landing-trust-panel:after{content:"";position:absolute;width:260px;height:260px;border:38px solid rgba(255,255,255,.065);border-radius:50%;right:-120px;top:-150px}
+    .landing-trust-copy{position:relative;z-index:1}.landing-trust-copy small{color:#91D8FF;font-size:.69rem;font-weight:850;letter-spacing:.12em;text-transform:uppercase}.landing-trust-copy h2{margin:9px 0 10px;color:#fff;font-size:1.7rem;letter-spacing:-.03em}.landing-trust-copy p{margin:0;color:#D7EBFA;font-size:.84rem;line-height:1.62}
+    .landing-trust-list{position:relative;z-index:1;display:grid;grid-template-columns:1fr 1fr;gap:11px}.landing-trust-item{display:flex;align-items:center;gap:10px;padding:13px;border-radius:13px;background:rgba(255,255,255,.1);color:#F5FAFF;font-size:.76rem;font-weight:680;border:1px solid rgba(255,255,255,.09)}.landing-trust-item span{font-family:'Material Symbols Rounded';font-size:19px;color:#9DE3FF}
+    .landing-feature,.landing-persona,.landing-step {transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.landing-feature:hover,.landing-persona:hover,.landing-step:hover{transform:translateY(-3px);box-shadow:0 17px 38px rgba(15,40,70,.09);border-color:#BDD8EE}
     .landing-footer {margin:34px 0 5px;padding:21px 24px;border-radius:18px;background:linear-gradient(135deg,#0C315A,#1769AA);color:#E7F3FF;display:flex;align-items:center;justify-content:space-between;gap:20px;}
     .landing-footer strong {display:block;color:#fff;font-size:1rem;margin-bottom:3px;}.landing-footer span{font-size:.78rem;opacity:.85;}
     .landing-footer-badge {white-space:nowrap;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.13);font-size:.72rem!important;font-weight:750;}
@@ -1714,7 +1731,7 @@ _ACCOUNT_GATE_CSS = """
         [data-testid="stMainBlockContainer"] {padding-top:1.1rem !important;padding-left:1rem !important;padding-right:1rem !important;}
         .st-key-account_candidate_card,.st-key-account_recruiter_card {min-height:auto;padding:23px 21px !important;}
         .account-role-copy {min-height:auto;}
-        .account-logo {width:138px}.landing-feature-grid,.landing-flow{grid-template-columns:1fr}.landing-footer{align-items:flex-start;flex-direction:column}
+        .account-logo {width:138px}.landing-feature-grid,.landing-flow,.landing-personas,.landing-trust-panel{grid-template-columns:1fr}.landing-outcome-band{grid-template-columns:1fr 1fr}.landing-outcome:nth-child(2){border-right:0}.landing-outcome:nth-child(-n+2){border-bottom:1px solid #E4ECF4}.landing-trust-list{grid-template-columns:1fr}.landing-footer{align-items:flex-start;flex-direction:column}
     }
     @media (prefers-reduced-motion: reduce) {
         .st-key-account_candidate_card,.st-key-account_recruiter_card,
@@ -1846,6 +1863,12 @@ def _render_account_type_gate():
         '<div class="landing-feature-title">Private workspaces</div><div class="landing-feature-copy">Keep each organization’s '
         'jobs, applicants, reports, and settings separated behind secure access.</div></article>'
         '</div>'
+        '<div class="landing-outcome-band">'
+        '<div class="landing-outcome"><span>speed</span><strong>Faster shortlisting</strong><small>Bulk screening and reusable results</small></div>'
+        '<div class="landing-outcome"><span>target</span><strong>Role-aware matching</strong><small>Every score stays tied to the job</small></div>'
+        '<div class="landing-outcome"><span>visibility</span><strong>Clear decisions</strong><small>Evidence recruiters can review</small></div>'
+        '<div class="landing-outcome"><span>hub</span><strong>Connected workflow</strong><small>One path from apply to offer</small></div>'
+        '</div>'
         '<section class="landing-section"><div class="landing-eyebrow">From opening to offer</div>'
         '<div class="landing-title">A hiring workflow people can actually follow</div></section>'
         '<div class="landing-flow">'
@@ -1854,6 +1877,24 @@ def _render_account_type_gate():
         '<div class="landing-step"><div class="landing-step-number">Step 03</div><strong>Interview</strong><p>Coordinate conversations and capture structured feedback.</p></div>'
         '<div class="landing-step"><div class="landing-step-number">Step 04</div><strong>Hire</strong><p>Track selections and send professional offer letters.</p></div>'
         '</div>'
+        '<section class="landing-section"><div class="landing-eyebrow">Made for both sides of hiring</div>'
+        '<div class="landing-title">A better experience at every touchpoint</div>'
+        '<p class="landing-copy">Candidates get clarity and control. Recruiters get structure, context, and the tools to act faster.</p></section>'
+        '<div class="landing-personas">'
+        '<article class="landing-persona candidate"><div class="landing-persona-label"><span>person_search</span>Candidate experience</div>'
+        '<h3>Discover, apply, and stay informed</h3><p>Use one verified profile to explore published roles, understand each opportunity, and follow application progress without repeated sign-ins.</p>'
+        '<div class="landing-mini-list"><div class="landing-mini-item"><span>check_circle</span>Password-free email verification</div>'
+        '<div class="landing-mini-item"><span>check_circle</span>Company-branded job details</div><div class="landing-mini-item"><span>check_circle</span>Live application status</div></div></article>'
+        '<article class="landing-persona recruiter"><div class="landing-persona-label"><span>business_center</span>Recruiter experience</div>'
+        '<h3>Move from volume to confident decisions</h3><p>Organize every opening, screen large resume sets, compare candidates, coordinate interviews, and prepare offers without losing context.</p>'
+        '<div class="landing-mini-list"><div class="landing-mini-item"><span>check_circle</span>Job-role-wise screening and reports</div>'
+        '<div class="landing-mini-item"><span>check_circle</span>Interview and decision tracking</div><div class="landing-mini-item"><span>check_circle</span>Bulk offer-letter delivery</div></div></article>'
+        '</div>'
+        '<div class="landing-trust-panel"><div class="landing-trust-copy"><small>Designed for responsible hiring</small>'
+        '<h2>Useful intelligence, with people in control.</h2><p>ICD helps teams review evidence consistently while keeping final hiring decisions with recruiters. Candidate information stays organized inside the relevant company workspace.</p></div>'
+        '<div class="landing-trust-list"><div class="landing-trust-item"><span>lock</span>Secure candidate access</div>'
+        '<div class="landing-trust-item"><span>domain</span>Company-separated data</div><div class="landing-trust-item"><span>fact_check</span>Reviewable scoring details</div>'
+        '<div class="landing-trust-item"><span>manage_accounts</span>Human-led decisions</div></div></div>'
         '<div class="landing-footer"><div><strong>Built for focused, evidence-based hiring</strong>'
         '<span>Choose your workspace above to get started.</span></div><span class="landing-footer-badge">ICD Platform</span></div>'
     )
