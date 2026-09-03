@@ -10,23 +10,26 @@ from __future__ import annotations
 
 import json
 import base64
+import io
 import os
 import secrets
 import threading
 import time
 import tomllib
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
 from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
 
-from ai_engine import check_api_key, parse_and_score
+from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
+from reports import build_offer_letter_pdf
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -334,18 +337,23 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
                   .neq("status", "cleared").order("screened_at", desc=True).limit(1000).execute().data or [])
     interviews = (session.client.table("interviews").select("*").eq("company_id", company_id)
                   .order("scheduled_at").limit(500).execute().data or [])
+    applications = (session.client.table("public_applications")
+                    .select("id,job_id,company_id,applicant_name,applicant_email,applicant_phone,resume_filename,status,applied_at")
+                    .eq("company_id", company_id).order("applied_at", desc=True).limit(1000).execute().data or [])
     parsed = [_candidate(row) for row in candidates]
     return {
         "company": session.company,
         "jobs": jobs,
         "candidates": parsed,
         "interviews": interviews,
+        "applications": applications,
         "summary": {
             "active_jobs": sum(job.get("status") == "active" for job in jobs),
             "candidates": len(parsed),
             "shortlisted": sum(candidate["score"] >= 70 for candidate in parsed),
             "selected": sum(candidate.get("decision_status") == "Selected" for candidate in parsed),
             "scheduled_interviews": sum(item.get("status") == "Scheduled" for item in interviews),
+            "applications": len(applications),
         },
     }
 
@@ -364,7 +372,8 @@ class JobPayload(BaseModel):
 
 @app.post("/api/jobs")
 def create_job(payload: JobPayload, session: RecruiterSession = Depends(_session)):
-    row = {**payload.model_dump(), "company_id": session.company["id"], "status": "active"}
+    row = {**payload.model_dump(), "company_id": session.company["id"], "status": "active",
+           "published_to_portal": True}
     result = session.client.table("jobs").insert(row).execute().data or []
     if not result:
         raise HTTPException(500, "The job could not be saved")
@@ -378,6 +387,77 @@ def update_job(job_id: int, payload: dict[str, Any], session: RecruiterSession =
     return result[0] if result else {"ok": True}
 
 
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: int, session: RecruiterSession = Depends(_session)):
+    (session.client.table("jobs").delete().eq("id", job_id)
+     .eq("company_id", session.company["id"]).execute())
+    return {"ok": True}
+
+
+def _application_row(application_id: int, session: RecruiterSession, include_resume: bool = False):
+    fields = "*" if include_resume else "id,job_id,company_id,applicant_name,applicant_email,applicant_phone,resume_filename,status,applied_at"
+    rows = (session.client.table("public_applications").select(fields).eq("id", application_id)
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not rows:
+        raise HTTPException(404, "Application not found")
+    return rows[0]
+
+
+@app.get("/api/applications/{application_id}/resume")
+def application_resume(application_id: int, session: RecruiterSession = Depends(_session)):
+    row = _application_row(application_id, session, True)
+    try:
+        content = base64.b64decode(row.get("resume_base64") or "", validate=True)
+    except Exception as exc:
+        raise HTTPException(404, "Resume file is unavailable") from exc
+    name = row.get("resume_filename") or "resume.pdf"
+    return StreamingResponse(io.BytesIO(content), media_type="application/octet-stream",
+                             headers={"Content-Disposition": f'attachment; filename="{name.replace(chr(34), "")}"'})
+
+
+@app.patch("/api/applications/{application_id}")
+def update_application(application_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
+    status = str(payload.get("status", "")).strip()
+    if status not in {"Submitted", "Screening", "Shortlisted", "Interview", "Selected", "Rejected"}:
+        raise HTTPException(400, "Unsupported application status")
+    _application_row(application_id, session)
+    rows = (session.client.table("public_applications").update({"status": status}).eq("id", application_id)
+            .eq("company_id", session.company["id"]).execute().data or [])
+    return rows[0] if rows else {"ok": True}
+
+
+@app.delete("/api/applications/{application_id}")
+def delete_application(application_id: int, session: RecruiterSession = Depends(_session)):
+    _application_row(application_id, session)
+    (session.client.table("public_applications").delete().eq("id", application_id)
+     .eq("company_id", session.company["id"]).execute())
+    return {"ok": True}
+
+
+@app.get("/api/jobs/{job_id}/applications.zip")
+def applications_zip(job_id: int, session: RecruiterSession = Depends(_session)):
+    owned = (session.client.table("jobs").select("id,title").eq("id", job_id)
+             .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not owned:
+        raise HTTPException(404, "Job not found")
+    rows = (session.client.table("public_applications").select("id,applicant_name,resume_filename,resume_base64")
+            .eq("job_id", job_id).eq("company_id", session.company["id"]).execute().data or [])
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        for index, row in enumerate(rows, 1):
+            try:
+                content = base64.b64decode(row.get("resume_base64") or "", validate=True)
+            except Exception:
+                continue
+            safe_name = "".join(c for c in (row.get("applicant_name") or f"candidate-{index}") if c.isalnum() or c in " -_").strip()
+            ext = Path(row.get("resume_filename") or ".pdf").suffix or ".pdf"
+            archive.writestr(f"{safe_name or f'candidate-{index}'}{ext}", content)
+    output.seek(0)
+    filename = "".join(c for c in owned[0]["title"] if c.isalnum() or c in "-_") or "applications"
+    return StreamingResponse(output, media_type="application/zip",
+                             headers={"Content-Disposition": f'attachment; filename="{filename}-applications.zip"'})
+
+
 @app.patch("/api/candidates/{candidate_id}")
 def update_candidate(candidate_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
     allowed = {
@@ -389,6 +469,140 @@ def update_candidate(candidate_id: int, payload: dict[str, Any], session: Recrui
     result = (session.client.table("screening_history").update(allowed).eq("id", candidate_id)
               .eq("company_id", session.company["id"]).execute().data or [])
     return _candidate(result[0]) if result else {"ok": True}
+
+
+class InterviewPayload(BaseModel):
+    candidate_id: int | None = None
+    candidate_name: str
+    candidate_email: str = ""
+    job_role: str = ""
+    interview_type: str = "Technical"
+    scheduled_at: str
+    duration_minutes: int = 45
+    mode: str = "Online"
+    location: str = ""
+    meeting_link: str = ""
+    notes: str = ""
+
+
+@app.post("/api/interviews")
+def create_interview(payload: InterviewPayload, session: RecruiterSession = Depends(_session)):
+    data = payload.model_dump()
+    row = {key: data[key] for key in (
+        "candidate_name", "job_role", "interview_type", "scheduled_at", "mode", "location",
+        "meeting_link", "notes"
+    )}
+    row.update({"company_id": session.company["id"], "status": "Scheduled"})
+    rows = session.client.table("interviews").insert(row).execute().data or []
+    if not rows:
+        raise HTTPException(500, "Interview could not be scheduled")
+    return rows[0]
+
+
+@app.patch("/api/interviews/{interview_id}")
+def update_interview(interview_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
+    allowed = {k: v for k, v in payload.items() if k in {
+        "status", "scheduled_at", "duration_minutes", "mode", "location", "meeting_link",
+        "notes", "interview_score", "interview_type"
+    }}
+    if not allowed:
+        raise HTTPException(400, "No supported fields were supplied")
+    rows = (session.client.table("interviews").update(allowed).eq("id", interview_id)
+            .eq("company_id", session.company["id"]).execute().data or [])
+    return rows[0] if rows else {"ok": True}
+
+
+@app.delete("/api/interviews/{interview_id}")
+def delete_interview(interview_id: int, session: RecruiterSession = Depends(_session)):
+    (session.client.table("interviews").delete().eq("id", interview_id)
+     .eq("company_id", session.company["id"]).execute())
+    return {"ok": True}
+
+
+class InsightPayload(BaseModel):
+    question: str
+
+
+@app.post("/api/insights")
+def generate_insight(payload: InsightPayload, session: RecruiterSession = Depends(_session)):
+    rows = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
+            .neq("status", "cleared").order("screened_at", desc=True).limit(300).execute().data or [])
+    candidates = [_candidate(row) for row in rows]
+    try:
+        answer = ask_assistant(payload.question.strip(), candidates, "All active roles", "", [])
+    except Exception as exc:
+        raise HTTPException(503, f"AI insight is temporarily unavailable: {exc}") from exc
+    return {"answer": answer}
+
+
+class InterviewQuestionsPayload(BaseModel):
+    candidate_id: int
+
+
+@app.post("/api/interview-questions")
+def interview_questions(payload: InterviewQuestionsPayload, session: RecruiterSession = Depends(_session)):
+    rows = (session.client.table("screening_history").select("*").eq("id", payload.candidate_id)
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not rows:
+        raise HTTPException(404, "Candidate not found")
+    row = rows[0]
+    try:
+        result = generate_interview_questions(_json_field(row.get("profile_json"), {}),
+                                              _json_field(row.get("score_json"), {}),
+                                              row.get("job_details") or row.get("job_role") or "")
+    except Exception as exc:
+        raise HTTPException(503, f"Interview preparation is temporarily unavailable: {exc}") from exc
+    return result
+
+
+class OfferBatchPayload(BaseModel):
+    candidate_ids: list[int]
+    job_title: str = ""
+    salary: str = ""
+    start_date: str = ""
+    location: str = ""
+    reporting_manager: str = ""
+    acceptance_deadline: str = ""
+    hr_name: str = "Hiring Manager"
+
+
+@app.post("/api/offers.zip")
+def offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depends(_session)):
+    if not payload.candidate_ids:
+        raise HTTPException(400, "Choose at least one selected candidate")
+    rows = (session.client.table("screening_history").select("*").in_("id", payload.candidate_ids)
+            .eq("company_id", session.company["id"]).execute().data or [])
+    chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"]
+    if not chosen:
+        raise HTTPException(400, "No selected candidates were found")
+    company = session.company
+    logo_bytes = None
+    if company.get("logo_base64"):
+        try:
+            logo_bytes = base64.b64decode(company["logo_base64"])
+        except Exception:
+            pass
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+        for row in chosen:
+            candidate = _candidate(row)
+            report_candidate = {
+                "name": candidate["candidate_name"],
+                "profile": _json_field(row.get("profile_json"), {"email": row.get("email")}),
+                "score": _json_field(row.get("score_json"), {}),
+            }
+            offer = {
+                **payload.model_dump(exclude={"candidate_ids"}),
+                "job_title": payload.job_title or row.get("job_role") or "Position",
+                "company_name": company.get("name") or "Our Company",
+                "company_email": company.get("email") or "",
+            }
+            pdf = build_offer_letter_pdf(report_candidate, offer, logo_bytes=logo_bytes)
+            safe = "".join(c for c in candidate["candidate_name"] if c.isalnum() or c in " -_").strip()
+            archive.writestr(f"Offer - {safe or row['id']}.pdf", pdf)
+    output.seek(0)
+    return StreamingResponse(output, media_type="application/zip",
+                             headers={"Content-Disposition": 'attachment; filename="ICD-offer-letters.zip"'})
 
 
 @app.post("/api/screen")
