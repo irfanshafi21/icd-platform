@@ -409,6 +409,18 @@ label{color:#213b56;font-size:13px}
 
 @media(max-width:1050px){.page-interviews .interview-layout{grid-template-columns:1fr}.page-interviews .interview-guide{display:block}.interview-list-head{grid-template-columns:minmax(200px,1fr) 115px 155px 38px}.page-interviews .interview-list article{grid-template-columns:54px minmax(160px,1fr) 115px 155px 38px}}
 @media(max-width:760px){.talent-card-top{grid-template-columns:auto minmax(0,1fr) auto}.talent-card .candidate-select{grid-column:1/3}.talent-card .bookmark{grid-column:3;grid-row:1}.interview-list-head{display:none}.page-interviews .interview-list{padding:10px 16px}.page-interviews .interview-list article{grid-template-columns:52px minmax(0,1fr) 36px!important;gap:10px}.page-interviews .interview-list article>select{grid-column:2!important}.page-interviews .interview-score{grid-column:2!important}.page-interviews .interview-list article>.icon-action{grid-column:3!important;grid-row:1!important}.page-interviews .interview-guide{display:none}}
+
+/* Candidate cards share the Jobs card shell */
+.page-candidates .talent-cards{grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
+.page-candidates .talent-cards .talent-card{position:relative;overflow:hidden;min-height:370px!important;padding:25px 24px 22px!important;border:1px solid #d6e5ee!important;border-top:0!important;border-radius:22px!important;background:radial-gradient(circle at 100% 0,#dcf6f5 0,transparent 35%),#fff!important;box-shadow:0 12px 34px #102a430b!important}
+.page-candidates .talent-card:before{content:"";position:absolute;display:block;inset:0 0 auto;width:auto;height:5px;background:linear-gradient(90deg,#0b88c8,#25c4bd)}
+.page-candidates .talent-card:hover{transform:translateY(-3px)!important;border-color:#bcdbe4!important;box-shadow:0 18px 42px #10365912!important}
+.page-candidates .talent-rank{background:#effbf6;color:#08765e;border:1px solid #bce9d9}
+.page-candidates .talent-identity .candidate-monogram{background:linear-gradient(145deg,#dff5f4,#e5f4ff);color:#126b79}
+.page-candidates .talent-skills span{border-color:#d4e9e7!important;background:#f0f9f7!important;color:#276b6b!important}
+.page-candidates .talent-actions .secondary{border:1px solid #d8e6ef;background:#fff;color:#315b78}
+
+@media(max-width:700px){.page-candidates .talent-cards .talent-card{padding:22px 18px 18px!important;border-radius:18px!important}}
 @media(prefers-reduced-motion:reduce){.page-reveal{opacity:1!important;transform:none!important}}
 
 /* Recruiter workflow pages — editorial dashboards */
