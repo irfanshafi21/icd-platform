@@ -51,6 +51,7 @@ def _settings() -> dict[str, Any]:
 CONFIG = _settings()
 SUPABASE_URL = CONFIG.get("SUPABASE_URL", "")
 SUPABASE_KEY = CONFIG.get("SUPABASE_KEY", "")
+OWNER_EMAIL = str(CONFIG.get("OWNER_EMAIL", "irfanshafi210608@gmail.com")).strip().lower()
 
 
 class RecruiterSession:
@@ -118,6 +119,12 @@ def _candidate_session(response: Response,
     return _candidate_sessions[session_id]
 
 
+def _owner_session(session: CandidateSession = Depends(_candidate_session)) -> CandidateSession:
+    if str(getattr(session.user, "email", "")).strip().lower() != OWNER_EMAIL:
+        raise HTTPException(403, "Owner access required")
+    return session
+
+
 def _set_candidate_cookies(response: Response, session_id: str, refresh_token: str) -> None:
     secure = bool(CONFIG.get("RENDER"))
     response.set_cookie("icd_candidate_session", session_id, httponly=True, secure=secure,
@@ -180,6 +187,36 @@ def organizations(search: str = ""):
     if search.strip():
         query = query.ilike("name", f"%{search.strip()}%")
     return query.limit(50).execute().data or []
+
+
+class CompanyRegistration(BaseModel):
+    company_name: str = Field(min_length=2, max_length=120)
+    contact_name: str = Field(min_length=2, max_length=120)
+    business_email: str = Field(min_length=5, max_length=180)
+    website: str = Field(default="", max_length=300)
+    industry: str = Field(default="", max_length=100)
+    company_size: str = Field(default="", max_length=50)
+    phone: str = Field(default="", max_length=40)
+    registration_number: str = Field(default="", max_length=80)
+    message: str = Field(default="", max_length=1000)
+
+
+@app.post("/api/company-registrations")
+def register_company(payload: CompanyRegistration):
+    email = payload.business_email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(400, "Enter a valid business email")
+    row = {**payload.model_dump(), "company_name": payload.company_name.strip(),
+           "contact_name": payload.contact_name.strip(), "business_email": email,
+           "status": "pending"}
+    try:
+        result = _public_client().table("company_registrations").insert(row).execute().data or []
+    except Exception as exc:
+        if "duplicate" in str(exc).lower():
+            raise HTTPException(409, "A registration for this email is already under review") from exc
+        raise HTTPException(400, "Could not submit the registration") from exc
+    return {"ok": True, "registration_id": result[0]["id"] if result else None,
+            "message": "Registration submitted for owner review"}
 
 
 def _company_branding(client: Client, company_ids: set[str]) -> dict[str, dict[str, Any]]:
@@ -248,7 +285,7 @@ def candidate_verify_otp(payload: CandidateVerify, response: Response):
 
 
 @app.get("/api/candidate/google")
-def candidate_google(request: Request):
+def candidate_google(request: Request, owner: bool = False):
     # Keep candidates inside the polished login flow if Google has not yet
     # been enabled for this Supabase project.
     try:
@@ -272,12 +309,15 @@ def candidate_google(request: Request):
     response = RedirectResponse(authorize, status_code=302)
     response.set_cookie("icd_oauth_verifier", verifier, httponly=True,
                         secure=bool(CONFIG.get("RENDER")), samesite="lax", max_age=600)
+    response.set_cookie("icd_oauth_destination", "owner" if owner else "candidate", httponly=True,
+                        secure=bool(CONFIG.get("RENDER")), samesite="lax", max_age=600)
     return response
 
 
 @app.get("/api/candidate/oauth/callback")
 def candidate_oauth_callback(code: str, request: Request,
-                             icd_oauth_verifier: str | None = Cookie(default=None)):
+                             icd_oauth_verifier: str | None = Cookie(default=None),
+                             icd_oauth_destination: str | None = Cookie(default=None)):
     if not icd_oauth_verifier:
         return RedirectResponse("/?candidate=1&auth_error=oauth_expired", status_code=302)
     try:
@@ -293,10 +333,62 @@ def candidate_oauth_callback(code: str, request: Request,
     session_id = secrets.token_urlsafe(32)
     with _sessions_lock:
         _candidate_sessions[session_id] = CandidateSession(client, verified.user)
-    response = RedirectResponse("/?candidate=1&google_login=success", status_code=302)
+    destination = "/?owner=1" if icd_oauth_destination == "owner" else "/?candidate=1&google_login=success"
+    response = RedirectResponse(destination, status_code=302)
     response.delete_cookie("icd_oauth_verifier")
+    response.delete_cookie("icd_oauth_destination")
     _set_candidate_cookies(response, session_id, verified.session.refresh_token)
     return response
+
+
+class OwnerDecision(BaseModel):
+    decision: str
+    notes: str = Field(default="", max_length=1000)
+
+
+@app.get("/api/owner/registrations")
+def owner_registrations(session: CandidateSession = Depends(_owner_session)):
+    registrations = (session.client.table("company_registrations").select("*")
+                     .order("created_at", desc=True).execute().data or [])
+    companies = (_public_client().table("companies_public").select("*").order("name").execute().data or [])
+    return {"owner_email": OWNER_EMAIL, "registrations": registrations, "companies": companies}
+
+
+@app.post("/api/owner/registrations/{registration_id}/decision")
+def decide_registration(registration_id: str, payload: OwnerDecision,
+                        session: CandidateSession = Depends(_owner_session)):
+    decision = payload.decision.strip().lower()
+    if decision not in {"approved", "rejected"}:
+        raise HTTPException(400, "Decision must be approved or rejected")
+    rows = (session.client.table("company_registrations").select("*").eq("id", registration_id)
+            .limit(1).execute().data or [])
+    if not rows or rows[0].get("status") != "pending":
+        raise HTTPException(404, "Pending registration not found")
+    registration = rows[0]
+    update = {"status": decision, "review_notes": payload.notes.strip(),
+              "reviewed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    if decision == "approved":
+        internal_email = f"org-{secrets.token_hex(12)}@login.icd-platform.internal"
+        internal_password = secrets.token_urlsafe(36)
+        access_code = f"{secrets.randbelow(10000):04d}"
+        company_client = _public_client()
+        auth_result = company_client.auth.sign_up({"email": internal_email, "password": internal_password})
+        if not auth_result.user or not auth_result.session:
+            raise HTTPException(500, "Could not provision the organization account")
+        company_row = {
+            "owner_user_id": str(auth_result.user.id), "name": registration["company_name"],
+            "website": registration.get("website") or "", "industry": registration.get("industry") or "",
+            "company_size": registration.get("company_size") or "", "access_code": access_code,
+            "internal_auth_email": internal_email, "internal_auth_password": internal_password,
+            "verification_status": "approved", "billing_plan": "starter_trial",
+            "approved_at": update["reviewed_at"], "approved_by": OWNER_EMAIL,
+        }
+        created = company_client.table("companies").insert(company_row).execute().data or []
+        if not created:
+            raise HTTPException(500, "Could not create the approved organization")
+        update.update({"company_id": created[0]["id"], "access_code": access_code})
+    session.client.table("company_registrations").update(update).eq("id", registration_id).execute()
+    return {"ok": True, "status": decision, "access_code": update.get("access_code")}
 
 
 @app.delete("/api/candidate/session")
