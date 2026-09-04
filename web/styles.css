@@ -367,3 +367,107 @@ label{color:#213b56;font-size:13px}
   .org-card{grid-template-columns:42px minmax(0,1fr);column-gap:10px}.org-card .company-mark{width:42px;height:42px}
 }
 @media(prefers-reduced-motion:reduce){.page-reveal{opacity:1!important;transform:none!important}}
+
+/* Recruiter workflow pages — editorial dashboards */
+.workspace-page:not(.page-home)>.workspace-head{min-height:118px;margin-bottom:22px}
+.page-jobs>.workspace-head{background:radial-gradient(circle at 90% 0,#4ed6d744,transparent 26%),linear-gradient(120deg,#071b36,#075f82)}
+.page-candidates>.workspace-head{background:radial-gradient(circle at 90% 0,#a286ff47,transparent 28%),linear-gradient(120deg,#101b3f,#414087)}
+.page-interviews>.workspace-head{background:radial-gradient(circle at 90% 0,#62dcbd3d,transparent 28%),linear-gradient(120deg,#072a39,#087766)}
+.page-reports>.workspace-head{background:radial-gradient(circle at 90% 0,#5fc7ff3b,transparent 28%),linear-gradient(120deg,#071c38,#155b9a)}
+.page-offers>.workspace-head{background:radial-gradient(circle at 90% 0,#c99cff3d,transparent 28%),linear-gradient(120deg,#211842,#684b98)}
+
+.workspace-page>.section-title,.talent-title{margin:0 0 18px;padding:24px 26px;border:1px solid #d8e5ee;border-radius:21px;background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(246,250,253,.94));box-shadow:var(--shadow-soft)}
+.workspace-page>.section-title h2,.talent-title h2{margin:4px 0 0;font-size:clamp(25px,2.4vw,34px)}
+.talent-title p{margin:6px 0 0;font-size:12px}
+.management-actions>*{border:1px solid #d8e6ef}
+.management-actions .primary{border-color:transparent}
+
+.page-jobs .job-admin-cards{grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
+.page-jobs .job-admin-cards>article{padding:25px 24px 22px;border:1px solid #d6e5ee;border-top:0;background:radial-gradient(circle at 100% 0,#dcf6f5 0,transparent 35%),#fff}
+.page-jobs .job-admin-cards>article:before{inset:0 0 auto;width:auto;height:5px;background:linear-gradient(90deg,#0b88c8,#25c4bd)}
+.page-jobs .job-admin-cards .status{border:1px solid #bce9d9;background:#effbf6}
+.page-jobs .job-admin-cards h3{font-size:25px}
+.page-jobs .job-admin-cards .row{gap:7px}
+.page-jobs .job-admin-cards .row>*{min-height:39px;border-radius:11px;font-size:10px}
+.page-jobs .applications-panel{padding:29px;border-radius:24px}
+.page-jobs .applications-panel>.section-title{margin:0 0 18px;padding:0;border:0;background:none;box-shadow:none}
+
+.talent-cards{grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px}
+.talent-cards .talent-card{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;min-height:470px!important;padding:0 24px 22px!important;border:1px solid #d9e4ee!important;border-top:0!important;border-radius:24px!important;background:linear-gradient(160deg,#fff 52%,#f7faff 100%)!important;box-shadow:0 16px 42px rgba(13,43,75,.09)!important}
+.talent-cards .talent-card:before{display:none}
+.talent-card:after{content:"";position:absolute;z-index:-1;right:-70px;top:-70px;width:190px;height:190px;border:30px solid rgba(76,89,194,.055);border-radius:50%}
+.talent-card:hover{transform:translateY(-6px)!important;border-color:#b8cce2!important;box-shadow:0 28px 65px rgba(14,42,76,.16)!important}
+.talent-card-rail{height:48px;display:flex;align-items:center;justify-content:space-between;margin:0 -24px 20px;padding:0 24px;background:linear-gradient(100deg,#182854,#4c50a4);color:#fff}
+.talent-card:nth-child(3n+2) .talent-card-rail{background:linear-gradient(100deg,#075879,#07978e)}
+.talent-card:nth-child(3n) .talent-card-rail{background:linear-gradient(100deg,#3b286f,#7754ab)}
+.talent-card-rail span{font-size:9px;font-weight:850;letter-spacing:.13em;text-transform:uppercase;opacity:.75}
+.talent-card-rail em{max-width:68%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-style:normal;font-weight:800}
+.talent-card .candidate-select{top:63px;left:24px}
+.talent-card .bookmark{top:60px;right:21px;bottom:auto;background:#fffdf7}
+.talent-identity{display:grid;grid-template-columns:58px minmax(0,1fr) 70px;align-items:center;gap:14px;margin-top:27px}
+.talent-identity .candidate-monogram{width:58px;height:58px;display:grid;place-items:center;border-radius:18px;background:linear-gradient(145deg,#dff4ff,#eae7ff);color:#244f85;font-size:20px;font-weight:850}
+.talent-identity h3{margin:0 0 3px!important;font-size:20px!important;line-height:1.2}
+.talent-identity p{margin:0;color:#718398;font-size:9px;line-height:1.5}
+.talent-identity .score-ring{width:66px;height:66px}
+.fit-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:17px;padding-top:15px;border-top:1px solid #e3ebf2}
+.fit-line small{color:#7c8fa2;font-size:9px}
+.fit-badge{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:9px;font-weight:850}
+.fit-strong{background:#e7f8f1;color:#087b5c}.fit-potential{background:#fff4df;color:#9a620b}.fit-review{background:#fff0f0;color:#b33b43}
+.talent-summary{display:-webkit-box;min-height:48px;margin:13px 0 0;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:#5f748a!important;font-size:11px;line-height:1.65!important}
+.talent-skills{min-height:59px!important;margin:14px 0!important;align-content:flex-start}
+.talent-skills span{border-color:#d9e6f1!important;background:#f2f7fb!important;color:#345c7c!important}
+.talent-card .candidate-evidence{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:auto 0 15px;padding:10px;border:1px solid #e0e9f0;border-radius:14px;background:#f7fafc}
+.talent-card .candidate-evidence span{padding:5px 4px!important;background:transparent!important;text-align:center}
+.talent-card .candidate-evidence b,.talent-card .candidate-evidence small{display:block}
+.talent-card .candidate-evidence b{overflow:hidden;color:#172f4c;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.talent-card .candidate-evidence small{margin-top:2px;color:#8494a4;font-size:7px;text-transform:uppercase;letter-spacing:.05em}
+.talent-actions{display:grid;grid-template-columns:1.4fr .75fr .75fr;gap:7px}
+.talent-actions button{min-height:42px;padding:9px;border:0;border-radius:11px;font-size:9px;font-weight:800}
+.talent-actions .secondary{background:#e8f3fb;color:#075f9f}
+.select-action{background:#e2f7ee;color:#087554}.select-action:hover{background:#cceede}
+.reject-action{background:#fff0f1;color:#b63943}.reject-action:hover{background:#fbdcdf}
+
+.page-interviews>.section-title{border-color:#cfe6df;background:linear-gradient(145deg,#fff,#f2fbf8)}
+.page-interviews .interview-layout{grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr)}
+.page-interviews .interview-list{padding:12px 25px}
+.page-interviews .interview-list article{min-height:86px;padding:15px 6px}
+.page-interviews .interview-list time{width:58px;height:62px;border:1px solid #cce9df;background:#edf9f5;color:#08745d}
+.page-interviews .interview-list h3{font-size:15px}
+.page-interviews .interview-guide{padding:30px;background:radial-gradient(circle at 100% 0,#3ed2ac3b,transparent 32%),linear-gradient(145deg,#072b39,#096b60)}
+.page-interviews .interview-guide>div:not(.kicker){border-color:#ffffff13;background:#ffffff09}
+.inline-form:not([hidden]){padding:20px;border-color:#cce5dc;background:linear-gradient(145deg,#fff,#f2fbf8)}
+
+.page-reports .report-tools{border:1px solid #d3e4ef;background:linear-gradient(145deg,#fff,#f0f8fd)}
+.page-reports .report-stats{gap:14px}
+.page-reports .report-stats article{position:relative;overflow:hidden;min-height:128px;padding:22px;border:1px solid #d8e6f0;border-left:0;border-radius:20px;background:#fff}
+.page-reports .report-stats article:before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:linear-gradient(#1594d0,#25c3bf)}
+.page-reports .report-stats article:nth-child(2):before{background:linear-gradient(#7258d8,#9b7ee8)}
+.page-reports .report-stats article:nth-child(3):before{background:linear-gradient(#0c9a70,#35c896)}
+.page-reports .report-stats article:nth-child(4):before{background:linear-gradient(#db8a22,#f2b24d)}
+.page-reports .report-grid>.panel{padding:30px}
+.page-reports .funnel-row>i{height:34px;border-radius:10px}
+
+.page-offers .offer-hero{padding:42px;border-radius:27px}
+.page-offers .offer-progress{margin:14px 0 18px}
+.page-offers .offer-studio{grid-template-columns:minmax(0,1.08fr) minmax(360px,.92fr);gap:20px}
+.page-offers .modern-offer-list{padding:28px}
+.page-offers .modern-offer-list article{display:grid;grid-template-columns:20px 46px minmax(0,1fr) auto;min-height:82px;margin-top:8px;padding:13px;border:1px solid #e1e7ef;background:#fcfbff}
+.page-offers .modern-offer-list article:hover{border-color:#cdbce6;background:#faf7ff}
+.page-offers .modern-offer-compose{padding:30px;border-top:5px solid #7258d8;background:linear-gradient(155deg,#fff,#faf8ff)}
+.page-offers .offer-assurance{border:1px solid #d9ece4}
+
+@media(max-width:1180px){.page-interviews .interview-layout,.page-offers .offer-studio{grid-template-columns:1fr}.page-offers .modern-offer-compose{position:static}}
+@media(max-width:700px){
+  .workspace-page:not(.page-home)>.workspace-head{min-height:122px}
+  .workspace-page>.section-title,.talent-title{padding:20px 18px;border-radius:18px}
+  .talent-cards{grid-template-columns:1fr;gap:13px}
+  .talent-cards .talent-card{min-height:0!important;padding:0 18px 18px!important}
+  .talent-card-rail{margin:0 -18px 18px;padding:0 18px}.talent-card .candidate-select{left:18px}.talent-card .bookmark{right:17px}
+  .talent-identity{grid-template-columns:50px minmax(0,1fr) 58px;gap:10px}.talent-identity .candidate-monogram{width:50px;height:50px}.talent-identity .score-ring{width:56px;height:56px}
+  .talent-summary{min-height:0}.talent-skills{min-height:0!important}
+  .talent-actions{grid-template-columns:1fr 1fr}.talent-actions button:first-child{grid-column:1/-1}
+  .page-interviews .interview-list{padding:10px 18px}.page-interviews .interview-list article{grid-template-columns:50px 1fr!important}
+  .page-interviews .interview-list article select,.page-interviews .interview-list article button{grid-column:auto!important}
+  .page-reports .report-tools{grid-template-columns:1fr}.page-reports .report-grid>.panel{padding:21px}
+  .page-offers .offer-hero{padding:29px 22px}.page-offers .modern-offer-list,.page-offers .modern-offer-compose{padding:20px}
+}
