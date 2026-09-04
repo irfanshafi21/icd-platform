@@ -34,7 +34,8 @@ from supabase import Client, create_client
 
 from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
-from email_utils import send_email_with_pdf
+from email_utils import is_configured as email_is_configured, send_email_with_pdf
+from inbox_intake import is_configured as inbox_is_configured
 from reports import (
     build_interview_report_pdf,
     build_offer_letter_pdf,
@@ -530,6 +531,13 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
         "candidates": parsed,
         "interviews": interviews,
         "applications": applications,
+        "integrations": {
+            "ai": check_api_key(),
+            "email": email_is_configured(),
+            "resume_inbox": inbox_is_configured(),
+            "google_candidate_login": bool(SUPABASE_URL and SUPABASE_KEY),
+            "linkedin": bool(CONFIG.get("LINKEDIN_CLIENT_ID") and CONFIG.get("LINKEDIN_CLIENT_SECRET")),
+        },
         "summary": {
             "active_jobs": sum(job.get("status") == "active" for job in jobs),
             "candidates": len(parsed),

@@ -1,5 +1,9 @@
 # Secrets — never commit real API keys
 .streamlit/secrets.toml
+.env
+.env.*
+secrets.txt
+*secrets*.txt
 .local_settings.json
 
 # Python

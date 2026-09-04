@@ -30,14 +30,17 @@ import email
 import imaplib
 from email.header import decode_header
 
-import streamlit as st
+try:  # Streamlit is optional; FastAPI deployments read environment variables.
+    import streamlit as st
+except ImportError:  # pragma: no cover - used by the production web runtime
+    st = None
 
 RESUME_EXTENSIONS = (".pdf", ".docx", ".doc")
 
 
 def _get_secret(key: str) -> str | None:
     try:
-        val = st.secrets.get(key)
+        val = st.secrets.get(key) if st is not None else None
         if val:
             return val
     except Exception:

@@ -5,3 +5,34 @@ services:
     plan: free
     healthCheckPath: /
     autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_API_KEY_2
+        sync: false
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY_3
+        sync: false
+      - key: GAS_WEBHOOK_URL
+        sync: false
+      - key: GAS_SECRET
+        sync: false
+      - key: SMTP_EMAIL
+        sync: false
+      - key: SMTP_APP_PASSWORD
+        sync: false
+      - key: INTAKE_EMAIL
+        sync: false
+      - key: INTAKE_APP_PASSWORD
+        sync: false
