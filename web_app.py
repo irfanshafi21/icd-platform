@@ -18,6 +18,7 @@ import threading
 import time
 import tomllib
 import zipfile
+import requests
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -248,6 +249,18 @@ def candidate_verify_otp(payload: CandidateVerify, response: Response):
 
 @app.get("/api/candidate/google")
 def candidate_google(request: Request):
+    # Keep candidates inside the polished login flow if Google has not yet
+    # been enabled for this Supabase project.
+    try:
+        settings = requests.get(
+            f"{SUPABASE_URL.rstrip('/')}/auth/v1/settings",
+            headers={"apikey": SUPABASE_KEY},
+            timeout=5,
+        ).json()
+        if not settings.get("external", {}).get("google", False):
+            return RedirectResponse("/?candidate=1&auth_error=google_not_configured", status_code=302)
+    except Exception:
+        return RedirectResponse("/?candidate=1&auth_error=google_unavailable", status_code=302)
     verifier = secrets.token_urlsafe(64)
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
     origin = str(request.base_url).rstrip("/")
