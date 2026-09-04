@@ -171,3 +171,10 @@ body{background:radial-gradient(circle at 0 0,#e2f5ff 0,transparent 28%),radial-
 .google-login b{align-self:center;font-size:14px}
 .google-mark{grid-row:1;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%234285F4' d='M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.51h6.46a5.52 5.52 0 0 1-2.4 3.52v2.93h3.89c2.28-2.1 3.54-5.19 3.54-8.69Z'/%3E%3Cpath fill='%2334A853' d='M12 24c3.24 0 5.96-1.07 7.95-2.91l-3.89-2.93c-1.07.72-2.45 1.15-4.06 1.15-3.13 0-5.78-2.11-6.73-4.95H1.26v3.02A12 12 0 0 0 12 24Z'/%3E%3Cpath fill='%23FBBC05' d='M5.27 14.36A7.2 7.2 0 0 1 4.9 12c0-.82.14-1.62.37-2.36V6.62H1.26A12 12 0 0 0 0 12c0 1.94.46 3.78 1.26 5.38l4.01-3.02Z'/%3E%3Cpath fill='%23EA4335' d='M12 4.69c1.77 0 3.35.61 4.6 1.8l3.44-3.44A11.55 11.55 0 0 0 12 0 12 12 0 0 0 1.26 6.62l4.01 3.02C6.22 6.8 8.87 4.69 12 4.69Z'/%3E%3C/svg%3E") center/22px 22px no-repeat}
 .google-mark:after{content:none}
+
+/* Keep the complete ICD signature visible at page anchors and login entry points. */
+.landing footer{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;margin-top:34px;padding:24px 28px;border:1px solid #d9e7f2;border-radius:20px;background:linear-gradient(135deg,#fff,#f3f9fd);box-shadow:0 14px 35px #0c34510d}
+.landing footer .brand-logo{width:164px;height:62px;max-width:164px;object-fit:contain;object-position:left center}
+.landing footer span{font-weight:800;color:#183652}.landing footer small{color:#6d8095;font-weight:700;letter-spacing:.04em}
+.auth-brand .brand-logo,.auth-brand.small .brand-logo{object-fit:contain;object-position:center;padding:9px}
+@media(max-width:700px){.landing footer{grid-template-columns:1fr;text-align:center}.landing footer .brand-logo{margin:auto;object-position:center}.landing footer small{display:block}}
