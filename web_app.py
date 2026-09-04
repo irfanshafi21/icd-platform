@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import base64
+import hashlib
 import io
 import os
 import secrets
@@ -17,12 +18,13 @@ import threading
 import time
 import tomllib
 import zipfile
+from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
@@ -88,16 +90,39 @@ def _session(icd_session: str | None = Cookie(default=None)) -> RecruiterSession
         return session
 
 
-def _candidate_session(icd_candidate_session: str | None = Cookie(default=None)) -> CandidateSession:
-    if not icd_candidate_session:
-        raise HTTPException(401, "Candidate login required")
+def _candidate_session(response: Response,
+                       icd_candidate_session: str | None = Cookie(default=None),
+                       icd_candidate_refresh: str | None = Cookie(default=None)) -> CandidateSession:
     with _sessions_lock:
         session = _candidate_sessions.get(icd_candidate_session)
-        if not session or time.monotonic() - session.last_seen > SESSION_TTL:
+        if session and time.monotonic() - session.last_seen <= SESSION_TTL:
+            session.last_seen = time.monotonic()
+            return session
+        if icd_candidate_session:
             _candidate_sessions.pop(icd_candidate_session, None)
-            raise HTTPException(401, "Candidate session expired")
-        session.last_seen = time.monotonic()
-        return session
+    if not icd_candidate_refresh:
+        raise HTTPException(401, "Candidate login required")
+    try:
+        client = _public_client()
+        refreshed = client.auth.refresh_session(icd_candidate_refresh)
+        if not refreshed.user or not refreshed.session:
+            raise ValueError("No refreshed session")
+    except Exception as exc:
+        response.delete_cookie("icd_candidate_refresh")
+        raise HTTPException(401, "Candidate session expired") from exc
+    session_id = secrets.token_urlsafe(32)
+    with _sessions_lock:
+        _candidate_sessions[session_id] = CandidateSession(client, refreshed.user)
+    _set_candidate_cookies(response, session_id, refreshed.session.refresh_token)
+    return _candidate_sessions[session_id]
+
+
+def _set_candidate_cookies(response: Response, session_id: str, refresh_token: str) -> None:
+    secure = bool(CONFIG.get("RENDER"))
+    response.set_cookie("icd_candidate_session", session_id, httponly=True, secure=secure,
+                        samesite="lax", max_age=SESSION_TTL)
+    response.set_cookie("icd_candidate_refresh", refresh_token, httponly=True, secure=secure,
+                        samesite="lax", max_age=60 * 60 * 24 * 30)
 
 
 def _company_query(session: RecruiterSession, table: str):
@@ -215,10 +240,50 @@ def candidate_verify_otp(payload: CandidateVerify, response: Response):
     session_id = secrets.token_urlsafe(32)
     with _sessions_lock:
         _candidate_sessions[session_id] = CandidateSession(client, verified.user)
-    response.set_cookie("icd_candidate_session", session_id, httponly=True,
-                        secure=bool(CONFIG.get("RENDER")),
-                        samesite="lax", max_age=SESSION_TTL)
+    if not verified.session:
+        raise HTTPException(401, "Could not create a secure candidate session")
+    _set_candidate_cookies(response, session_id, verified.session.refresh_token)
     return {"ok": True}
+
+
+@app.get("/api/candidate/google")
+def candidate_google(request: Request):
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    origin = str(request.base_url).rstrip("/")
+    callback = f"{origin}/api/candidate/oauth/callback"
+    authorize = f"{SUPABASE_URL.rstrip('/')}/auth/v1/authorize?" + urlencode({
+        "provider": "google", "redirect_to": callback,
+        "code_challenge": challenge, "code_challenge_method": "s256",
+    })
+    response = RedirectResponse(authorize, status_code=302)
+    response.set_cookie("icd_oauth_verifier", verifier, httponly=True,
+                        secure=bool(CONFIG.get("RENDER")), samesite="lax", max_age=600)
+    return response
+
+
+@app.get("/api/candidate/oauth/callback")
+def candidate_oauth_callback(code: str, request: Request,
+                             icd_oauth_verifier: str | None = Cookie(default=None)):
+    if not icd_oauth_verifier:
+        return RedirectResponse("/?candidate=1&auth_error=oauth_expired", status_code=302)
+    try:
+        client = _public_client()
+        verified = client.auth.exchange_code_for_session({
+            "auth_code": code, "code_verifier": icd_oauth_verifier,
+            "redirect_to": str(request.url).split("?", 1)[0],
+        })
+        if not verified.user or not verified.session:
+            raise ValueError("Google did not return a session")
+    except Exception:
+        return RedirectResponse("/?candidate=1&auth_error=google_login_failed", status_code=302)
+    session_id = secrets.token_urlsafe(32)
+    with _sessions_lock:
+        _candidate_sessions[session_id] = CandidateSession(client, verified.user)
+    response = RedirectResponse("/?candidate=1&google_login=success", status_code=302)
+    response.delete_cookie("icd_oauth_verifier")
+    _set_candidate_cookies(response, session_id, verified.session.refresh_token)
+    return response
 
 
 @app.delete("/api/candidate/session")
@@ -227,6 +292,7 @@ def candidate_logout(response: Response, icd_candidate_session: str | None = Coo
         with _sessions_lock:
             _candidate_sessions.pop(icd_candidate_session, None)
     response.delete_cookie("icd_candidate_session")
+    response.delete_cookie("icd_candidate_refresh")
     return {"ok": True}
 
 
