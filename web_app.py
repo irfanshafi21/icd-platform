@@ -28,6 +28,7 @@ from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from postgrest.types import ReturnMethod
 from supabase import Client, create_client
 
 from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
@@ -210,13 +211,14 @@ def register_company(payload: CompanyRegistration):
            "contact_name": payload.contact_name.strip(), "business_email": email,
            "status": "pending"}
     try:
-        result = _public_client().table("company_registrations").insert(row).execute().data or []
+        _public_client().table("company_registrations").insert(
+            row, returning=ReturnMethod.minimal
+        ).execute()
     except Exception as exc:
         if "duplicate" in str(exc).lower():
             raise HTTPException(409, "A registration for this email is already under review") from exc
         raise HTTPException(400, "Could not submit the registration") from exc
-    return {"ok": True, "registration_id": result[0]["id"] if result else None,
-            "message": "Registration submitted for owner review"}
+    return {"ok": True, "message": "Registration submitted for owner review"}
 
 
 def _company_branding(client: Client, company_ids: set[str]) -> dict[str, dict[str, Any]]:
