@@ -19,6 +19,7 @@ import time
 import tomllib
 import zipfile
 import requests
+import qrcode
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -33,7 +34,16 @@ from supabase import Client, create_client
 
 from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
-from reports import build_offer_letter_pdf
+from email_utils import send_email_with_pdf
+from reports import (
+    build_interview_report_pdf,
+    build_offer_letter_pdf,
+    build_shortlist_report_pdf,
+    candidates_to_dataframe,
+    df_to_csv_bytes,
+    df_to_excel_bytes,
+    interviews_to_dataframe,
+)
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -543,6 +553,34 @@ class JobPayload(BaseModel):
     required_skills: list[str] = Field(default_factory=list)
 
 
+class JobImportPayload(BaseModel):
+    jobs: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@app.get("/api/jobs/export")
+def export_jobs(session: RecruiterSession = Depends(_session)):
+    rows = (_company_query(session, "jobs").order("created_at", desc=True).execute().data or [])
+    content = json.dumps(rows, ensure_ascii=False, indent=2, default=str).encode("utf-8")
+    return StreamingResponse(io.BytesIO(content), media_type="application/json",
+                             headers={"Content-Disposition": 'attachment; filename="ICD-jobs.json"'})
+
+
+@app.post("/api/jobs/import")
+def import_jobs(payload: JobImportPayload, session: RecruiterSession = Depends(_session)):
+    allowed = set(JobPayload.model_fields)
+    rows = []
+    for item in payload.jobs[:200]:
+        cleaned = {key: item.get(key) for key in allowed if item.get(key) is not None}
+        if not str(cleaned.get("title", "")).strip():
+            continue
+        cleaned.update({"company_id": session.company["id"], "status": item.get("status", "active"),
+                        "published_to_portal": item.get("published_to_portal", True)})
+        rows.append(cleaned)
+    if rows:
+        session.client.table("jobs").insert(rows).execute()
+    return {"imported": len(rows)}
+
+
 @app.post("/api/jobs")
 def create_job(payload: JobPayload, session: RecruiterSession = Depends(_session)):
     row = {**payload.model_dump(), "company_id": session.company["id"], "status": "active",
@@ -565,6 +603,71 @@ def delete_job(job_id: int, session: RecruiterSession = Depends(_session)):
     (session.client.table("jobs").delete().eq("id", job_id)
      .eq("company_id", session.company["id"]).execute())
     return {"ok": True}
+
+
+@app.patch("/api/company")
+def update_company(payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
+    allowed = {key: value for key, value in payload.items()
+               if key in {"name", "industry", "website", "company_size", "logo_base64"}}
+    if not allowed:
+        raise HTTPException(400, "No supported company fields were supplied")
+    rows = (session.client.table("companies").update(allowed).eq("id", session.company["id"])
+            .execute().data or [])
+    if rows:
+        session.company = rows[0]
+    return session.company
+
+
+@app.post("/api/company/access-code")
+def change_access_code(payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
+    code = str(payload.get("access_code", "")).strip()
+    if not (code.isdigit() and len(code) == 4):
+        raise HTTPException(400, "Access code must contain exactly four digits")
+    rows = (session.client.table("companies").update({"access_code": code})
+            .eq("id", session.company["id"]).execute().data or [])
+    if rows:
+        session.company = rows[0]
+    return {"ok": True}
+
+
+@app.get("/api/reports/{report_type}.{file_type}")
+def export_report(report_type: str, file_type: str, role: str = "",
+                  session: RecruiterSession = Depends(_session)):
+    candidates = [_candidate(row) for row in
+                  ((_company_query(session, "screening_history").neq("status", "cleared")
+                    .order("screened_at", desc=True).limit(1000).execute().data) or [])]
+    interviews = ((_company_query(session, "interviews").order("scheduled_at").limit(500)
+                   .execute().data) or [])
+    if role:
+        candidates = [item for item in candidates if item.get("job_role") == role]
+        interviews = [item for item in interviews if item.get("job_role") == role]
+    if report_type == "interviews":
+        records, frame = interviews, interviews_to_dataframe(interviews)
+    else:
+        records = [item for item in candidates if report_type == "screened" or
+                   (report_type == "shortlisted" and item.get("score", 0) >= 70) or
+                   (report_type == "selected" and item.get("decision_status") == "Selected")]
+        legacy = [{"name": item.get("candidate_name"),
+                   "profile": _json_field(item.get("profile_json"), {}),
+                   "score": _json_field(item.get("score_json"), {"overall_score": item.get("score", 0)})}
+                  for item in records]
+        frame = candidates_to_dataframe(legacy)
+    filename = f"ICD-{report_type}-{role or 'all-roles'}".replace(" ", "-")
+    if file_type == "csv":
+        return StreamingResponse(io.BytesIO(df_to_csv_bytes(frame)), media_type="text/csv",
+                                 headers={"Content-Disposition": f'attachment; filename="{filename}.csv"'})
+    if file_type == "xlsx":
+        return StreamingResponse(io.BytesIO(df_to_excel_bytes(frame, report_type.title())),
+                                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                 headers={"Content-Disposition": f'attachment; filename="{filename}.xlsx"'})
+    if file_type == "pdf":
+        if report_type == "interviews":
+            content = build_interview_report_pdf(records, role or None)
+        else:
+            content = build_shortlist_report_pdf(legacy, role or "All roles")
+        return StreamingResponse(io.BytesIO(content), media_type="application/pdf",
+                                 headers={"Content-Disposition": f'attachment; filename="{filename}.pdf"'})
+    raise HTTPException(400, "Choose csv, xlsx or pdf")
 
 
 def _application_row(application_id: int, session: RecruiterSession, include_resume: bool = False):
@@ -629,6 +732,21 @@ def applications_zip(job_id: int, session: RecruiterSession = Depends(_session))
     filename = "".join(c for c in owned[0]["title"] if c.isalnum() or c in "-_") or "applications"
     return StreamingResponse(output, media_type="application/zip",
                              headers={"Content-Disposition": f'attachment; filename="{filename}-applications.zip"'})
+
+
+@app.get("/api/jobs/{job_id}/qr")
+def job_qr(job_id: int, request: Request, session: RecruiterSession = Depends(_session)):
+    owned = (session.client.table("jobs").select("id").eq("id", job_id)
+             .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not owned:
+        raise HTTPException(404, "Job not found")
+    url = f"{str(request.base_url).rstrip('/')}?apply={job_id}"
+    image = qrcode.make(url)
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    output.seek(0)
+    return StreamingResponse(output, media_type="image/png",
+                             headers={"Content-Disposition": f'inline; filename="job-{job_id}-qr.png"'})
 
 
 @app.patch("/api/candidates/{candidate_id}")
@@ -776,6 +894,43 @@ def offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depend
     output.seek(0)
     return StreamingResponse(output, media_type="application/zip",
                              headers={"Content-Disposition": 'attachment; filename="ICD-offer-letters.zip"'})
+
+
+@app.post("/api/offers/send")
+def send_offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depends(_session)):
+    rows = (session.client.table("screening_history").select("*").in_("id", payload.candidate_ids)
+            .eq("company_id", session.company["id"]).execute().data or [])
+    chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"]
+    company, sent, failed = session.company, [], []
+    logo_bytes = None
+    if company.get("logo_base64"):
+        try:
+            logo_bytes = base64.b64decode(company["logo_base64"])
+        except Exception:
+            pass
+    for row in chosen:
+        candidate = _candidate(row)
+        profile = _json_field(row.get("profile_json"), {})
+        email = row.get("email") or profile.get("email")
+        if not email:
+            failed.append({"name": candidate["candidate_name"], "reason": "Email not captured"})
+            continue
+        offer = {**payload.model_dump(exclude={"candidate_ids"}),
+                 "job_title": payload.job_title or row.get("job_role") or "Position",
+                 "company_name": company.get("name") or "Our Company",
+                 "company_email": company.get("email") or ""}
+        report_candidate = {"name": candidate["candidate_name"], "profile": profile,
+                            "score": _json_field(row.get("score_json"), {})}
+        pdf = build_offer_letter_pdf(report_candidate, offer, logo_bytes=logo_bytes)
+        subject = f"Offer for {offer['job_title']} at {offer['company_name']}"
+        body = (f"Hello {candidate['candidate_name']},\n\nWe are pleased to share your offer for "
+                f"{offer['job_title']}. Please review the attached letter.\n\n{offer['company_name']}")
+        ok, message = send_email_with_pdf(email, subject, body, pdf,
+                                          f"Offer - {candidate['candidate_name']}.pdf",
+                                          logo_bytes=logo_bytes, company_name=offer["company_name"])
+        (sent if ok else failed).append({"name": candidate["candidate_name"],
+                                        "email": email, "message": message})
+    return {"sent": sent, "failed": failed, "sent_count": len(sent), "failed_count": len(failed)}
 
 
 @app.post("/api/screen")
