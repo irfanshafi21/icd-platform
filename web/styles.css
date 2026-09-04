@@ -481,6 +481,7 @@ label{color:#213b56;font-size:13px}
 .inline-form:not([hidden]){padding:20px;border-color:#cce5dc;background:linear-gradient(145deg,#fff,#f2fbf8)}
 
 .page-reports .report-tools{border:1px solid #d3e4ef;background:linear-gradient(145deg,#fff,#f0f8fd)}
+.page-reports .report-kpis{margin-top:14px}
 .page-reports .report-stats{gap:14px}
 .page-reports .report-stats article{position:relative;overflow:hidden;min-height:128px;padding:22px;border:1px solid #d8e6f0;border-left:0;border-radius:20px;background:#fff}
 .page-reports .report-stats article:before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:linear-gradient(#1594d0,#25c3bf)}
