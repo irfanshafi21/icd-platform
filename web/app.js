@@ -4,7 +4,9 @@ const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const logo='<img class="brand-logo" src="/assets/logo_header.png" alt="ICD Platform">';
 function note(message,kind='ok'){toast.textContent=message;toast.dataset.kind=kind;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2600)}
 async function api(url,options={}){const r=await fetch(url,{credentials:'same-origin',...options,headers:{...(options.body instanceof FormData?{}:{'Content-Type':'application/json'}),...(options.headers||{})}}),body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.detail||'Please try again.');return body}
-function show(html){root.innerHTML=html;window.scrollTo({top:0,behavior:'instant'})}
+let revealObserver;
+function show(html){root.classList.remove('view-ready');root.innerHTML=html;window.scrollTo({top:0,behavior:'instant'});requestAnimationFrame(()=>root.classList.add('view-ready'));initMotion()}
+function initMotion(){if(revealObserver)revealObserver.disconnect();const targets=root.querySelectorAll('.landing-hero,.impact-strip,.platform-section,.bento>article,.journey-steps>article,.landing-proof,.proof-grid>article,.landing-security,.choice,.auth-story,.auth-panel,.candidate-auth-card,.candidate-access>aside,.workspace-head,.overview-welcome,.stats>article,.panel,.recruiter-cards>article,.public-job,.offer-hero');targets.forEach((el,i)=>{el.classList.add('reveal-item');el.style.setProperty('--reveal-delay',`${Math.min(i%6,5)*45}ms`)});if(!('IntersectionObserver'in window)||matchMedia('(prefers-reduced-motion: reduce)').matches){targets.forEach(el=>el.classList.add('is-visible'));return}revealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');revealObserver.unobserve(entry.target)}}),{rootMargin:'0px 0px -7% 0px',threshold:.08});targets.forEach(el=>revealObserver.observe(el))}
 function mark(c){return c?.logo_base64?`<img src="data:image/png;base64,${c.logo_base64}" alt="${esc(c.name)}">`:`<span>${esc((c?.name||'I')[0])}</span>`}
 
 function welcome(){show(`<main class="landing">
