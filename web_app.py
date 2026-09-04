@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from supabase import Client, create_client
@@ -651,4 +651,6 @@ async def screen_resumes(
 @app.get("/")
 @app.get("/{path:path}")
 def index(path: str = ""):
-    return FileResponse(WEB / "index.html")
+    version = str(CONFIG.get("RENDER_GIT_COMMIT") or CONFIG.get("ASSET_VERSION") or int(time.time()))[:12]
+    html = (WEB / "index.html").read_text(encoding="utf-8").replace("__ASSET_VERSION__", version)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store, max-age=0"})
