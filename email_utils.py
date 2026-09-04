@@ -33,7 +33,10 @@ import base64
 import smtplib
 import requests
 import html as _html_mod
-import streamlit as st
+try:  # Streamlit is optional; the production FastAPI app reads environment variables.
+    import streamlit as st
+except ImportError:  # pragma: no cover - exercised in the lightweight production image
+    st = None
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -51,13 +54,13 @@ def _get_secret(name: str) -> str | None:
     # Same lookup order as ai_engine._get_secret: session override (for
     # quick testing) -> st.secrets -> environment variable.
     try:
-        override = st.session_state.get(f"override_{name}")
+        override = st.session_state.get(f"override_{name}") if st is not None else None
         if override:
             return override
     except Exception:
         pass
     try:
-        if name in st.secrets:
+        if st is not None and name in st.secrets:
             return st.secrets[name]
     except Exception:
         pass
