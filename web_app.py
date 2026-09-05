@@ -188,6 +188,12 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(WEB / "favicon.svg", media_type="image/svg+xml",
+                        headers={"Cache-Control": "no-cache, max-age=0"})
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True, "service": "icd-web"}
