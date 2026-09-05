@@ -717,3 +717,31 @@ img,svg,video,canvas{max-width:100%;height:auto}.mobile-menu-toggle{display:none
   .landing-v2 .hiring-canvas{min-width:0;padding:20px!important}
   .workspace-head{padding-inline:30px}.workspace-head h1{font-size:clamp(34px,3.7vw,46px)}
 }
+
+/* desktop-alignment-and-semantic-actions-v1 — mobile remains unchanged */
+@media(min-width:701px){
+  .candidate-nav{display:grid;grid-template-columns:minmax(310px,1fr) auto;align-items:center;gap:28px;padding-inline:26px}
+  .candidate-brand{min-width:0}.candidate-brand>.brand-logo{flex:0 0 142px}.candidate-brand>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .candidate-nav-actions{display:grid;grid-template-columns:auto minmax(300px,auto) auto;align-items:center;gap:18px}
+  .candidate-nav .identity{min-width:300px}.candidate-nav .identity b,.candidate-nav .identity small{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .candidate-nav .secondary{min-width:118px;color:#fff;background:linear-gradient(135deg,#0b86d0,#0767aa);box-shadow:0 10px 22px #0879b625}
+}
+@media(min-width:1051px){
+  .recruiter-access .auth-story{align-content:start;grid-template-rows:auto auto auto;gap:24px}
+  .recruiter-access .auth-brand{position:static;align-self:start}
+  .recruiter-access .story-copy{order:2;margin:0;padding-top:8px}
+  .recruiter-access .access-preview{order:3;margin:0}
+}
+@media(min-width:701px) and (max-width:1250px){.candidate-nav{grid-template-columns:1fr auto}.candidate-brand>span{display:none}.candidate-nav-actions{grid-template-columns:auto auto}.candidate-nav .identity{display:none}}
+
+.page-jobs .management-actions #import-jobs{border-color:#7258d8;color:#fff;background:linear-gradient(135deg,#8067dc,#6548c0)}
+.page-jobs .management-actions .button-link{border-color:#087fae;color:#fff;background:linear-gradient(135deg,#1198bd,#08769d)}
+.page-jobs .management-actions .primary{background:linear-gradient(135deg,#147fd0,#075c9d);box-shadow:0 10px 22px #096eb42b}
+.page-jobs .job-admin-cards .row [data-screen]{border-color:#078b70;color:#fff;background:#078b70}
+.page-jobs .job-admin-cards .row [data-edit-job]{border-color:#1675bd;color:#fff;background:#1675bd}
+.page-jobs .job-admin-cards .row [data-duplicate-job]{border-color:#7458c9;color:#fff;background:#7458c9}
+.page-jobs .job-admin-cards .row [data-archive-job]{border-color:#d48a1c;color:#fff;background:#d48a1c}
+.page-jobs .job-admin-cards .row [data-share-job]{border-color:#087f9f;color:#fff;background:#087f9f}
+.page-jobs .job-admin-cards .row .button-link{border-color:#173f68;color:#fff;background:#173f68}
+.page-jobs .job-admin-cards .row .danger{border-color:#d94d5b;color:#fff;background:#d94d5b}
+.page-jobs .job-admin-cards .row [data-screen]:hover,.page-jobs .job-admin-cards .row [data-edit-job]:hover,.page-jobs .job-admin-cards .row [data-duplicate-job]:hover,.page-jobs .job-admin-cards .row [data-archive-job]:hover,.page-jobs .job-admin-cards .row [data-share-job]:hover,.page-jobs .job-admin-cards .row .button-link:hover{filter:brightness(.92);transform:translateY(-1px)}
