@@ -461,6 +461,18 @@ button,a,input,select,textarea{transition:border-color .2s ease,background .2s e
 
 @media(max-width:1050px){.owner-nav{display:none}.owner-company-grid{grid-template-columns:1fr}.owner-company-primary{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.owner-portal>header{top:5px}.owner-portal>header .brand-logo{width:112px;height:45px}.owner-hero{min-height:auto;padding:32px 23px}.owner-stats{grid-template-columns:repeat(3,1fr);gap:7px}.owner-stats article{min-height:88px;padding:13px}.owner-stats strong{font-size:25px}.owner-section-head{align-items:flex-start;flex-direction:column;margin-top:28px}.owner-company-card{padding:21px 17px;border-radius:18px}.owner-company-head{grid-template-columns:48px minmax(0,1fr)}.owner-company-head .owner-status{grid-column:2;justify-self:start;margin:0}.owner-company-head .company-mark{width:48px;height:48px}.owner-company-primary{grid-template-columns:1fr}.owner-company-details{grid-template-columns:1fr}.owner-company-details .wide{grid-column:auto}.owner-history{padding:20px}}
+
+/* Accessible feedback and resilient interaction states */
+.skip-link{position:fixed;z-index:9999;left:14px;top:10px;padding:11px 15px;border-radius:10px;background:#071d38;color:#fff;font-size:12px;font-weight:800;text-decoration:none;transform:translateY(-150%);transition:transform .18s ease}
+.skip-link:focus{transform:translateY(0)}
+#app[aria-busy="true"]:before{content:"";position:fixed;z-index:2000;left:0;top:0;width:36%;height:3px;background:linear-gradient(90deg,#0a78c3,#25c5bd);box-shadow:0 2px 9px #0b88c866;animation:request-progress 1.1s ease-in-out infinite alternate}
+@keyframes request-progress{from{transform:translateX(-70%)}to{transform:translateX(250%)}}
+button:disabled{cursor:not-allowed;filter:saturate(.55);opacity:.62;transform:none!important}
+input:invalid:not(:placeholder-shown),textarea:invalid:not(:placeholder-shown),select:invalid{border-color:#d8767d;box-shadow:0 0 0 3px #d84a5510}
+input:focus,select:focus,textarea:focus{border-color:#1998bd;box-shadow:0 0 0 4px #169ac017}
+#toast{max-width:min(430px,calc(100vw - 28px));line-height:1.45}
+@media(pointer:coarse){button,.button-link,input,select{min-height:44px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 @media(prefers-reduced-motion:reduce){.page-reveal{opacity:1!important;transform:none!important}}
 
 /* Recruiter workflow pages — editorial dashboards */
