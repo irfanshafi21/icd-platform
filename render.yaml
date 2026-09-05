@@ -3,7 +3,7 @@ services:
     name: icd-platform
     runtime: docker
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /api/health
     autoDeploy: true
     envVars:
       - key: SUPABASE_URL
