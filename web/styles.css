@@ -768,3 +768,37 @@ button:disabled{filter:saturate(.55);box-shadow:none!important}
 .integration-grid article.missing>i{background:#f1eafa;color:#6743a5}
 .fit-potential{background:#eee9fb;color:#5d3da0}
 .page-reports .report-stats article:nth-child(4):before{background:linear-gradient(#6f4bc2,#9a72dc)}
+
+/* unified-action-gradient-v1 */
+:root{--action-gradient:linear-gradient(135deg,#163f87 0%,#08789b 58%,#078b77 100%);--action-shadow:0 10px 24px rgba(8,91,126,.24)}
+.workspace .primary,.workspace .secondary:not(.light),.workspace .button-link,.candidate-portal .primary,.candidate-portal .secondary,.premium-apply-page .primary,.premium-apply-page .secondary,.profile-page .primary,.auth-layout .primary,.candidate-auth .primary,.owner-portal .secondary,.owner-login .google-login,.path-card>button,.landing-cta button,.landing-hero .hero-actions button{border-color:#0b687f!important;color:#fff!important;background:var(--action-gradient)!important;box-shadow:var(--action-shadow)!important}
+.workspace .danger,.workspace .icon-action.danger{border-color:#b83243!important;color:#fff!important;background:linear-gradient(135deg,#cf4656,#9e2637)!important;box-shadow:0 8px 18px rgba(165,38,55,.2)!important}
+.workspace button:not(:disabled):hover,.workspace .button-link:hover,.candidate-portal button:not(:disabled):hover,.auth-layout button:not(:disabled):hover{filter:brightness(1.08);transform:translateY(-1px)}
+
+/* Interview studio redesign */
+.page-interviews>.section-title{padding:30px 32px;border:0;border-left:6px solid #0b8f7a;background:radial-gradient(circle at 92% 0,rgba(37,197,181,.18),transparent 30%),linear-gradient(145deg,#fff,#f0faf8)}
+.page-interviews>.section-title h2{font-size:clamp(30px,3vw,42px)}
+.page-interviews #interview-form{padding:22px;border:1px solid #bcded8;border-top:5px solid #0b8f7a;border-radius:20px;background:linear-gradient(145deg,#fff,#f0faf8);box-shadow:0 16px 36px rgba(7,89,78,.1)}
+.page-interviews .interview-layout{grid-template-columns:minmax(0,1.55fr) minmax(310px,.6fr);gap:22px}
+.page-interviews .interview-list{display:grid;gap:10px;padding:22px;background:linear-gradient(150deg,#fff,#f7fbfc)}
+.page-interviews .interview-list-head{padding:0 13px 10px 78px}
+.page-interviews .interview-list article{min-height:98px;padding:15px 13px!important;border:1px solid #dbe9e8!important;border-radius:17px;background:#fff;box-shadow:0 7px 20px rgba(8,55,68,.05)}
+.page-interviews .interview-list article:hover{border-color:#9fcfc8!important;transform:translateY(-2px);box-shadow:0 13px 28px rgba(8,74,78,.1)}
+.page-interviews .interview-list time{width:58px;height:64px;border:0;background:linear-gradient(145deg,#dff7f2,#cceee8);color:#076b5b}
+.page-interviews .interview-person h3{font-size:17px}.page-interviews .interview-person small{color:#708b8c}
+.page-interviews .interview-guide{position:sticky;top:20px;padding:32px;border:1px solid rgba(255,255,255,.13);border-radius:24px;background:radial-gradient(circle at 100% 0,rgba(36,203,187,.3),transparent 34%),linear-gradient(150deg,#061b35,#075d69);box-shadow:0 22px 48px rgba(4,39,57,.2)}
+.page-interviews .interview-guide>div:not(.kicker){margin-top:9px;padding:14px;border:1px solid rgba(255,255,255,.1);border-radius:13px;background:rgba(255,255,255,.07)}
+
+/* Offer studio and letter-preview redesign */
+.page-offers .offer-hero{min-height:210px;padding:42px 46px;border:1px solid rgba(255,255,255,.14);background:radial-gradient(circle at 85% 0,rgba(36,203,187,.25),transparent 30%),linear-gradient(125deg,#081a37,#173f78 58%,#08766f);box-shadow:0 24px 56px rgba(8,42,75,.22)}
+.page-offers .offer-hero h2{max-width:720px;font-size:clamp(32px,3.4vw,46px);line-height:1.08}.page-offers .offer-hero p{max-width:680px;color:#c8ddea}
+.page-offers .offer-hero-stat{min-width:175px;padding:22px;border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.1);backdrop-filter:blur(12px)}
+.page-offers .offer-progress{position:relative;gap:0;justify-content:space-between;padding:17px 28px}.page-offers .offer-progress:before{content:"";position:absolute;left:50px;right:50px;top:29px;height:2px;background:#d8e5eb}.page-offers .offer-progress span{position:relative;z-index:1;padding:0 9px;background:#fff}.page-offers .offer-progress i{background:#dce8ed;color:#456579}.page-offers .offer-progress .active i{background:var(--action-gradient)}
+.page-offers .offer-studio{grid-template-columns:minmax(0,1.12fr) minmax(400px,.88fr);gap:24px}.page-offers .modern-offer-list,.page-offers .modern-offer-compose{border-radius:25px}
+.page-offers .modern-offer-list{padding:30px;background:linear-gradient(150deg,#fff,#f6fafc)}.page-offers .modern-offer-list article{min-height:90px;margin-top:10px;padding:15px;border:1px solid #dce7ee;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(12,47,75,.045)}
+.page-offers .modern-offer-list article:hover{border-color:#9fcbd0;background:#f4fbfa;transform:translateX(3px)}
+.page-offers .modern-offer-compose{position:sticky;top:20px;padding:32px;border-top:0;background:radial-gradient(circle at 100% 0,rgba(23,171,159,.11),transparent 28%),linear-gradient(155deg,#fff,#f3f8fb);box-shadow:0 20px 46px rgba(10,48,78,.12)}
+.page-offers .modern-offer-compose:before{content:"Offer letter";display:flex;align-items:center;height:46px;margin:-32px -32px 26px;padding:0 32px;border-radius:25px 25px 0 0;color:#dff7f3;background:var(--action-gradient);font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase}
+.page-offers .offer-form-grid{gap:2px 12px}.page-offers .offer-assurance{padding:14px;border:1px solid #cde8df;background:#edf9f5}.page-offers .offer-assurance>i{background:#cdeee3;color:#076c58}
+@media(max-width:1180px){.page-interviews .interview-layout,.page-offers .offer-studio{grid-template-columns:1fr}.page-interviews .interview-guide,.page-offers .modern-offer-compose{position:static}}
+@media(max-width:700px){.page-interviews>.section-title{padding:22px 18px}.page-interviews .interview-list{padding:11px}.page-interviews .interview-list article{padding:13px 10px!important}.page-offers .offer-hero{min-height:auto;padding:29px 22px}.page-offers .offer-progress{padding-inline:8px}.page-offers .offer-progress:before{left:25px;right:25px}.page-offers .modern-offer-list,.page-offers .modern-offer-compose{padding:21px}.page-offers .modern-offer-compose:before{margin:-21px -21px 21px;padding:0 21px}}

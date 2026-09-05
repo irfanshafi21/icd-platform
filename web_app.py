@@ -20,6 +20,7 @@ import tomllib
 import zipfile
 import requests
 import qrcode
+from PIL import Image, ImageDraw
 from urllib.parse import urlencode
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -190,8 +191,23 @@ app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    return FileResponse(WEB / "favicon.svg", media_type="image/svg+xml",
-                        headers={"Cache-Control": "no-cache, max-age=0"})
+    source = Image.open(ROOT / "assets" / "logo_header.png").convert("RGBA")
+    alpha_box = source.getchannel("A").getbbox()
+    if alpha_box:
+        source = source.crop(alpha_box)
+    source.thumbnail((108, 72), Image.Resampling.LANCZOS)
+    icon = Image.new("RGBA", (128, 128), (0, 0, 0, 0))
+    tile = Image.new("RGBA", icon.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(tile)
+    draw.rounded_rectangle((4, 4, 124, 124), radius=27, fill="#ffffff",
+                           outline="#d6e4ef", width=3)
+    icon.alpha_composite(tile)
+    icon.alpha_composite(source, ((128 - source.width) // 2, (128 - source.height) // 2))
+    output = io.BytesIO()
+    icon.save(output, format="PNG", optimize=True)
+    output.seek(0)
+    return StreamingResponse(output, media_type="image/png",
+                             headers={"Cache-Control": "no-cache, no-store, max-age=0"})
 
 
 @app.get("/api/health")

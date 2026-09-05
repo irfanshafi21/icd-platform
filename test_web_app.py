@@ -18,7 +18,7 @@ class WebAppTests(unittest.TestCase):
         self.assertIn("/favicon.ico", response.text)
         icon = self.client.get("/favicon.ico")
         self.assertEqual(icon.status_code, 200)
-        self.assertIn("image/svg+xml", icon.headers["content-type"])
+        self.assertIn("image/png", icon.headers["content-type"])
         self.assertEqual(self.client.get("/missing-page").status_code, 404)
 
     def test_candidate_rows_are_normalized_for_frontend(self):

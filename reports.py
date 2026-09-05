@@ -248,7 +248,7 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
     doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.45*inch, bottomMargin=0.55*inch,
                              leftMargin=0.75*inch, rightMargin=0.75*inch)
 
-    TEAL = colors.HexColor("#00506B")
+    TEAL = colors.HexColor("#08766F")
     DARK = colors.HexColor("#0B1C30")
     GREY = colors.HexColor("#64748B")
 
@@ -275,7 +275,7 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
     styles = getSampleStyleSheet()
     company_style = ParagraphStyle("OLCompany", parent=styles["Normal"], fontSize=13, leading=17, textColor=DARK, fontName="Helvetica-Bold")
     company_sub = ParagraphStyle("OLCompanySub", parent=styles["Normal"], fontSize=9, leading=13, textColor=GREY)
-    title_style = ParagraphStyle("OLTitle", parent=styles["Heading1"], fontSize=17, textColor=DARK, alignment=2, fontName="Helvetica-Bold")
+    title_style = ParagraphStyle("OLTitle", parent=styles["Heading1"], fontSize=18, textColor=TEAL, alignment=2, fontName="Helvetica-Bold")
     date_style = ParagraphStyle("OLDate", parent=styles["Normal"], fontSize=10, textColor=DARK, alignment=2)
     label_bold = ParagraphStyle("OLLabelBold", parent=styles["Normal"], fontSize=10.5, leading=15, textColor=DARK, fontName="Helvetica-Bold")
     body = ParagraphStyle("OLBody", parent=styles["Normal"], fontSize=9.5, leading=13.5, textColor=DARK, spaceAfter=6)
@@ -308,7 +308,7 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
         ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
     rule = Table([[""]], colWidths=[6.75*inch], rowHeights=[1.1])
-    rule.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), DARK)]))
+    rule.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), TEAL)]))
 
     content = [header_table, rule, Spacer(1, 10)]
 
@@ -358,7 +358,9 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
     ]
     summary_table = Table(summary_table_data, colWidths=[2.1*inch, 4.65*inch])
     summary_table.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.75, DARK),
+        ("BOX", (0, 0), (-1, -1), 0.9, TEAL),
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#E8F6F4")),
+        ("ROWBACKGROUNDS", (1, 0), (1, -1), [colors.white, colors.HexColor("#F7FAFC")]),
         ("LINEBELOW", (0, 0), (-1, -2), 0.5, colors.HexColor("#D8DEE6")),
         ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
