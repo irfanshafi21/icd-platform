@@ -1,9 +1,12 @@
 import json
 import unittest
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from web_app import OWNER_EMAIL, _candidate, _hiring_average, _is_owner_email, _numeric_score, app
+from web_app import OWNER_EMAIL, _candidate, _hiring_average, _is_owner_email, _numeric_score, _screen_payloads, app
 
 
 class WebAppTests(unittest.TestCase):
@@ -49,6 +52,36 @@ class WebAppTests(unittest.TestCase):
     def test_owner_email_matching_is_case_insensitive(self):
         self.assertTrue(_is_owner_email(f"  {OWNER_EMAIL.upper()}  "))
         self.assertFalse(_is_owner_email("candidate@example.com"))
+
+    @patch("web_app.check_api_key", return_value=True)
+    @patch("web_app.heuristic_resume_check", return_value={"looks_like_resume": True})
+    @patch("web_app.extract_text_from_bytes", side_effect=lambda _name, data: data.decode())
+    @patch("web_app.parse_and_score")
+    def test_screening_returns_partial_ai_failures(self, parse, *_mocks):
+        score = {"overall_score": 80, "breakdown": {"skills_match": 80, "experience_fit": 80,
+                                                     "education_fit": 80}, "matched_skills": [], "gaps": []}
+        parse.side_effect = lambda text, _description: (_ for _ in ()).throw(RuntimeError("provider timeout")) if text == "bad" else ({"name": "Good"}, score.copy())
+        response = MagicMock(data=[])
+        client = MagicMock()
+        client.table.return_value.insert.return_value.execute.return_value = response
+        results, skipped = _screen_payloads([("good.pdf", b"good"), ("bad.pdf", b"bad")], "Engineer", "Python", "",
+                                            {"skills_match": 40, "experience_fit": 40, "education_fit": 20},
+                                            SimpleNamespace(client=client, company={"id": "company"}), "Web Upload")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(skipped[0]["filename"], "bad.pdf")
+        self.assertIn("provider timeout", skipped[0]["reason"])
+
+    @patch("web_app.check_api_key", return_value=True)
+    @patch("web_app.heuristic_resume_check", return_value={"looks_like_resume": True})
+    @patch("web_app.extract_text_from_bytes", return_value="resume")
+    @patch("web_app.parse_and_score", side_effect=RuntimeError("all providers failed"))
+    def test_screening_returns_503_when_all_ai_calls_fail(self, *_mocks):
+        with self.assertRaises(HTTPException) as caught:
+            _screen_payloads([("candidate.pdf", b"resume")], "Engineer", "Python", "",
+                             {"skills_match": 40, "experience_fit": 40, "education_fit": 20},
+                             SimpleNamespace(client=MagicMock(), company={"id": "company"}), "Web Upload")
+        self.assertEqual(caught.exception.status_code, 503)
+        self.assertIn("temporarily unavailable", caught.exception.detail)
 
 
 if __name__ == "__main__":

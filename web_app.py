@@ -12,6 +12,7 @@ import json
 import base64
 import hashlib
 import io
+import logging
 import os
 import secrets
 import threading
@@ -50,6 +51,7 @@ from reports import (
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
+logger = logging.getLogger(__name__)
 
 
 def _settings() -> dict[str, Any]:
@@ -1224,7 +1226,8 @@ def _weighted_score(score: dict[str, Any], weights: dict[str, float]) -> dict[st
 
 
 def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_details: str, job_id: str,
-                     weights: dict[str, float], session: RecruiterSession, source: str) -> list[dict[str, Any]]:
+                     weights: dict[str, float], session: RecruiterSession,
+                     source: str) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     payloads = _expand_resume_payloads(payloads)
     if not check_api_key():
         raise HTTPException(503, "No AI provider is configured")
@@ -1237,31 +1240,40 @@ def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_detai
                 extracted.append((futures[future], text))
     description = f"Job Role: {job_role}\n\nKey Requirements:\n{job_details}".strip()
     results: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
+    if not extracted:
+        return results, skipped
     with ThreadPoolExecutor(max_workers=min(6, len(extracted))) as pool:
         futures = {pool.submit(parse_and_score, text, description): (name, text) for name, text in extracted}
         for future in as_completed(futures):
             name, raw_text = futures[future]
-            profile, score = future.result()
-            score = _weighted_score(score, weights)
-            profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
-            row = {
-                "company_id": session.company["id"], "job_id": int(job_id) if job_id.isdigit() else None,
-                "job_role": job_role, "job_details": job_details, "candidate_name": profile.get("name") or name,
-                "filename": name, "email": profile.get("email"), "phone": profile.get("phone"),
-                "years_experience": profile.get("years_experience"), "education": profile.get("education"),
-                "skills": json.dumps(profile.get("skills") or []), "past_roles": json.dumps(profile.get("past_roles") or []),
-                "raw_text": raw_text, "profile_json": json.dumps(profile), "score_json": json.dumps(score),
-                "overall_score": score.get("overall_score", 0),
-                "skills_match": (score.get("breakdown") or {}).get("skills_match"),
-                "experience_fit": (score.get("breakdown") or {}).get("experience_fit"),
-                "education_fit": (score.get("breakdown") or {}).get("education_fit"),
-                "matched_skills": json.dumps(score.get("matched_skills") or []),
-                "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
-                "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": source,
-            }
-            saved = session.client.table("screening_history").insert(row).execute().data or []
-            results.append(_candidate(saved[0] if saved else row))
-    return sorted(results, key=lambda item: item["score"], reverse=True)
+            try:
+                profile, score = future.result()
+                score = _weighted_score(score, weights)
+                profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
+                row = {
+                    "company_id": session.company["id"], "job_id": int(job_id) if job_id.isdigit() else None,
+                    "job_role": job_role, "job_details": job_details, "candidate_name": profile.get("name") or name,
+                    "filename": name, "email": profile.get("email"), "phone": profile.get("phone"),
+                    "years_experience": profile.get("years_experience"), "education": profile.get("education"),
+                    "skills": json.dumps(profile.get("skills") or []), "past_roles": json.dumps(profile.get("past_roles") or []),
+                    "raw_text": raw_text, "profile_json": json.dumps(profile), "score_json": json.dumps(score),
+                    "overall_score": score.get("overall_score", 0),
+                    "skills_match": (score.get("breakdown") or {}).get("skills_match"),
+                    "experience_fit": (score.get("breakdown") or {}).get("experience_fit"),
+                    "education_fit": (score.get("breakdown") or {}).get("education_fit"),
+                    "matched_skills": json.dumps(score.get("matched_skills") or []),
+                    "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
+                    "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": source,
+                }
+                saved = session.client.table("screening_history").insert(row).execute().data or []
+                results.append(_candidate(saved[0] if saved else row))
+            except Exception as exc:
+                logger.exception("AI screening failed for %s", name)
+                skipped.append({"filename": name, "reason": str(exc)[:300] or "AI screening failed"})
+    if extracted and not results and skipped:
+        raise HTTPException(503, f"AI screening is temporarily unavailable: {skipped[0]['reason']}")
+    return sorted(results, key=lambda item: item["score"], reverse=True), skipped
 
 
 @app.post("/api/screen")
@@ -1271,10 +1283,10 @@ async def screen_resumes(
     files: list[UploadFile] = File(...), session: RecruiterSession = Depends(_session),
 ):
     payloads = [(file.filename or "resume.pdf", await file.read()) for file in files]
-    results = _screen_payloads(payloads, job_role, job_details, job_id,
-                               {"skills_match": skills_weight, "experience_fit": experience_weight, "education_fit": education_weight},
-                               session, "Web Upload")
-    return {"processed": len(results), "candidates": results}
+    results, skipped = _screen_payloads(payloads, job_role, job_details, job_id,
+                                        {"skills_match": skills_weight, "experience_fit": experience_weight, "education_fit": education_weight},
+                                        session, "Web Upload")
+    return {"processed": len(results), "candidates": results, "skipped": skipped}
 
 
 class InboxScreenPayload(BaseModel):
@@ -1293,11 +1305,11 @@ def screen_inbox(payload: InboxScreenPayload, session: RecruiterSession = Depend
     resumes, error = fetch_new_resumes()
     if error:
         raise HTTPException(502, error)
-    results = _screen_payloads([(item["filename"], item["data"]) for item in resumes], payload.job_role,
-                               payload.job_details, payload.job_id,
-                               {"skills_match": payload.skills_weight, "experience_fit": payload.experience_weight,
-                                "education_fit": payload.education_weight}, session, "Email Inbox")
-    return {"found": len(resumes), "processed": len(results), "candidates": results}
+    results, skipped = _screen_payloads([(item["filename"], item["data"]) for item in resumes], payload.job_role,
+                                        payload.job_details, payload.job_id,
+                                        {"skills_match": payload.skills_weight, "experience_fit": payload.experience_weight,
+                                         "education_fit": payload.education_weight}, session, "Email Inbox")
+    return {"found": len(resumes), "processed": len(results), "candidates": results, "skipped": skipped}
 
 
 def _linkedin_redirect(request: Request) -> str:
