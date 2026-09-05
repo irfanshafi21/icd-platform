@@ -989,4 +989,5 @@ async def screen_resumes(
 def index(path: str = ""):
     version = str(CONFIG.get("RENDER_GIT_COMMIT") or CONFIG.get("ASSET_VERSION") or int(time.time()))[:12]
     html = (WEB / "index.html").read_text(encoding="utf-8").replace("__ASSET_VERSION__", version)
-    return HTMLResponse(html, headers={"Cache-Control": "no-store, max-age=0"})
+    status_code = 200 if path in {"", "index.html"} else 404
+    return HTMLResponse(html, status_code=status_code, headers={"Cache-Control": "no-store, max-age=0"})
