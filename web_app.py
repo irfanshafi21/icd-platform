@@ -900,8 +900,8 @@ def create_interview(payload: InterviewPayload, session: RecruiterSession = Depe
     candidate = candidates[0]
     if _numeric_score(candidate.get("overall_score")) <= 49:
         raise HTTPException(400, "This candidate needs an ATS score above 49")
-    if (candidate.get("decision_status") or "") != "Shortlisted":
-        raise HTTPException(400, "Approve the candidate for interview from Candidate Records first")
+    if (candidate.get("decision_status") or "") == "Rejected":
+        raise HTTPException(400, "A rejected candidate cannot be scheduled for interview")
     if payload.mode.lower() == "online":
         data["meeting_link"] = _create_google_meet(session.company, data)
     row = {key: data[key] for key in (
@@ -1134,7 +1134,7 @@ async def screen_resumes(
                 "education_fit": (score.get("breakdown") or {}).get("education_fit"),
                 "matched_skills": json.dumps(score.get("matched_skills") or []),
                 "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
-                "status": "active", "decision_status": "Waiting", "source": "Web Upload",
+                "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": "Web Upload",
             }
             saved = session.client.table("screening_history").insert(row).execute().data or []
             results.append(_candidate(saved[0] if saved else row))
