@@ -524,6 +524,16 @@ input:focus,select:focus,textarea:focus{border-color:#1998bd;box-shadow:0 0 0 4p
 
 @media(max-width:1000px){.landing-hero{grid-template-columns:1fr!important;border-radius:30px 30px 70px 30px!important}.landing-hero .hiring-canvas{width:100%;margin-top:8px}}
 @media(max-width:700px){.landing-hero{padding:38px 22px 28px!important;border-radius:25px 25px 55px 25px!important}.landing-hero:before{inset:9px!important;border-radius:18px 18px 45px 18px!important}.landing-hero h1{font-size:45px}.landing-hero .hero-proof{grid-template-columns:1fr 1fr}.landing-hero .hiring-canvas{padding:20px 14px!important;border-radius:22px!important}.page-candidates .talent-cards{grid-template-columns:1fr}.owner-directory-tools{width:100%;align-items:stretch;flex-direction:column}.owner-directory-tools label,.owner-directory-tools input{width:100%}}
+
+/* Balanced color restoration for the redesigned hero */
+.landing-hero{color:#fff!important;border-color:#ffffff1c!important;background:radial-gradient(circle at 8% 5%,#5864d94d,transparent 30%),radial-gradient(circle at 93% 13%,#25d3c84a,transparent 28%),radial-gradient(circle at 65% 115%,#0d9ed45c,transparent 36%),linear-gradient(128deg,#07182f 0%,#102d5b 48%,#075f78 78%,#078c88 100%)!important;box-shadow:0 34px 88px #061d3b40!important}
+.landing-hero:before{border-color:#ffffff18!important;background:linear-gradient(120deg,#ffffff0b,transparent 42%)!important}
+.landing-hero:after{background:radial-gradient(circle,#7868e33b,transparent 68%)!important}
+.landing-hero .kicker{color:#72e5ed!important}.landing-hero .kicker:before{background:#72e5ed!important}
+.landing-hero h1{color:#fff!important}.landing-hero h1 em{background:linear-gradient(90deg,#68dfff,#76ebc9)!important;background-clip:text!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important}
+.landing-hero p{color:#c9dcec!important}.landing-hero .primary{background:linear-gradient(135deg,#19b9dd,#0877d0)!important;box-shadow:0 15px 32px #00152f66!important}.landing-hero .secondary{border-color:#ffffff29!important;background:#ffffff0e!important;color:#f2f8ff!important;box-shadow:none}.landing-hero .secondary:hover{background:#ffffff19!important;border-color:#ffffff42!important}
+.landing-hero .hero-proof span{border-color:#ffffff16!important;border-left-color:#4edacb!important;background:#ffffff0b!important;color:#9fb9ce!important}.landing-hero .hero-proof b{color:#fff!important}
+.landing-hero .hiring-canvas{border:1px solid #ffffff16!important;background:radial-gradient(circle at 92% 8%,#20c9c13d,transparent 31%),linear-gradient(145deg,#06182fc7,#092f4bc9)!important;box-shadow:0 30px 65px #00132855!important;backdrop-filter:blur(16px)!important}
 @media(prefers-reduced-motion:reduce){.page-reveal{opacity:1!important;transform:none!important}}
 
 /* Recruiter workflow pages — editorial dashboards */
