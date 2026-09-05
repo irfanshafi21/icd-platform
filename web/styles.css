@@ -473,6 +473,18 @@ input:focus,select:focus,textarea:focus{border-color:#1998bd;box-shadow:0 0 0 4p
 #toast{max-width:min(430px,calc(100vw - 28px));line-height:1.45}
 @media(pointer:coarse){button,.button-link,input,select{min-height:44px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* Landing hiring-pipeline preview */
+.pipeline-preview{padding:25px;background:linear-gradient(145deg,#ffffff18,#ffffff0a)}
+.pipeline-preview:after{content:"";position:absolute;right:-45px;bottom:-65px;width:170px;height:170px;border:28px solid #35d8c70b;border-radius:50%;pointer-events:none}
+.pipeline-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border:1px solid #ffffff17;border-radius:17px;background:#061c3575}
+.pipeline-summary span,.pipeline-summary strong{display:block}.pipeline-summary span{color:#9fb9ce;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.pipeline-summary strong{margin-top:5px;color:#fff;font-size:24px;letter-spacing:-.03em}.pipeline-summary em{padding:7px 10px;border-radius:999px;background:#26c69a1c;color:#72e5bf;font-size:9px;font-style:normal;font-weight:800}
+.pipeline-stages{display:grid;gap:8px;margin:11px 0}
+.pipeline-stages article{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:66px;padding:13px 15px;border:1px solid #ffffff13;border-radius:14px;background:linear-gradient(100deg,#0a2846cc,#0d3857aa)}
+.pipeline-stages article>div:first-child{display:grid;grid-template-columns:10px minmax(90px,1fr) auto;align-items:center;gap:9px}.pipeline-stages article span{color:#c0d2df;font-size:10px;font-weight:700}.pipeline-stages article b{color:#fff;font-size:17px}.stage-dot{width:8px;height:8px;border-radius:50%;background:#36a9e5;box-shadow:0 0 0 5px #36a9e514}.stage-dot.shortlisted{background:#987ce7;box-shadow:0 0 0 5px #987ce714}.stage-dot.interview{background:#35cc98;box-shadow:0 0 0 5px #35cc9814}
+.pipeline-people{display:flex;align-items:center;justify-content:flex-end;padding-left:8px}.pipeline-people span{width:30px;height:30px;display:grid;place-items:center;margin-left:-7px;border:2px solid #174866;border-radius:50%;background:linear-gradient(145deg,#e5f7ff,#d7eee9);color:#135b78!important;font-size:8px!important;font-weight:850!important}.pipeline-people small{margin-left:6px;color:#8eacc1;font-size:8px}
+.pipeline-decision{display:flex;align-items:center;justify-content:space-between;gap:13px;padding-top:13px}.pipeline-decision>div{display:flex;align-items:center;gap:9px}.pipeline-decision>div>i{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:#28c8971a;color:#68e0b8;font-style:normal}.pipeline-decision b,.pipeline-decision small{display:block}.pipeline-decision b{color:#eaf7ff;font-size:10px}.pipeline-decision small{margin-top:2px;color:#8faabd;font-size:8px}.pipeline-decision button{padding:10px 13px;border:1px solid #ffffff1e;border-radius:10px;background:#ffffff10;color:#fff;font-size:9px;font-weight:800}
+@media(max-width:650px){.pipeline-preview{display:block!important}.pipeline-summary{padding:14px}.pipeline-summary strong{font-size:19px}.pipeline-stages article{min-height:56px;padding:10px 12px}.pipeline-stages article>div:first-child{grid-template-columns:8px minmax(75px,1fr) auto}.pipeline-decision small{display:none}}
 @media(prefers-reduced-motion:reduce){.page-reveal{opacity:1!important;transform:none!important}}
 
 /* Recruiter workflow pages — editorial dashboards */
