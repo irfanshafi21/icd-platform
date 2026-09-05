@@ -67,6 +67,10 @@ SUPABASE_KEY = CONFIG.get("SUPABASE_KEY", "")
 OWNER_EMAIL = str(CONFIG.get("OWNER_EMAIL", "irfanshafi210608@gmail.com")).strip().lower()
 
 
+def _is_owner_email(value: Any) -> bool:
+    return str(value or "").strip().lower() == OWNER_EMAIL
+
+
 def _numeric_score(value: Any) -> float:
     try:
         return max(0.0, min(100.0, float(value)))
@@ -366,7 +370,7 @@ def candidate_verify_otp(payload: CandidateVerify, response: Response):
     if not verified.session:
         raise HTTPException(401, "Could not create a secure candidate session")
     _set_candidate_cookies(response, session_id, verified.session.refresh_token)
-    return {"ok": True}
+    return {"ok": True, "destination": "owner" if _is_owner_email(getattr(verified.user, "email", "")) else "candidate"}
 
 
 @app.get("/api/candidate/google")
@@ -418,7 +422,7 @@ def candidate_oauth_callback(code: str, request: Request,
     session_id = secrets.token_urlsafe(32)
     with _sessions_lock:
         _candidate_sessions[session_id] = CandidateSession(client, verified.user)
-    destination = "/?owner=1" if icd_oauth_destination == "owner" else "/?candidate=1&google_login=success"
+    destination = "/?owner=1" if (icd_oauth_destination == "owner" or _is_owner_email(getattr(verified.user, "email", ""))) else "/?candidate=1&google_login=success"
     response = RedirectResponse(destination, status_code=302)
     response.delete_cookie("icd_oauth_verifier")
     response.delete_cookie("icd_oauth_destination")
@@ -488,6 +492,8 @@ def candidate_logout(response: Response, icd_candidate_session: str | None = Coo
 
 @app.get("/api/candidate/me")
 def candidate_me(session: CandidateSession = Depends(_candidate_session)):
+    if _is_owner_email(getattr(session.user, "email", "")):
+        return {"email": getattr(session.user, "email", ""), "role": "owner"}
     user_id = str(session.user.id)
     profiles = session.client.table("candidate_profiles").select("*").eq("user_id", user_id).limit(1).execute().data or []
     applications = (session.client.table("public_applications")

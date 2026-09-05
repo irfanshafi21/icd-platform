@@ -13,6 +13,12 @@ new MutationObserver(records=>records.flatMap(r=>[...r.addedNodes]).filter(n=>n.
 // Candidate records are intentionally accessed from Company Settings only. Screening
 // may still open the completed results immediately after the server has saved them.
 function secureCandidateLibraryAccess(){
+  if(state.candidate?.role==='owner'){
+    state.candidate=null;
+    history.replaceState({},'',location.origin+'/?owner=1');
+    ownerPortal();
+    return;
+  }
   const workspace=root.querySelector('.workspace');
   if(!workspace)return;
   workspace.querySelector('aside [data-page="candidates"]')?.remove();

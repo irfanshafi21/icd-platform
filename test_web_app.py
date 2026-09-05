@@ -3,7 +3,7 @@ import unittest
 
 from fastapi.testclient import TestClient
 
-from web_app import _candidate, _hiring_average, _numeric_score, app
+from web_app import OWNER_EMAIL, _candidate, _hiring_average, _is_owner_email, _numeric_score, app
 
 
 class WebAppTests(unittest.TestCase):
@@ -45,6 +45,10 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(_numeric_score("55"), 55)
         self.assertEqual(_numeric_score(120), 100)
         self.assertEqual(_numeric_score("invalid"), 0)
+
+    def test_owner_email_matching_is_case_insensitive(self):
+        self.assertTrue(_is_owner_email(f"  {OWNER_EMAIL.upper()}  "))
+        self.assertFalse(_is_owner_email("candidate@example.com"))
 
 
 if __name__ == "__main__":
