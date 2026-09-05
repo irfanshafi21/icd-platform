@@ -36,9 +36,10 @@ from supabase import Client, create_client
 from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
 from email_utils import is_configured as email_is_configured, send_email_with_pdf, send_plain_email
-from inbox_intake import is_configured as inbox_is_configured
+from inbox_intake import is_configured as inbox_is_configured, fetch_new_resumes
 from reports import (
     build_interview_report_pdf,
+    build_candidate_report_pdf,
     build_offer_letter_pdf,
     build_shortlist_report_pdf,
     candidates_to_dataframe,
@@ -137,6 +138,7 @@ class CandidateSession:
 
 _sessions: dict[str, RecruiterSession] = {}
 _candidate_sessions: dict[str, CandidateSession] = {}
+_linkedin_states: dict[str, tuple[str, float]] = {}
 _sessions_lock = threading.Lock()
 SESSION_TTL = 60 * 60 * 12
 
@@ -602,6 +604,11 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
     applications = (session.client.table("public_applications")
                     .select("id,job_id,company_id,applicant_name,applicant_email,applicant_phone,resume_filename,status,applied_at")
                     .eq("company_id", company_id).order("applied_at", desc=True).limit(1000).execute().data or [])
+    try:
+        linkedin_connection = (session.client.table("linkedin_connections").select("member_name,expires_at")
+                               .eq("company_id", company_id).limit(1).execute().data or [])
+    except Exception:
+        linkedin_connection = []
     parsed = [_candidate(row) for row in candidates]
     return {
         "company": session.company,
@@ -615,12 +622,14 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
             "resume_inbox": inbox_is_configured(),
             "google_candidate_login": bool(SUPABASE_URL and SUPABASE_KEY),
             "google_calendar": bool(CONFIG.get("GOOGLE_CALENDAR_WEBHOOK_URL")),
-            "linkedin": bool(CONFIG.get("LINKEDIN_CLIENT_ID") and CONFIG.get("LINKEDIN_CLIENT_SECRET")),
+            "linkedin": bool(linkedin_connection),
+            "linkedin_configured": bool(CONFIG.get("LINKEDIN_CLIENT_ID") and CONFIG.get("LINKEDIN_CLIENT_SECRET")),
+            "linkedin_member": linkedin_connection[0].get("member_name") if linkedin_connection else "",
         },
         "summary": {
             "active_jobs": sum(job.get("status") == "active" for job in jobs),
             "candidates": len(parsed),
-            "shortlisted": sum(candidate["score"] >= 70 for candidate in parsed),
+            "shortlisted": sum(candidate["score"] > 49 for candidate in parsed),
             "selected": sum(candidate.get("decision_status") == "Selected" for candidate in parsed),
             "scheduled_interviews": sum(item.get("status") == "Scheduled" for item in interviews),
             "applications": len(applications),
@@ -840,7 +849,7 @@ def job_qr(job_id: int, request: Request, session: RecruiterSession = Depends(_s
 def update_candidate(candidate_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
     allowed = {
         ("decision_status" if key == "status" else key): value
-        for key, value in payload.items() if key in {"status", "notes", "interview_score"}
+        for key, value in payload.items() if key in {"status", "notes", "interview_score", "email", "phone"}
     }
     if not allowed:
         raise HTTPException(400, "No supported fields were supplied")
@@ -872,6 +881,57 @@ def update_candidate(candidate_id: int, payload: dict[str, Any], session: Recrui
                 query = query.eq("job_id", candidate["job_id"])
             query.execute()
     return _candidate(result[0]) if result else {"ok": True}
+
+
+@app.delete("/api/candidates")
+def clear_candidates(session: RecruiterSession = Depends(_session)):
+    session.client.table("screening_history").update({"status": "cleared"}).eq("company_id", session.company["id"]).execute()
+    return {"ok": True}
+
+
+@app.post("/api/candidates/{candidate_id}/ats-rerun")
+def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_session)):
+    rows = (session.client.table("screening_history").select("*").eq("id", candidate_id)
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not rows:
+        raise HTTPException(404, "Candidate not found")
+    row = rows[0]
+    if not (row.get("raw_text") or "").strip():
+        raise HTTPException(400, "The original resume text is unavailable")
+    try:
+        profile, score = parse_and_score(row["raw_text"], f"Job Role: {row.get('job_role') or ''}\n\n{row.get('job_details') or ''}")
+    except Exception as exc:
+        raise HTTPException(503, f"ATS analysis is temporarily unavailable: {exc}") from exc
+    profile["extraction_flags"] = assess_extraction_confidence(profile, row["raw_text"])
+    decision = row.get("decision_status")
+    if decision not in {"Rejected", "Selected", "Interview Scheduled", "Interview Completed"}:
+        decision = "Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"
+    values = {"profile_json": json.dumps(profile), "score_json": json.dumps(score),
+              "overall_score": score.get("overall_score", 0),
+              "skills_match": (score.get("breakdown") or {}).get("skills_match"),
+              "experience_fit": (score.get("breakdown") or {}).get("experience_fit"),
+              "education_fit": (score.get("breakdown") or {}).get("education_fit"),
+              "matched_skills": json.dumps(score.get("matched_skills") or []),
+              "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
+              "decision_status": decision}
+    updated = (session.client.table("screening_history").update(values).eq("id", candidate_id)
+               .eq("company_id", session.company["id"]).execute().data or [])
+    return _candidate(updated[0] if updated else {**row, **values})
+
+
+@app.get("/api/candidates/{candidate_id}/report.pdf")
+def candidate_report(candidate_id: int, session: RecruiterSession = Depends(_session)):
+    rows = (session.client.table("screening_history").select("*").eq("id", candidate_id)
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not rows:
+        raise HTTPException(404, "Candidate not found")
+    row = rows[0]
+    pdf = build_candidate_report_pdf({"name": row.get("candidate_name") or row.get("filename") or "Candidate",
+                                      "profile": _json_field(row.get("profile_json"), {}),
+                                      "score": _json_field(row.get("score_json"), {})},
+                                     row.get("job_role") or "", row.get("job_details") or "")
+    return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
+                             headers={"Content-Disposition": f'inline; filename="candidate-{candidate_id}-report.pdf"'})
 
 
 class InterviewPayload(BaseModel):
@@ -966,8 +1026,15 @@ def delete_interview(interview_id: int, session: RecruiterSession = Depends(_ses
     return {"ok": True}
 
 
+@app.delete("/api/interview-actions/clear")
+def clear_interviews(session: RecruiterSession = Depends(_session)):
+    session.client.table("interviews").delete().eq("company_id", session.company["id"]).execute()
+    return {"ok": True}
+
+
 class InsightPayload(BaseModel):
     question: str
+    chat_history: list[dict[str, Any]] = Field(default_factory=list)
 
 
 @app.post("/api/insights")
@@ -976,7 +1043,7 @@ def generate_insight(payload: InsightPayload, session: RecruiterSession = Depend
             .neq("status", "cleared").order("screened_at", desc=True).limit(300).execute().data or [])
     candidates = [_candidate(row) for row in rows]
     try:
-        answer = ask_assistant(payload.question.strip(), candidates, "All active roles", "", [])
+        answer = ask_assistant(payload.question.strip(), candidates, "All active roles", "", payload.chat_history[-12:])
     except Exception as exc:
         raise HTTPException(503, f"AI insight is temporarily unavailable: {exc}") from exc
     return {"answer": answer}
@@ -1011,6 +1078,35 @@ class OfferBatchPayload(BaseModel):
     reporting_manager: str = ""
     acceptance_deadline: str = ""
     hr_name: str = "Hiring Manager"
+    employment_type: str = "Full-time"
+    work_schedule: str = ""
+    probation_period: str = ""
+    benefits: str = ""
+    signature_style: str = ""
+
+
+def _offer_pdf_for(row: dict[str, Any], payload: OfferBatchPayload, company: dict[str, Any]) -> bytes:
+    candidate = _candidate(row)
+    offer = {**payload.model_dump(exclude={"candidate_ids"}),
+             "job_title": payload.job_title or row.get("job_role") or "Position",
+             "company_name": company.get("name") or "Our Company",
+             "company_email": company.get("email") or ""}
+    logo = _company_logo(company)
+    return build_offer_letter_pdf({"name": candidate["candidate_name"],
+                                   "profile": _json_field(row.get("profile_json"), {}),
+                                   "score": _json_field(row.get("score_json"), {})}, offer, logo_bytes=logo)
+
+
+@app.post("/api/offers/preview.pdf")
+def preview_offer(payload: OfferBatchPayload, session: RecruiterSession = Depends(_session)):
+    if not payload.candidate_ids:
+        raise HTTPException(400, "Choose a candidate to preview")
+    rows = (session.client.table("screening_history").select("*").eq("id", payload.candidate_ids[0])
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not rows or rows[0].get("decision_status") != "Selected" or (_hiring_average(rows[0].get("overall_score"), rows[0].get("interview_score")) or 0) <= 70:
+        raise HTTPException(400, "This candidate is not eligible for an offer")
+    return StreamingResponse(io.BytesIO(_offer_pdf_for(rows[0], payload, session.company)), media_type="application/pdf",
+                             headers={"Content-Disposition": 'inline; filename="offer-preview.pdf"'})
 
 
 @app.post("/api/offers.zip")
@@ -1098,14 +1194,40 @@ def send_offer_letters(payload: OfferBatchPayload, session: RecruiterSession = D
     return {"sent": sent, "failed": failed, "sent_count": len(sent), "failed_count": len(failed)}
 
 
-@app.post("/api/screen")
-async def screen_resumes(
-    job_role: str = Form(...), job_details: str = Form(""), job_id: str = Form(""),
-    files: list[UploadFile] = File(...), session: RecruiterSession = Depends(_session),
-):
+def _expand_resume_payloads(payloads: list[tuple[str, bytes]]) -> list[tuple[str, bytes]]:
+    expanded: list[tuple[str, bytes]] = []
+    for name, data in payloads:
+        if name.lower().endswith(".zip"):
+            try:
+                with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                    for member in archive.infolist():
+                        safe = Path(member.filename).name
+                        if safe and safe.lower().endswith((".pdf", ".docx", ".doc")) and member.file_size <= 20 * 1024 * 1024:
+                            expanded.append((safe, archive.read(member)))
+            except zipfile.BadZipFile as exc:
+                raise HTTPException(400, f"{name} is not a valid ZIP archive") from exc
+        elif name.lower().endswith((".pdf", ".docx", ".doc")):
+            expanded.append((name, data))
+    if len(expanded) > 100:
+        raise HTTPException(400, "Upload at most 100 resumes at a time")
+    return expanded
+
+
+def _weighted_score(score: dict[str, Any], weights: dict[str, float]) -> dict[str, Any]:
+    breakdown = score.get("breakdown") or {}
+    total = sum(max(0, value) for value in weights.values()) or 100
+    overall = sum(_numeric_score(breakdown.get(key)) * max(0, value) for key, value in weights.items()) / total
+    score["ai_overall_score"] = score.get("overall_score")
+    score["overall_score"] = round(overall)
+    score["priority_weights"] = {key.replace("_match", "").replace("_fit", ""): round(value / total * 100) for key, value in weights.items()}
+    return score
+
+
+def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_details: str, job_id: str,
+                     weights: dict[str, float], session: RecruiterSession, source: str) -> list[dict[str, Any]]:
+    payloads = _expand_resume_payloads(payloads)
     if not check_api_key():
         raise HTTPException(503, "No AI provider is configured")
-    payloads = [(file.filename or "resume.pdf", await file.read()) for file in files]
     extracted: list[tuple[str, str]] = []
     with ThreadPoolExecutor(max_workers=min(6, len(payloads))) as pool:
         futures = {pool.submit(extract_text_from_bytes, name, data): name for name, data in payloads}
@@ -1120,6 +1242,7 @@ async def screen_resumes(
         for future in as_completed(futures):
             name, raw_text = futures[future]
             profile, score = future.result()
+            score = _weighted_score(score, weights)
             profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
             row = {
                 "company_id": session.company["id"], "job_id": int(job_id) if job_id.isdigit() else None,
@@ -1134,11 +1257,111 @@ async def screen_resumes(
                 "education_fit": (score.get("breakdown") or {}).get("education_fit"),
                 "matched_skills": json.dumps(score.get("matched_skills") or []),
                 "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
-                "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": "Web Upload",
+                "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": source,
             }
             saved = session.client.table("screening_history").insert(row).execute().data or []
             results.append(_candidate(saved[0] if saved else row))
-    return {"processed": len(results), "candidates": sorted(results, key=lambda item: item["score"], reverse=True)}
+    return sorted(results, key=lambda item: item["score"], reverse=True)
+
+
+@app.post("/api/screen")
+async def screen_resumes(
+    job_role: str = Form(...), job_details: str = Form(""), job_id: str = Form(""),
+    skills_weight: float = Form(40), experience_weight: float = Form(40), education_weight: float = Form(20),
+    files: list[UploadFile] = File(...), session: RecruiterSession = Depends(_session),
+):
+    payloads = [(file.filename or "resume.pdf", await file.read()) for file in files]
+    results = _screen_payloads(payloads, job_role, job_details, job_id,
+                               {"skills_match": skills_weight, "experience_fit": experience_weight, "education_fit": education_weight},
+                               session, "Web Upload")
+    return {"processed": len(results), "candidates": results}
+
+
+class InboxScreenPayload(BaseModel):
+    job_role: str
+    job_details: str = ""
+    job_id: str = ""
+    skills_weight: float = 40
+    experience_weight: float = 40
+    education_weight: float = 20
+
+
+@app.post("/api/inbox/screen")
+def screen_inbox(payload: InboxScreenPayload, session: RecruiterSession = Depends(_session)):
+    if not inbox_is_configured():
+        raise HTTPException(503, "Resume inbox is not configured")
+    resumes, error = fetch_new_resumes()
+    if error:
+        raise HTTPException(502, error)
+    results = _screen_payloads([(item["filename"], item["data"]) for item in resumes], payload.job_role,
+                               payload.job_details, payload.job_id,
+                               {"skills_match": payload.skills_weight, "experience_fit": payload.experience_weight,
+                                "education_fit": payload.education_weight}, session, "Email Inbox")
+    return {"found": len(resumes), "processed": len(results), "candidates": results}
+
+
+def _linkedin_redirect(request: Request) -> str:
+    return f"{str(request.base_url).rstrip('/')}/api/linkedin/callback"
+
+
+@app.get("/api/linkedin/connect")
+def linkedin_connect(request: Request, session: RecruiterSession = Depends(_session)):
+    client_id = str(CONFIG.get("LINKEDIN_CLIENT_ID") or "")
+    if not client_id or not CONFIG.get("LINKEDIN_CLIENT_SECRET"):
+        raise HTTPException(503, "LinkedIn credentials are not configured")
+    state = secrets.token_urlsafe(28)
+    _linkedin_states[state] = (str(session.company["id"]), time.time() + 600)
+    query = urlencode({"response_type": "code", "client_id": client_id, "redirect_uri": _linkedin_redirect(request),
+                       "scope": "openid profile w_member_social", "state": state})
+    return RedirectResponse(f"https://www.linkedin.com/oauth/v2/authorization?{query}")
+
+
+@app.get("/api/linkedin/callback")
+def linkedin_callback(request: Request, code: str, state: str, session: RecruiterSession = Depends(_session)):
+    saved = _linkedin_states.pop(state, None)
+    if not saved or saved[1] < time.time() or saved[0] != str(session.company["id"]):
+        raise HTTPException(400, "LinkedIn connection expired or did not match this company")
+    response = requests.post("https://www.linkedin.com/oauth/v2/accessToken", data={"grant_type": "authorization_code",
+        "code": code, "redirect_uri": _linkedin_redirect(request), "client_id": CONFIG.get("LINKEDIN_CLIENT_ID"),
+        "client_secret": CONFIG.get("LINKEDIN_CLIENT_SECRET")}, timeout=20)
+    if not response.ok:
+        raise HTTPException(502, "LinkedIn did not authorize this connection")
+    token_data = response.json(); token = token_data.get("access_token")
+    identity = requests.get("https://api.linkedin.com/v2/userinfo", headers={"Authorization": f"Bearer {token}"}, timeout=15)
+    if not identity.ok or not identity.json().get("sub"):
+        raise HTTPException(502, "LinkedIn profile details could not be read")
+    info = identity.json()
+    row = {"company_id": session.company["id"], "access_token": token,
+           "expires_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + int(token_data.get("expires_in", 5184000)))),
+           "member_urn": f"urn:li:person:{info['sub']}", "member_name": info.get("name") or "LinkedIn member"}
+    session.client.table("linkedin_connections").upsert(row, on_conflict="company_id").execute()
+    return RedirectResponse("/?recruiter=1&linkedin=connected")
+
+
+@app.delete("/api/linkedin/connection")
+def linkedin_disconnect(session: RecruiterSession = Depends(_session)):
+    session.client.table("linkedin_connections").delete().eq("company_id", session.company["id"]).execute()
+    return {"ok": True}
+
+
+@app.post("/api/linkedin/jobs/{job_id}")
+def linkedin_post_job(job_id: int, request: Request, session: RecruiterSession = Depends(_session)):
+    jobs = (session.client.table("jobs").select("*").eq("id", job_id).eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    connections = (session.client.table("linkedin_connections").select("*").eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not jobs or not connections:
+        raise HTTPException(400, "Connect LinkedIn before publishing this job")
+    job, connection = jobs[0], connections[0]
+    apply_url = f"{str(request.base_url).rstrip('/')}?apply={job_id}"
+    commentary = f"We're hiring: {job.get('title')}\n\n{job.get('description') or job.get('responsibilities') or ''}\n\nApply here: {apply_url}"
+    payload = {"author": connection["member_urn"], "lifecycleState": "PUBLISHED", "specificContent": {
+        "com.linkedin.ugc.ShareContent": {"shareCommentary": {"text": commentary}, "shareMediaCategory": "ARTICLE",
+        "media": [{"status": "READY", "originalUrl": apply_url, "title": {"text": job.get("title")}}]}},
+        "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}}
+    response = requests.post("https://api.linkedin.com/v2/ugcPosts", json=payload, headers={"Authorization": f"Bearer {connection['access_token']}",
+        "Content-Type": "application/json", "X-Restli-Protocol-Version": "2.0.0"}, timeout=20)
+    if not response.ok:
+        raise HTTPException(response.status_code if response.status_code in {401, 403} else 502, "LinkedIn publishing failed; reconnect and try again")
+    return {"ok": True, "message": "Job posted to LinkedIn"}
 
 
 @app.get("/")
