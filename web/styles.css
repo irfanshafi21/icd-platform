@@ -745,3 +745,20 @@ img,svg,video,canvas{max-width:100%;height:auto}.mobile-menu-toggle{display:none
 .page-jobs .job-admin-cards .row .button-link{border-color:#173f68;color:#fff;background:#173f68}
 .page-jobs .job-admin-cards .row .danger{border-color:#d94d5b;color:#fff;background:#d94d5b}
 .page-jobs .job-admin-cards .row [data-screen]:hover,.page-jobs .job-admin-cards .row [data-edit-job]:hover,.page-jobs .job-admin-cards .row [data-duplicate-job]:hover,.page-jobs .job-admin-cards .row [data-archive-job]:hover,.page-jobs .job-admin-cards .row [data-share-job]:hover,.page-jobs .job-admin-cards .row .button-link:hover{filter:brightness(.92);transform:translateY(-1px)}
+
+/* app-wide-semantic-button-colors-v1 */
+.workspace .primary,.candidate-portal .primary,.premium-apply-page .primary,.profile-page .primary{border:0;color:#fff;background:linear-gradient(135deg,#118bd3,#075da4);box-shadow:0 10px 24px #0876bd2b}
+.workspace .secondary:not(.light),.candidate-portal .secondary,.premium-apply-page .secondary{border:1px solid #246eb2;color:#fff;background:linear-gradient(135deg,#277fc4,#155d9d);box-shadow:0 7px 17px #165f9d1d}
+.workspace .danger{border:1px solid #d94d5b;color:#fff;background:linear-gradient(135deg,#e25c69,#be3545)}
+.workspace button:hover,.workspace .button-link:hover,.candidate-portal button:hover,.premium-apply-page button:hover{filter:brightness(.94)}
+.page-interviews #schedule-toggle,.page-interviews #interview-form .primary{background:linear-gradient(135deg,#0b9b76,#08745f)}
+.page-interviews .interview-score .secondary{border-color:#0a8c71;background:linear-gradient(135deg,#12a17c,#08755e)}
+.workspace .page-reports [data-report-format="csv"]{border-color:#078d78;background:linear-gradient(135deg,#0fa58b,#087866)}
+.workspace .page-reports [data-report-format="xlsx"]{border-color:#167b4b;background:linear-gradient(135deg,#249b61,#126d43)}
+.workspace .page-reports [data-report-format="pdf"]{background:linear-gradient(135deg,#de5862,#b93543)}
+.page-candidates #compare-selected,.candidate-modal #ai-questions{border-color:#7158c9;background:linear-gradient(135deg,#836ade,#6548bd)}
+.candidate-modal #save-notes{border-color:#087f9f;background:linear-gradient(135deg,#1198b7,#08728f)}
+.candidate-modal [data-status="Selected"],.page-offers #prepare-offers,.page-offers #send-offers{background:linear-gradient(135deg,#0fa67d,#08765e)}
+.settings-grid #access-code-settings .primary{background:linear-gradient(135deg,#8064d8,#6545ba)}
+.owner-portal .secondary,.owner-login .google-login{border-color:#236eb3;color:#fff;background:linear-gradient(135deg,#2881c6,#155b99)}
+button:disabled{filter:saturate(.55);box-shadow:none!important}

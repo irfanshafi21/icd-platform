@@ -15,6 +15,8 @@ class WebAppTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("ICD Platform", response.text)
+        self.assertIn("favicon.svg", response.text)
+        self.assertEqual(self.client.get("/static/favicon.svg").status_code, 200)
         self.assertEqual(self.client.get("/missing-page").status_code, 404)
 
     def test_candidate_rows_are_normalized_for_frontend(self):
