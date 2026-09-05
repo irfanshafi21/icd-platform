@@ -816,3 +816,4 @@ body{font-size:15px;letter-spacing:0}.kicker,.hero-label,.path-heading>span,.wor
 .candidate-library-settings>button{min-width:240px;min-height:50px}.candidate-library-settings>button:disabled{color:#68808d!important;background:#dbe8eb!important;border-color:#cadcdf!important}
 @media(max-width:1100px){.candidate-library-settings{grid-template-columns:1fr}.candidate-library-settings>button{width:100%}}
 @media(max-width:700px){.candidate-library-settings{padding:22px!important}.candidate-library-facts{display:grid}.candidate-library-facts>span{min-width:0}}
+.interview-score button:disabled{color:#31566b!important;background:#d8e5e9!important;border-color:#c4d7dc!important}

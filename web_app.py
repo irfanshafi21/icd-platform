@@ -35,7 +35,7 @@ from supabase import Client, create_client
 
 from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
-from email_utils import is_configured as email_is_configured, send_email_with_pdf
+from email_utils import is_configured as email_is_configured, send_email_with_pdf, send_plain_email
 from inbox_intake import is_configured as inbox_is_configured
 from reports import (
     build_interview_report_pdf,
@@ -65,6 +65,56 @@ CONFIG = _settings()
 SUPABASE_URL = CONFIG.get("SUPABASE_URL", "")
 SUPABASE_KEY = CONFIG.get("SUPABASE_KEY", "")
 OWNER_EMAIL = str(CONFIG.get("OWNER_EMAIL", "irfanshafi210608@gmail.com")).strip().lower()
+
+
+def _numeric_score(value: Any) -> float:
+    try:
+        return max(0.0, min(100.0, float(value)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _hiring_average(ats_score: Any, interview_score: Any) -> float | None:
+    if interview_score in (None, ""):
+        return None
+    return round((_numeric_score(ats_score) + _numeric_score(interview_score)) / 2, 1)
+
+
+def _company_logo(company: dict[str, Any]) -> bytes | None:
+    try:
+        return base64.b64decode(company.get("logo_base64") or "") or None
+    except Exception:
+        return None
+
+
+def _send_company_email(company: dict[str, Any], email: str, subject: str, body: str,
+                        badge: str) -> tuple[bool, str]:
+    if not email:
+        return False, "Candidate email was not captured"
+    return send_plain_email(email, subject, body, logo_bytes=_company_logo(company),
+                            company_name=company.get("name") or "ICD Platform", badge_text=badge)
+
+
+def _create_google_meet(company: dict[str, Any], data: dict[str, Any]) -> str:
+    """Create a real Meet conference through the deployment's Calendar relay."""
+    endpoint = str(CONFIG.get("GOOGLE_CALENDAR_WEBHOOK_URL") or "").strip()
+    secret = str(CONFIG.get("GOOGLE_CALENDAR_WEBHOOK_SECRET") or "").strip()
+    if not endpoint:
+        raise HTTPException(503, "Google Calendar is not connected. Add GOOGLE_CALENDAR_WEBHOOK_URL before scheduling an online interview.")
+    try:
+        response = requests.post(endpoint, json={"action": "create_interview", "secret": secret,
+            "summary": f"Interview: {data['candidate_name']} — {data.get('job_role') or 'Candidate'}",
+            "scheduled_at": data["scheduled_at"], "duration_minutes": data.get("duration_minutes", 45),
+            "guest_email": data.get("candidate_email") or "", "company": company.get("name") or "ICD Platform",
+            "description": data.get("notes") or "Interview scheduled through ICD Platform."}, timeout=25)
+        response.raise_for_status()
+        result = response.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise HTTPException(502, f"Google Calendar could not create the meeting: {exc}") from exc
+    link = str(result.get("meeting_link") or result.get("hangoutLink") or "").strip()
+    if not link.startswith("https://meet.google.com/"):
+        raise HTTPException(502, "Google Calendar did not return a valid Meet link")
+    return link
 
 
 class RecruiterSession:
@@ -558,6 +608,7 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
             "email": email_is_configured(),
             "resume_inbox": inbox_is_configured(),
             "google_candidate_login": bool(SUPABASE_URL and SUPABASE_KEY),
+            "google_calendar": bool(CONFIG.get("GOOGLE_CALENDAR_WEBHOOK_URL")),
             "linkedin": bool(CONFIG.get("LINKEDIN_CLIENT_ID") and CONFIG.get("LINKEDIN_CLIENT_SECRET")),
         },
         "summary": {
@@ -787,8 +838,33 @@ def update_candidate(candidate_id: int, payload: dict[str, Any], session: Recrui
     }
     if not allowed:
         raise HTTPException(400, "No supported fields were supplied")
+    existing = (session.client.table("screening_history").select("*").eq("id", candidate_id)
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not existing:
+        raise HTTPException(404, "Candidate not found")
+    candidate = existing[0]
+    requested_status = allowed.get("decision_status")
+    if requested_status == "Shortlisted" and _numeric_score(candidate.get("overall_score")) <= 49:
+        raise HTTPException(400, "Only candidates with an ATS score above 49 can be approved for interview")
+    if requested_status == "Selected":
+        average = _hiring_average(candidate.get("overall_score"), candidate.get("interview_score"))
+        if average is None or average <= 70:
+            raise HTTPException(400, "An ATS/interview average above 70 is required before offer selection")
+    if "interview_score" in allowed and candidate.get("interview_score") not in (None, ""):
+        raise HTTPException(409, "The interview score is locked and cannot be changed")
     result = (session.client.table("screening_history").update(allowed).eq("id", candidate_id)
               .eq("company_id", session.company["id"]).execute().data or [])
+    if requested_status == "Rejected":
+        email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
+        role = candidate.get("job_role") or "the position"
+        company_name = session.company.get("name") or "the hiring company"
+        _send_company_email(session.company, email, f"Update on your application for {role}",
+            f"Hello {candidate.get('candidate_name') or 'Candidate'},\n\nThank you for the time and effort you invested in applying for {role} at {company_name}. After reviewing your application against the role requirements, the hiring team will not be moving forward with your application at this stage.\n\nThis decision applies only to this position. We appreciate your interest and wish you every success in your job search.\n\nRegards,\n{company_name} Hiring Team", "Application update")
+        if email:
+            query = session.client.table("public_applications").update({"status": "Rejected"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
+            if candidate.get("job_id"):
+                query = query.eq("job_id", candidate["job_id"])
+            query.execute()
     return _candidate(result[0]) if result else {"ok": True}
 
 
@@ -809,6 +885,19 @@ class InterviewPayload(BaseModel):
 @app.post("/api/interviews")
 def create_interview(payload: InterviewPayload, session: RecruiterSession = Depends(_session)):
     data = payload.model_dump()
+    if payload.candidate_id is None:
+        raise HTTPException(400, "Choose a screened candidate")
+    candidates = (session.client.table("screening_history").select("*").eq("id", payload.candidate_id)
+                  .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not candidates:
+        raise HTTPException(404, "Candidate not found")
+    candidate = candidates[0]
+    if _numeric_score(candidate.get("overall_score")) <= 49:
+        raise HTTPException(400, "This candidate needs an ATS score above 49")
+    if (candidate.get("decision_status") or "") != "Shortlisted":
+        raise HTTPException(400, "Approve the candidate for interview from Candidate Records first")
+    if payload.mode.lower() == "online":
+        data["meeting_link"] = _create_google_meet(session.company, data)
     row = {key: data[key] for key in (
         "candidate_name", "job_role", "interview_type", "scheduled_at", "mode", "location",
         "meeting_link", "notes"
@@ -817,7 +906,19 @@ def create_interview(payload: InterviewPayload, session: RecruiterSession = Depe
     rows = session.client.table("interviews").insert(row).execute().data or []
     if not rows:
         raise HTTPException(500, "Interview could not be scheduled")
-    return rows[0]
+    session.client.table("screening_history").update({"decision_status": "Interview Scheduled"}).eq("id", payload.candidate_id).eq("company_id", session.company["id"]).execute()
+    email = candidate.get("email") or payload.candidate_email
+    company_name = session.company.get("name") or "the hiring company"
+    when = payload.scheduled_at.replace("T", " ")
+    venue = data.get("meeting_link") if payload.mode.lower() == "online" else data.get("location")
+    _send_company_email(session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
+        f"Hello {payload.candidate_name},\n\nYour application has progressed to the interview stage for {payload.job_role or 'the position'} at {company_name}.\n\nInterview type: {payload.interview_type}\nDate and time: {when}\nDuration: {payload.duration_minutes} minutes\nMode: {payload.mode}\n{'Google Meet link' if payload.mode.lower() == 'online' else 'Location'}: {venue}\n\nPlease join a few minutes early and reply to this email if you need assistance. Your candidate portal status has also been updated.\n\nRegards,\n{company_name} Hiring Team", "Interview invitation")
+    if email:
+        query = session.client.table("public_applications").update({"status": "Interview Scheduled"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
+        if candidate.get("job_id"):
+            query = query.eq("job_id", candidate["job_id"])
+        query.execute()
+    return {**rows[0], "meeting_link": data.get("meeting_link", "")}
 
 
 @app.patch("/api/interviews/{interview_id}")
@@ -828,8 +929,27 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
     }}
     if not allowed:
         raise HTTPException(400, "No supported fields were supplied")
+    current = (session.client.table("interviews").select("*").eq("id", interview_id)
+               .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not current:
+        raise HTTPException(404, "Interview not found")
+    interview = current[0]
+    if "interview_score" in allowed:
+        if interview.get("interview_score") not in (None, ""):
+            raise HTTPException(409, "The interview score is locked and cannot be changed")
+        score = _numeric_score(allowed["interview_score"])
+        allowed["interview_score"] = score
+        allowed["status"] = "Completed"
     rows = (session.client.table("interviews").update(allowed).eq("id", interview_id)
             .eq("company_id", session.company["id"]).execute().data or [])
+    if "interview_score" in allowed:
+        matches = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
+                   .eq("candidate_name", interview.get("candidate_name")).eq("job_role", interview.get("job_role")).limit(1).execute().data or [])
+        if matches:
+            candidate = matches[0]
+            average = _hiring_average(candidate.get("overall_score"), allowed["interview_score"])
+            decision = "Selected" if average is not None and average > 70 else "Interview Completed"
+            session.client.table("screening_history").update({"interview_score": allowed["interview_score"], "decision_status": decision}).eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute()
     return rows[0] if rows else {"ok": True}
 
 
@@ -893,7 +1013,8 @@ def offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depend
         raise HTTPException(400, "Choose at least one selected candidate")
     rows = (session.client.table("screening_history").select("*").in_("id", payload.candidate_ids)
             .eq("company_id", session.company["id"]).execute().data or [])
-    chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"]
+    chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"
+              and (_hiring_average(row.get("overall_score"), row.get("interview_score")) or 0) > 70]
     if not chosen:
         raise HTTPException(400, "No selected candidates were found")
     company = session.company
@@ -930,7 +1051,8 @@ def offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depend
 def send_offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depends(_session)):
     rows = (session.client.table("screening_history").select("*").in_("id", payload.candidate_ids)
             .eq("company_id", session.company["id"]).execute().data or [])
-    chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"]
+    chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"
+              and (_hiring_average(row.get("overall_score"), row.get("interview_score")) or 0) > 70]
     company, sent, failed = session.company, [], []
     logo_bytes = None
     if company.get("logo_base64"):
@@ -953,8 +1075,15 @@ def send_offer_letters(payload: OfferBatchPayload, session: RecruiterSession = D
                             "score": _json_field(row.get("score_json"), {})}
         pdf = build_offer_letter_pdf(report_candidate, offer, logo_bytes=logo_bytes)
         subject = f"Offer for {offer['job_title']} at {offer['company_name']}"
-        body = (f"Hello {candidate['candidate_name']},\n\nWe are pleased to share your offer for "
-                f"{offer['job_title']}. Please review the attached letter.\n\n{offer['company_name']}")
+        body = (f"Hello {candidate['candidate_name']},\n\nWe are pleased to offer you the position of "
+                f"{offer['job_title']} at {offer['company_name']}.\n\n"
+                f"Proposed compensation: {offer.get('salary') or 'See attached offer letter'}\n"
+                f"Proposed start date: {offer.get('start_date') or 'To be agreed'}\n"
+                f"Reporting manager: {offer.get('reporting_manager') or 'See attached offer letter'}\n"
+                f"Acceptance deadline: {offer.get('acceptance_deadline') or 'See attached offer letter'}\n\n"
+                "Please read the attached formal offer letter carefully for the complete terms, conditions, and next steps. "
+                f"If you have any questions, contact {offer.get('company_email') or 'the hiring team'}.\n\n"
+                f"We look forward to welcoming you.\n\nRegards,\n{offer['company_name']} Hiring Team")
         ok, message = send_email_with_pdf(email, subject, body, pdf,
                                           f"Offer - {candidate['candidate_name']}.pdf",
                                           logo_bytes=logo_bytes, company_name=offer["company_name"])
