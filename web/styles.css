@@ -279,6 +279,7 @@ body{background:radial-gradient(circle at 0 0,#e2f5ff 0,transparent 28%),radial-
   --shadow-soft:0 10px 30px rgba(10,42,71,.07);
   --shadow-lift:0 22px 55px rgba(8,40,70,.13);
 }
+
 html{scroll-padding-top:92px}
 body{min-width:320px;background:linear-gradient(180deg,#f8fbfd 0%,#eef4f8 100%)}
 #app{min-height:100vh;opacity:1;transition:opacity .18s ease}
@@ -366,6 +367,27 @@ label{color:#213b56;font-size:13px}
   .premium-upload{min-height:175px}
   .org-card{grid-template-columns:42px minmax(0,1fr);column-gap:10px}.org-card .company-mark{width:42px;height:42px}
 }
+
+/* Visual audience stories — large signals, minimal copy */
+.path-card{display:flex;min-height:430px;flex-direction:column}
+.path-heading{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between}
+.path-heading>span{color:#087ca1;font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.path-heading>i{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:#e5f5fb;color:#087ab5;font-size:20px;font-style:normal}
+.path-card h3{margin:24px 0 6px;font-size:34px}
+.path-card>p{margin:0;color:#547084;font-size:16px;font-weight:750;letter-spacing:.02em}
+.path-visual{position:relative;z-index:1;margin:25px 0 24px;padding:14px;border-radius:18px}
+.candidate-visual{display:grid;gap:9px;border:1px solid #d8e7ec;background:#eef7f8}
+.mini-role{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px;border-radius:12px;background:#fff;box-shadow:0 7px 18px #113b5210}
+.mini-role>i{width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:#e0f2fa;color:#087aa5;font-size:10px;font-style:normal;font-weight:900}
+.mini-role b,.mini-role small{display:block}.mini-role b{color:#173951;font-size:12px}.mini-role small{margin-top:3px;color:#78909f;font-size:9px}
+.mini-role em{padding:6px 8px;border-radius:999px;background:#e5f8f0;color:#08785a;font-size:8px;font-style:normal;font-weight:850}
+.mini-progress{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 3px 3px}.mini-progress span{color:#8195a2;font-size:9px;font-weight:800}.mini-progress span.done{color:#078b68}.mini-progress span.active{color:#087da9}.mini-progress i{width:34px;height:2px;background:#c9dce2}
+.recruiter-path .path-heading>span{color:#70e1df}.recruiter-path .path-heading>i{background:#ffffff11;color:#65ded5}.recruiter-path>p{color:#d4e7ef;font-size:16px}
+.recruiter-visual{display:grid;gap:10px;border:1px solid #ffffff12;background:#04182b66}
+.mini-pipeline{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.mini-pipeline>span{padding:13px 10px;border:1px solid #ffffff10;border-radius:12px;background:#ffffff09}.mini-pipeline i,.mini-pipeline b{display:block}.mini-pipeline i{color:#69e0d5;font-size:22px;font-style:normal}.mini-pipeline b{margin-top:5px;color:#dcebf3;font-size:9px}
+.mini-talent{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px;border-radius:12px;background:#ffffff10}.mini-talent>span{width:38px;height:38px;display:grid;place-items:center;border:1px solid #78dfd055;border-radius:50%;color:#83e7da;font-size:9px;font-weight:900}.mini-talent b,.mini-talent small{display:block}.mini-talent b{color:#fff;font-size:11px}.mini-talent small{margin-top:3px;color:#8facbf;font-size:8px}.mini-talent em{color:#55ddb2;font-size:18px;font-style:normal}
+.path-card>button{margin-top:auto}
+@media(max-width:700px){.path-card{min-height:auto}.path-card h3{margin-top:19px;font-size:29px}.path-card>p{font-size:14px}.path-visual{margin:20px 0}.mini-role{grid-template-columns:35px minmax(0,1fr)}.mini-role>i{width:35px;height:35px}.mini-role em{display:none}.mini-progress{gap:5px}.mini-progress i{width:18px}.mini-pipeline>span{padding:11px 7px}.mini-pipeline i{font-size:19px}.mini-talent small{display:none}}
 
 /* Candidate and interview clarity pass */
 .talent-cards{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
@@ -661,3 +683,11 @@ input:focus,select:focus,textarea:focus{border-color:#1998bd;box-shadow:0 0 0 4p
   .page-reports .report-tools{grid-template-columns:1fr}.page-reports .report-grid>.panel{padding:21px}
   .page-offers .offer-hero{padding:29px 22px}.page-offers .modern-offer-list,.page-offers .modern-offer-compose{padding:20px}
 }
+
+/* audience-story-cards-final */
+.landing-v2 .path-card{display:flex;min-height:430px;flex-direction:column}
+.landing-v2 .path-card h3{margin:24px 0 6px;font-size:34px}
+.landing-v2 .path-card>p{margin:0;color:#547084;font-size:16px;font-weight:750;letter-spacing:.02em}
+.landing-v2 .recruiter-path>p{color:#d4e7ef;font-size:16px}
+.landing-v2 .path-card>button{margin-top:auto}
+@media(max-width:700px){.landing-v2 .path-card{min-height:auto}.landing-v2 .path-card h3{margin-top:19px;font-size:29px}.landing-v2 .path-card>p{font-size:14px}}
