@@ -806,3 +806,13 @@ button:disabled{filter:saturate(.55);box-shadow:none!important}
 html,body,button,input,select,textarea{font-family:"Segoe UI Variable Text","Segoe UI",Arial,sans-serif!important;font-optical-sizing:auto}
 h1,h2,h3,h4,h5,h6,.workspace h1,.workspace h2,.workspace h3,.workspace strong,.workspace b{font-family:"Segoe UI Variable Display","Segoe UI",Arial,sans-serif!important}
 body{font-size:15px;letter-spacing:0}.kicker,.hero-label,.path-heading>span,.workspace nav>small{letter-spacing:.12em}
+
+/* private-candidate-library-v1 */
+.page-screening .screening-checks{display:none!important}
+.candidate-library-settings{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.25fr) auto auto;align-items:center;gap:28px;padding:30px!important;border:1px solid #bcded9!important;background:radial-gradient(circle at 100% 0,rgba(20,168,151,.13),transparent 32%),linear-gradient(145deg,#fff,#f1f9f8)!important}
+.candidate-library-copy h2{margin:7px 0 8px}.candidate-library-copy p{max-width:660px;margin:0;color:#587181;line-height:1.6}
+.candidate-library-facts{display:flex;gap:12px}.candidate-library-facts>span{display:grid;grid-template-columns:auto auto;column-gap:9px;min-width:142px;padding:15px;border:1px solid #cee6e2;border-radius:15px;background:rgba(255,255,255,.82)}
+.candidate-library-facts i{grid-row:1/3;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;color:#fff;background:var(--action-gradient);font-style:normal}.candidate-library-facts b{font-size:15px;color:#12314d}.candidate-library-facts small{color:#6c8491}
+.candidate-library-settings>button{min-width:240px;min-height:50px}.candidate-library-settings>button:disabled{color:#68808d!important;background:#dbe8eb!important;border-color:#cadcdf!important}
+@media(max-width:1100px){.candidate-library-settings{grid-template-columns:1fr}.candidate-library-settings>button{width:100%}}
+@media(max-width:700px){.candidate-library-settings{padding:22px!important}.candidate-library-facts{display:grid}.candidate-library-facts>span{min-width:0}}
