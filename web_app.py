@@ -253,6 +253,10 @@ def _assistant_candidate(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _is_completed_screening(row: dict[str, Any]) -> bool:
+    return bool(row.get("filename") and row.get("profile_json") and row.get("score_json"))
+
+
 app = FastAPI(title="ICD Platform API", version="2.0")
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
@@ -622,7 +626,9 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
                                .eq("company_id", company_id).limit(1).execute().data or [])
     except Exception:
         linkedin_connection = []
-    parsed = [_candidate(row) for row in candidates]
+    # Only expose records produced by a completed screening run. Older demo or
+    # incomplete placeholder rows do not contain both structured AI payloads.
+    parsed = [_candidate(row) for row in candidates if _is_completed_screening(row)]
     return {
         "company": session.company,
         "jobs": jobs,

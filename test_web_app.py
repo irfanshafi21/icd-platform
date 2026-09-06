@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from web_app import OWNER_EMAIL, _assistant_candidate, _candidate, _hiring_average, _is_owner_email, _numeric_score, _screen_payloads, app
+from web_app import OWNER_EMAIL, _assistant_candidate, _candidate, _hiring_average, _is_completed_screening, _is_owner_email, _numeric_score, _screen_payloads, app
 
 
 class WebAppTests(unittest.TestCase):
@@ -46,6 +46,11 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(candidate["name"], "Asha")
         self.assertEqual(candidate["profile"]["skills"], ["Python"])
         self.assertEqual(candidate["score"]["overall_score"], 84)
+
+    def test_only_completed_screening_rows_reach_the_candidate_library(self):
+        completed = {"filename": "asha.pdf", "profile_json": "{}", "score_json": "{}"}
+        self.assertTrue(_is_completed_screening(completed))
+        self.assertFalse(_is_completed_screening({"candidate_name": "Sample Candidate"}))
 
     def test_hiring_average_requires_both_scores_and_uses_strict_offer_gate(self):
         self.assertIsNone(_hiring_average(82, None))
