@@ -884,6 +884,11 @@ def screen_job_applications(job_id: int, session: RecruiterSession = Depends(_se
         if applications:
             return {"processed": 0, "candidates": [], "skipped": [], "message": "All submitted resumes are already screened"}
         raise HTTPException(400, "No usable submitted resumes were found for this job")
+    resume_batch = io.BytesIO()
+    with zipfile.ZipFile(resume_batch, "w", zipfile.ZIP_DEFLATED) as archive:
+        for index, (name, content) in enumerate(payloads, 1):
+            archive.writestr(f"{index:03d}-{Path(name).name}", content)
+    payloads = [(f"job-{job_id}-submitted-resumes.zip", resume_batch.getvalue())]
     job = jobs[0]
     required_skills = _json_field(job.get("required_skills"), [])
     required_skills = required_skills if isinstance(required_skills, list) else []
