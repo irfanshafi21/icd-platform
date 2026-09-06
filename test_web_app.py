@@ -48,9 +48,13 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(candidate["score"]["overall_score"], 84)
 
     def test_only_completed_screening_rows_reach_the_candidate_library(self):
-        completed = {"filename": "asha.pdf", "profile_json": "{}", "score_json": "{}"}
+        completed = {"filename": "asha.pdf",
+                     "profile_json": json.dumps({"_screening_source": "Web Upload"}),
+                     "score_json": "{}"}
         self.assertTrue(_is_completed_screening(completed))
         self.assertFalse(_is_completed_screening({"candidate_name": "Sample Candidate"}))
+        self.assertFalse(_is_completed_screening({"filename": "legacy.pdf", "profile_json": "{}",
+                                                  "score_json": "{}"}))
 
     def test_hiring_average_requires_both_scores_and_uses_strict_offer_gate(self):
         self.assertIsNone(_hiring_average(82, None))

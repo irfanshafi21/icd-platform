@@ -254,7 +254,9 @@ def _assistant_candidate(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _is_completed_screening(row: dict[str, Any]) -> bool:
-    return bool(row.get("filename") and row.get("profile_json") and row.get("score_json"))
+    profile = _json_field(row.get("profile_json"), {})
+    return bool(row.get("filename") and row.get("score_json") and
+                isinstance(profile, dict) and profile.get("_screening_source"))
 
 
 app = FastAPI(title="ICD Platform API", version="2.0")
@@ -546,6 +548,12 @@ async def candidate_apply(job_id: int = Form(...), full_name: str = Form(...), p
     filename = resume.filename or "resume.pdf"
     if Path(filename).suffix.lower() not in {".pdf", ".docx"}:
         raise HTTPException(400, "Only PDF and DOCX resumes are supported")
+    try:
+        extracted = extract_text_from_bytes(filename, content)
+    except Exception as exc:
+        raise HTTPException(400, "The uploaded resume could not be read") from exc
+    if not extracted.strip() or not heuristic_resume_check(extracted).get("looks_like_resume"):
+        raise HTTPException(400, "Upload a candidate resume rather than a report or unrelated document")
     user_id = str(session.user.id)
     existing = (session.client.table("public_applications").select("id").eq("candidate_user_id", user_id)
                 .eq("job_id", job_id).limit(1).execute().data or [])
@@ -809,7 +817,7 @@ def application_resume(application_id: int, session: RecruiterSession = Depends(
 @app.patch("/api/applications/{application_id}")
 def update_application(application_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
     status = str(payload.get("status", "")).strip()
-    if status not in {"Submitted", "Screening", "Shortlisted", "Interview", "Selected", "Rejected"}:
+    if status not in {"Screening", "Rejected"}:
         raise HTTPException(400, "Unsupported application status")
     _application_row(application_id, session)
     rows = (session.client.table("public_applications").update({"status": status}).eq("id", application_id)
@@ -847,6 +855,48 @@ def applications_zip(job_id: int, session: RecruiterSession = Depends(_session))
     filename = "".join(c for c in owned[0]["title"] if c.isalnum() or c in "-_") or "applications"
     return StreamingResponse(output, media_type="application/zip",
                              headers={"Content-Disposition": f'attachment; filename="{filename}-applications.zip"'})
+
+
+@app.post("/api/jobs/{job_id}/screen-applications")
+def screen_job_applications(job_id: int, session: RecruiterSession = Depends(_session)):
+    jobs = (session.client.table("jobs").select("*").eq("id", job_id)
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not jobs:
+        raise HTTPException(404, "Job not found")
+    applications = (session.client.table("public_applications").select("*").eq("job_id", job_id)
+                    .eq("company_id", session.company["id"]).neq("status", "Rejected").execute().data or [])
+    screened_rows = (session.client.table("screening_history").select("email,filename,profile_json,score_json")
+                     .eq("job_id", job_id).eq("company_id", session.company["id"]).execute().data or [])
+    screened_keys = {(str(row.get("email") or "").lower(), str(row.get("filename") or ""))
+                     for row in screened_rows if _is_completed_screening(row)}
+    pending_applications = [row for row in applications
+                            if (str(row.get("applicant_email") or "").lower(),
+                                str(row.get("resume_filename") or "")) not in screened_keys]
+    payloads = []
+    for row in pending_applications:
+        try:
+            content = base64.b64decode(row.get("resume_base64") or "", validate=True)
+        except Exception:
+            continue
+        if content:
+            payloads.append((row.get("resume_filename") or f"candidate-{row.get('id')}.pdf", content))
+    if not payloads:
+        if applications:
+            return {"processed": 0, "candidates": [], "skipped": [], "message": "All submitted resumes are already screened"}
+        raise HTTPException(400, "No usable submitted resumes were found for this job")
+    job = jobs[0]
+    required_skills = _json_field(job.get("required_skills"), [])
+    required_skills = required_skills if isinstance(required_skills, list) else []
+    details = "\n\n".join(filter(None, [job.get("description"), job.get("responsibilities"),
+                                            "Required skills: " + ", ".join(map(str, required_skills))]))
+    ids = [row["id"] for row in pending_applications if row.get("id") is not None]
+    if ids:
+        (session.client.table("public_applications").update({"status": "Screening"})
+         .in_("id", ids).eq("company_id", session.company["id"]).execute())
+    results, skipped = _screen_payloads(payloads, job.get("title") or "Open role", details, str(job_id),
+                                        {"skills_match": 40, "experience_fit": 40, "education_fit": 20},
+                                        session, "Job Applications")
+    return {"processed": len(results), "candidates": results, "skipped": skipped}
 
 
 @app.get("/api/jobs/{job_id}/qr")
@@ -1268,6 +1318,7 @@ def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_detai
                 profile, score = future.result()
                 score = _weighted_score(score, weights)
                 profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
+                profile["_screening_source"] = source
                 row = {
                     "company_id": session.company["id"], "job_id": int(job_id) if job_id.isdigit() else None,
                     "job_role": job_role, "job_details": job_details, "candidate_name": profile.get("name") or name,
