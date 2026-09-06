@@ -242,6 +242,17 @@ def _candidate(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _assistant_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    """Return the structured candidate shape expected by the AI assistant."""
+    profile = _json_field(row.get("profile_json"), {})
+    score = _json_field(row.get("score_json"), {})
+    return {
+        "name": row.get("candidate_name") or profile.get("name") or row.get("filename"),
+        "profile": profile if isinstance(profile, dict) else {},
+        "score": score if isinstance(score, dict) else {},
+    }
+
+
 app = FastAPI(title="ICD Platform API", version="2.0")
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
@@ -1043,7 +1054,7 @@ class InsightPayload(BaseModel):
 def generate_insight(payload: InsightPayload, session: RecruiterSession = Depends(_session)):
     rows = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
             .neq("status", "cleared").order("screened_at", desc=True).limit(300).execute().data or [])
-    candidates = [_candidate(row) for row in rows]
+    candidates = [_assistant_candidate(row) for row in rows]
     try:
         answer = ask_assistant(payload.question.strip(), candidates, "All active roles", "", payload.chat_history[-12:])
     except Exception as exc:
@@ -1264,7 +1275,7 @@ def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_detai
                     "education_fit": (score.get("breakdown") or {}).get("education_fit"),
                     "matched_skills": json.dumps(score.get("matched_skills") or []),
                     "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
-                    "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": source,
+                    "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"),
                 }
                 saved = session.client.table("screening_history").insert(row).execute().data or []
                 results.append(_candidate(saved[0] if saved else row))

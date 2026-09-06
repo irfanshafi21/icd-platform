@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from web_app import OWNER_EMAIL, _candidate, _hiring_average, _is_owner_email, _numeric_score, _screen_payloads, app
+from web_app import OWNER_EMAIL, _assistant_candidate, _candidate, _hiring_average, _is_owner_email, _numeric_score, _screen_payloads, app
 
 
 class WebAppTests(unittest.TestCase):
@@ -36,6 +36,16 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(candidate["score"], 84)
         self.assertEqual(candidate["skills"], ["Python"])
         self.assertEqual(candidate["decision_status"], "Selected")
+
+    def test_candidate_rows_keep_structured_data_for_ai_assistant(self):
+        candidate = _assistant_candidate({
+            "candidate_name": "Asha",
+            "profile_json": json.dumps({"skills": ["Python"]}),
+            "score_json": json.dumps({"overall_score": 84, "breakdown": {"skills_match": 90}}),
+        })
+        self.assertEqual(candidate["name"], "Asha")
+        self.assertEqual(candidate["profile"]["skills"], ["Python"])
+        self.assertEqual(candidate["score"]["overall_score"], 84)
 
     def test_hiring_average_requires_both_scores_and_uses_strict_offer_gate(self):
         self.assertIsNone(_hiring_average(82, None))
@@ -70,6 +80,8 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(len(results), 1)
         self.assertEqual(skipped[0]["filename"], "bad.pdf")
         self.assertIn("provider timeout", skipped[0]["reason"])
+        inserted = client.table.return_value.insert.call_args.args[0]
+        self.assertNotIn("source", inserted)
 
     @patch("web_app.check_api_key", return_value=True)
     @patch("web_app.heuristic_resume_check", return_value={"looks_like_resume": True})

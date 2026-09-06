@@ -872,11 +872,14 @@ def ask_assistant(question: str, candidates: list, job_role: str, job_details: s
     """
     candidate_summaries = []
     for c in candidates:
-        if c["score"].get("error"):
+        p = c.get("profile") if isinstance(c, dict) else {}
+        s = c.get("score") if isinstance(c, dict) else {}
+        p = p if isinstance(p, dict) else {}
+        s = s if isinstance(s, dict) else {}
+        if s.get("error"):
             continue
-        p, s = c["profile"], c["score"]
         candidate_summaries.append({
-            "name": c["name"],
+            "name": c.get("name") or p.get("name") or "Unknown candidate",
             "years_experience": p.get("years_experience"),
             "education": p.get("education"),
             "skills": p.get("skills", []),
