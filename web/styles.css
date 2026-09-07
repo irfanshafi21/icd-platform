@@ -1071,6 +1071,11 @@ input:hover,select:hover,textarea:hover{border-color:#a9c8d1!important}input:foc
   .landing-v2 .landing-trust>div b{flex:0 1 auto;font-size:9px!important;white-space:nowrap}.landing-v2 .landing-trust>div i{flex:0 1 15px;min-width:8px!important}
   .landing-v2 .landing-marquee{width:auto!important;max-width:100%!important;margin:10px 0 0!important;border-radius:14px!important;mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)!important;-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)!important}
 }
+
+/* accessibility-and-interaction-finish-v14 */
+::selection{color:#fff;background:#087e78}h1,h2,h3{text-wrap:balance}p{text-wrap:pretty}button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}button:not(:disabled):active,.button-link:active{transform:translateY(0)}button:disabled{filter:saturate(.55);opacity:.62}.skip-link{z-index:10000!important}.workspace nav button[aria-current="page"]{box-shadow:inset 3px 0 0 #62dfd0}.designed-empty{max-width:100%;overflow-wrap:anywhere}.modal-close,.notification-close,.icon-action{min-width:44px;min-height:44px}.landing-v2 section[id]{scroll-margin-top:96px}
+@media(hover:none){button:hover,.path-card:hover,.capability-card:hover,.job-admin-cards>article:hover,.talent-card:hover,.public-job:hover{transform:none!important}}
+@media(forced-colors:active){button,a,input,select,textarea,.panel,.path-card,.capability-card,.landing-outcomes article{border:1px solid CanvasText!important}.primary,.nav-recruiter,.floating-ai{background:ButtonFace!important;color:ButtonText!important}.status,.decision-pill,.chips span{border:1px solid CanvasText!important}.scroll-progress,.landing-marquee{display:none!important}}
 @media(max-width:390px){.landing-v2 .landing-trust>div{gap:4px!important}.landing-v2 .landing-trust>div b{font-size:8px!important}.landing-v2 .landing-trust>div i{flex-basis:9px!important}}
 
 /* final-interface-polish-v13 */
