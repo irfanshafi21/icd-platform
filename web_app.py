@@ -819,7 +819,33 @@ def update_application(application_id: int, payload: dict[str, Any], session: Re
     status = str(payload.get("status", "")).strip()
     if status not in {"Screening", "Rejected"}:
         raise HTTPException(400, "Unsupported application status")
-    _application_row(application_id, session)
+    application = _application_row(application_id, session)
+    if status == "Rejected":
+        jobs = (session.client.table("jobs").select("title").eq("id", application.get("job_id"))
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        role = (jobs[0].get("title") if jobs else None) or "the position"
+        company_name = session.company.get("name") or "the hiring company"
+        email = application.get("applicant_email") or ""
+        delivered, delivery_message = _send_company_email(
+            session.company, email, f"Update on your application for {role}",
+            f"Hello {application.get('applicant_name') or 'Candidate'},\n\nThank you for the time and effort you invested in applying for {role} at {company_name}. After reviewing your application against the role requirements, the hiring team will not be moving forward with your application at this stage.\n\nThis decision applies only to this position. We appreciate your interest and wish you every success in your job search.\n\nRegards,\n{company_name} Hiring Team",
+            "Application update")
+        if not delivered:
+            raise HTTPException(502, f"Rejection email could not be sent, so the candidate record was kept: {delivery_message}")
+        try:
+            if email:
+                screening_query = (session.client.table("screening_history").delete()
+                                   .eq("company_id", session.company["id"]).eq("email", email))
+                if application.get("job_id"):
+                    screening_query = screening_query.eq("job_id", application["job_id"])
+                screening_query.execute()
+            (session.client.table("interviews").delete().eq("company_id", session.company["id"])
+             .eq("candidate_name", application.get("applicant_name") or "").eq("job_role", role).execute())
+            (session.client.table("public_applications").delete().eq("id", application_id)
+             .eq("company_id", session.company["id"]).execute())
+        except Exception as exc:
+            raise HTTPException(500, "The rejection email was sent, but the company record could not be fully erased. Please retry the cleanup.") from exc
+        return {"ok": True, "deleted": True, "email_delivery": {"sent": True, "message": delivery_message}}
     rows = (session.client.table("public_applications").update({"status": status}).eq("id", application_id)
             .eq("company_id", session.company["id"]).execute().data or [])
     return rows[0] if rows else {"ok": True}
@@ -941,19 +967,33 @@ def update_candidate(candidate_id: int, payload: dict[str, Any], session: Recrui
             raise HTTPException(400, "An ATS/interview average above 70 is required before offer selection")
     if "interview_score" in allowed and candidate.get("interview_score") not in (None, ""):
         raise HTTPException(409, "The interview score is locked and cannot be changed")
-    result = (session.client.table("screening_history").update(allowed).eq("id", candidate_id)
-              .eq("company_id", session.company["id"]).execute().data or [])
     if requested_status == "Rejected":
         email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
         role = candidate.get("job_role") or "the position"
         company_name = session.company.get("name") or "the hiring company"
-        _send_company_email(session.company, email, f"Update on your application for {role}",
+        delivered, delivery_message = _send_company_email(session.company, email, f"Update on your application for {role}",
             f"Hello {candidate.get('candidate_name') or 'Candidate'},\n\nThank you for the time and effort you invested in applying for {role} at {company_name}. After reviewing your application against the role requirements, the hiring team will not be moving forward with your application at this stage.\n\nThis decision applies only to this position. We appreciate your interest and wish you every success in your job search.\n\nRegards,\n{company_name} Hiring Team", "Application update")
-        if email:
-            query = session.client.table("public_applications").update({"status": "Rejected"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
+        if not delivered:
+            raise HTTPException(502, f"Rejection email could not be sent, so the candidate record was kept: {delivery_message}")
+        try:
+            if email:
+                query = session.client.table("public_applications").delete().eq("company_id", session.company["id"]).eq("applicant_email", email)
+                if candidate.get("job_id"):
+                    query = query.eq("job_id", candidate["job_id"])
+                query.execute()
+            interview_query = (session.client.table("interviews").delete()
+                               .eq("company_id", session.company["id"])
+                               .eq("candidate_name", candidate.get("candidate_name") or ""))
             if candidate.get("job_id"):
-                query = query.eq("job_id", candidate["job_id"])
-            query.execute()
+                interview_query = interview_query.eq("job_role", role)
+            interview_query.execute()
+            (session.client.table("screening_history").delete().eq("id", candidate_id)
+             .eq("company_id", session.company["id"]).execute())
+        except Exception as exc:
+            raise HTTPException(500, "The rejection email was sent, but the company record could not be fully erased. Please retry the cleanup.") from exc
+        return {"ok": True, "deleted": True, "email_delivery": {"sent": True, "message": delivery_message}}
+    result = (session.client.table("screening_history").update(allowed).eq("id", candidate_id)
+              .eq("company_id", session.company["id"]).execute().data or [])
     return _candidate(result[0]) if result else {"ok": True}
 
 
@@ -1064,14 +1104,15 @@ def create_interview(payload: InterviewPayload, session: RecruiterSession = Depe
     company_name = session.company.get("name") or "the hiring company"
     when = payload.scheduled_at.replace("T", " ")
     venue = data.get("meeting_link") if payload.mode.lower() == "online" else data.get("location")
-    _send_company_email(session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
+    delivered, delivery_message = _send_company_email(session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
         f"Hello {payload.candidate_name},\n\nYour application has progressed to the interview stage for {payload.job_role or 'the position'} at {company_name}.\n\nInterview type: {payload.interview_type}\nDate and time: {when}\nDuration: {payload.duration_minutes} minutes\nMode: {payload.mode}\n{'Google Meet link' if payload.mode.lower() == 'online' else 'Location'}: {venue}\n\nPlease join a few minutes early and reply to this email if you need assistance. Your candidate portal status has also been updated.\n\nRegards,\n{company_name} Hiring Team", "Interview invitation")
     if email:
         query = session.client.table("public_applications").update({"status": "Interview Scheduled"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
         if candidate.get("job_id"):
             query = query.eq("job_id", candidate["job_id"])
         query.execute()
-    return {**rows[0], "meeting_link": data.get("meeting_link", "")}
+    return {**rows[0], "meeting_link": data.get("meeting_link", ""),
+            "email_delivery": {"sent": delivered, "message": delivery_message}}
 
 
 @app.patch("/api/interviews/{interview_id}")
