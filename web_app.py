@@ -30,6 +30,7 @@ from typing import Any
 from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
 from postgrest.types import ReturnMethod
 from supabase import Client, create_client
@@ -97,9 +98,15 @@ def _company_logo(company: dict[str, Any]) -> bytes | None:
 def _send_company_email(company: dict[str, Any], email: str, subject: str, body: str,
                         badge: str) -> tuple[bool, str]:
     if not email:
+        logger.warning("Email automation skipped: company=%s type=%s reason=missing_recipient",
+                       company.get("id"), badge)
         return False, "Candidate email was not captured"
-    return send_plain_email(email, subject, body, logo_bytes=_company_logo(company),
-                            company_name=company.get("name") or "ICD Platform", badge_text=badge)
+    delivered, message = send_plain_email(email, subject, body, logo_bytes=_company_logo(company),
+                                          company_name=company.get("name") or "ICD Platform", badge_text=badge)
+    log = logger.info if delivered else logger.error
+    log("Email automation result: company=%s type=%s delivered=%s detail=%s",
+        company.get("id"), badge, delivered, message)
+    return delivered, message
 
 
 def _create_google_meet(company: dict[str, Any], data: dict[str, Any]) -> str:
@@ -121,6 +128,7 @@ def _create_google_meet(company: dict[str, Any], data: dict[str, Any]) -> str:
     link = str(result.get("meeting_link") or result.get("hangoutLink") or "").strip()
     if not link.startswith("https://meet.google.com/"):
         raise HTTPException(502, "Google Calendar did not return a valid Meet link")
+    logger.info("Calendar automation created meeting: company=%s mode=online", company.get("id"))
     return link
 
 
@@ -260,6 +268,7 @@ def _is_completed_screening(row: dict[str, Any]) -> bool:
 
 
 app = FastAPI(title="ICD Platform API", version="2.0")
+app.add_middleware(GZipMiddleware, minimum_size=700, compresslevel=6)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
