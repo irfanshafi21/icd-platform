@@ -707,7 +707,7 @@ def import_jobs(payload: JobImportPayload, session: RecruiterSession = Depends(_
 @app.post("/api/jobs")
 def create_job(payload: JobPayload, session: RecruiterSession = Depends(_session)):
     row = {**payload.model_dump(), "company_id": session.company["id"], "status": "active",
-           "published_to_portal": True}
+           "published_to_portal": False}
     result = session.client.table("jobs").insert(row).execute().data or []
     if not result:
         raise HTTPException(500, "The job could not be saved")
