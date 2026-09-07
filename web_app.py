@@ -970,13 +970,26 @@ def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_
     if not rows:
         raise HTTPException(404, "Candidate not found")
     row = rows[0]
-    if not (row.get("raw_text") or "").strip():
-        raise HTTPException(400, "The original resume text is unavailable")
+    resume_text = (row.get("raw_text") or "").strip()
+    if not resume_text:
+        profile = _json_field(row.get("profile_json"), {})
+        resume_text = "\n".join(f"{key.replace('_', ' ').title()}: {value}" for key, value in profile.items()
+                                if value not in (None, "", [], {}))
+    if not resume_text:
+        raise HTTPException(400, "This candidate has no resume evidence available for ATS re-analysis")
+    job_details = (row.get("job_details") or "").strip()
+    if not job_details and row.get("job_id"):
+        jobs = (session.client.table("jobs").select("*").eq("id", row["job_id"])
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        if jobs:
+            job = jobs[0]
+            job_details = "\n".join(str(job.get(key) or "") for key in
+                                    ("title", "description", "responsibilities", "required_skills"))
     try:
-        profile, score = parse_and_score(row["raw_text"], f"Job Role: {row.get('job_role') or ''}\n\n{row.get('job_details') or ''}")
+        profile, score = parse_and_score(resume_text, f"Job Role: {row.get('job_role') or ''}\n\n{job_details}")
     except Exception as exc:
         raise HTTPException(503, f"ATS analysis is temporarily unavailable: {exc}") from exc
-    profile["extraction_flags"] = assess_extraction_confidence(profile, row["raw_text"])
+    profile["extraction_flags"] = assess_extraction_confidence(profile, resume_text)
     decision = row.get("decision_status")
     if decision not in {"Rejected", "Selected", "Interview Scheduled", "Interview Completed"}:
         decision = "Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"
@@ -1134,10 +1147,18 @@ def interview_questions(payload: InterviewQuestionsPayload, session: RecruiterSe
     if not rows:
         raise HTTPException(404, "Candidate not found")
     row = rows[0]
+    job_details = (row.get("job_details") or "").strip()
+    if not job_details and row.get("job_id"):
+        jobs = (session.client.table("jobs").select("*").eq("id", row["job_id"])
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        if jobs:
+            job = jobs[0]
+            job_details = "\n".join(str(job.get(key) or "") for key in
+                                    ("title", "description", "responsibilities", "required_skills"))
     try:
         result = generate_interview_questions(_json_field(row.get("profile_json"), {}),
                                               _json_field(row.get("score_json"), {}),
-                                              row.get("job_details") or row.get("job_role") or "")
+                                              job_details or row.get("job_role") or "")
     except Exception as exc:
         raise HTTPException(503, f"Interview preparation is temporarily unavailable: {exc}") from exc
     return result
