@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Enforced accessible text/background contrast for primary, secondary, danger, and floating-AI controls across every normal and hover state.
 - Added a live AI interview companion that opens beside Google Meet and automatically loads evidence-grounded questions for the selected candidate.
 - Contained the interview delete action inside every card and removed the desktop/mobile grid overflow that clipped it against the control rail.
 - Fixed candidate overflow actions so desktop menus remain visible and mobile actions open as a readable bottom sheet; consolidated notifications into a vertical, viewport-safe activity panel.
