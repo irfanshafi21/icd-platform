@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Emphasized candidate score and rank badges and made the floating AI assistant always reveal the newest answer.
 - Simplified recruiter candidate cards to exactly mirror the Jobs-card hierarchy, moving secondary evidence and actions behind the profile and overflow menu.
 - Standardized Jobs, recruiter Candidates, and Candidate Portal opportunities into three-column desktop cards, reduced global headers, and rebuilt interview rows to use the full schedule width.
 - Made AI Insights move to and focus the beginning of each generated answer, and restored the mobile recruiter back button.
