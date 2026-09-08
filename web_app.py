@@ -1162,11 +1162,15 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
             session.client.table("screening_history").update({"interview_score": allowed["interview_score"], "decision_status": decision}).eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute()
             email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
             if email:
-                application_query = (session.client.table("public_applications").update({"status": decision})
-                                     .eq("company_id", session.company["id"]).eq("applicant_email", email))
-                if candidate.get("job_id"):
-                    application_query = application_query.eq("job_id", candidate["job_id"])
-                application_query.execute()
+                try:
+                    application_query = (session.client.table("public_applications").update({"status": decision})
+                                         .eq("company_id", session.company["id"]).eq("applicant_email", email))
+                    if candidate.get("job_id"):
+                        application_query = application_query.eq("job_id", candidate["job_id"])
+                    application_query.execute()
+                except Exception:
+                    logger.warning("Interview score saved but application status sync failed: company=%s candidate=%s",
+                                   session.company["id"], candidate["id"], exc_info=True)
     result = rows[0] if rows else {"ok": True, **allowed}
     return {**result, "decision_status": decision, "hiring_average": average}
 

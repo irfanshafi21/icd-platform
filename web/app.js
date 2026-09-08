@@ -28,6 +28,13 @@ function secureCandidateLibraryAccess(){
   const workspace=root.querySelector('.workspace');
   if(!workspace)return;
   applyHiringWorkflowRules(workspace);
+  workspace.querySelector('.parity-integrations')?.remove();
+  workspace.querySelectorAll('.integration-grid article').forEach(card=>{
+    const name=card.querySelector('b')?.textContent?.trim();
+    if(name==='Résumé inbox'||name==='Resume inbox'||name==='LinkedIn')card.remove();
+  });
+  const readiness=workspace.querySelector('.integration-status .step-badge'),visibleServices=workspace.querySelectorAll('.integration-grid article');
+  if(readiness)readiness.textContent=`${[...visibleServices].filter(card=>card.classList.contains('ready')).length} of ${visibleServices.length} ready`;
   const grid=workspace.querySelector('.page-settings .settings-grid');
   if(!grid||grid.querySelector('.candidate-library-settings'))return;
   const count=state.recruiter?.candidates?.length||0;
