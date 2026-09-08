@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Fixed candidate overflow actions so desktop menus remain visible and mobile actions open as a readable bottom sheet; consolidated notifications into a vertical, viewport-safe activity panel.
 - Emphasized candidate score and rank badges and made the floating AI assistant always reveal the newest answer.
 - Simplified recruiter candidate cards to exactly mirror the Jobs-card hierarchy, moving secondary evidence and actions behind the profile and overflow menu.
 - Standardized Jobs, recruiter Candidates, and Candidate Portal opportunities into three-column desktop cards, reduced global headers, and rebuilt interview rows to use the full schedule width.
