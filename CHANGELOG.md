@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Redesigned recruiter candidate cards as a compact premium Jobs-style component with reduced empty space, balanced evidence, sharper hierarchy, and a unified action tray.
 - Fixed the transformed interview-eligibility action so it retains a full candidate-card grid column instead of collapsing into the overflow-button column.
 - Rebuilt recruiter candidate cards on the exact Jobs-card structure with matching dimensions, header, metadata spacing, action tray, and candidate-specific ATS/rank emphasis.
 - Enforced accessible text/background contrast for primary, secondary, danger, and floating-AI controls across every normal and hover state.
