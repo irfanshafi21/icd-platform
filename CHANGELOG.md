@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Redesigned the screening role picker into compact searchable role cards and rebuilt screening priorities as dense, custom-themed percentage controls.
 - Rebuilt the complete resume-screening studio: premium hero and steps, refined criteria and role picker, stronger upload and scoring controls, sticky desktop actions, responsive results cards, and mobile-specific layout.
 - Rebuilt notifications as a premium activity centre with a high-contrast header, distinct event cards, stronger unread treatment, sticky actions, contained scrolling, and a mobile bottom sheet.
 - Redesigned recruiter candidate cards as a compact premium Jobs-style component with reduced empty space, balanced evidence, sharper hierarchy, and a unified action tray.
