@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Standardized Jobs, recruiter Candidates, and Candidate Portal opportunities into three-column desktop cards, reduced global headers, and rebuilt interview rows to use the full schedule width.
 - Made AI Insights move to and focus the beginning of each generated answer, and restored the mobile recruiter back button.
 - Added production UI quality controls for accessible focus, contrast, touch targets, form fields, loading feedback, notifications, responsive behavior, and reduced motion.
 - Applied a product-wide visual system to every recruiter page and access portal, and converted AI interview preparation into a side workspace on desktop.
