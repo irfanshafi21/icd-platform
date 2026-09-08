@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Contained the interview delete action inside every card and removed the desktop/mobile grid overflow that clipped it against the control rail.
 - Fixed candidate overflow actions so desktop menus remain visible and mobile actions open as a readable bottom sheet; consolidated notifications into a vertical, viewport-safe activity panel.
 - Emphasized candidate score and rank badges and made the floating AI assistant always reveal the newest answer.
 - Simplified recruiter candidate cards to exactly mirror the Jobs-card hierarchy, moving secondary evidence and actions behind the profile and overflow menu.
