@@ -1148,29 +1148,29 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
     decision = None
     average = None
     if "interview_score" in allowed:
-        matches = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
-                   .eq("candidate_name", interview.get("candidate_name")).limit(20).execute().data or [])
-        if matches:
-            role = str(interview.get("job_role") or "").strip().casefold()
-            candidate = next((item for item in matches if str(item.get("job_role") or "").strip().casefold() == role),
-                             matches[0] if len(matches) == 1 else None)
-        else:
-            candidate = None
-        if candidate:
-            average = _hiring_average(candidate.get("overall_score"), allowed["interview_score"])
-            decision = "Selected" if average is not None and average > 70 else "Interview Completed"
-            session.client.table("screening_history").update({"interview_score": allowed["interview_score"], "decision_status": decision}).eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute()
-            email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
-            if email:
-                try:
+        try:
+            matches = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
+                       .eq("candidate_name", interview.get("candidate_name")).limit(20).execute().data or [])
+            if matches:
+                role = str(interview.get("job_role") or "").strip().casefold()
+                candidate = next((item for item in matches if str(item.get("job_role") or "").strip().casefold() == role),
+                                 matches[0] if len(matches) == 1 else None)
+            else:
+                candidate = None
+            if candidate:
+                average = _hiring_average(candidate.get("overall_score"), allowed["interview_score"])
+                decision = "Selected" if average is not None and average > 70 else "Interview Completed"
+                session.client.table("screening_history").update({"interview_score": allowed["interview_score"], "decision_status": decision}).eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute()
+                email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
+                if email:
                     application_query = (session.client.table("public_applications").update({"status": decision})
                                          .eq("company_id", session.company["id"]).eq("applicant_email", email))
                     if candidate.get("job_id"):
                         application_query = application_query.eq("job_id", candidate["job_id"])
                     application_query.execute()
-                except Exception:
-                    logger.warning("Interview score saved but application status sync failed: company=%s candidate=%s",
-                                   session.company["id"], candidate["id"], exc_info=True)
+        except Exception:
+            logger.warning("Interview score saved but downstream candidate sync failed: company=%s interview=%s",
+                           session.company["id"], interview_id, exc_info=True)
     result = rows[0] if rows else {"ok": True, **allowed}
     return {**result, "decision_status": decision, "hiring_average": average}
 
