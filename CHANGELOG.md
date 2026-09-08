@@ -2,6 +2,7 @@
 
 ## 2026-09-08
 
+- Applied a product-wide visual system to every recruiter page and access portal, and converted AI interview preparation into a side workspace on desktop.
 - Introduced a more distinctive premium card system across recruiter jobs and candidates, candidate opportunities and applications, and owner company governance.
 - Corrected the remaining mobile KPI collision, job action-menu clipping, and downstream interview-score synchronization error.
 - Prevented an optional candidate-portal status sync failure from reporting a successfully saved interview score as failed.
