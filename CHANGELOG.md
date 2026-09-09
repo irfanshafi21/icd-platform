@@ -2,6 +2,7 @@
 
 ## 2026-09-09
 
+- Aligned recruiter access with the candidate page's panel proportions, outer margins, header spacing and rounded surfaces; placed company selection first on mobile and refined organization cards.
 - Fixed login back-button text containment and centered the Google icon/label group. Replaced the recruiter login's sample statistics with a matching hiring-workspace illustration.
 - Replaced the candidate login checklist with a custom workspace illustration, layered opportunity preview, clearer typography and responsive benefit summary. Preserved the preferred login form and checked desktop, tablet, 390px and 320px layouts in the browser.
 - Restored the preferred candidate sign-in surface and rebuilt only its visual companion as a spacious, interactive career-journey showcase with stronger depth, progression, and hierarchy.
