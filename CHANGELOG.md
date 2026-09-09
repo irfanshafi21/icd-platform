@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-09
+
+- Rebuilt candidate and recruiter access pages with a cleaner two-surface composition, stronger hierarchy, compact forms, improved organization cards, and responsive mobile layouts.
+- Removed the redundant focus capsule around resume-screening range controls while preserving a precise accessible focus state.
+
 ## 2026-09-08
 
 - Redesigned the screening role picker into compact searchable role cards and rebuilt screening priorities as dense, custom-themed percentage controls.
