@@ -2,6 +2,7 @@
 
 ## 2026-09-09
 
+- Fixed login back-button text containment and centered the Google icon/label group. Replaced the recruiter login's sample statistics with a matching hiring-workspace illustration.
 - Replaced the candidate login checklist with a custom workspace illustration, layered opportunity preview, clearer typography and responsive benefit summary. Preserved the preferred login form and checked desktop, tablet, 390px and 320px layouts in the browser.
 - Restored the preferred candidate sign-in surface and rebuilt only its visual companion as a spacious, interactive career-journey showcase with stronger depth, progression, and hierarchy.
 - Fully re-composed both access experiences: an asymmetric candidate sign-in with side-by-side authentication choices, and a recruiter workspace selector with a compact command narrative and expansive organization canvas.
