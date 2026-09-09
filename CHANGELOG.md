@@ -2,6 +2,7 @@
 
 ## 2026-09-09
 
+- Replaced the candidate login checklist with a custom workspace illustration, layered opportunity preview, clearer typography and responsive benefit summary. Preserved the preferred login form and checked desktop, tablet, 390px and 320px layouts in the browser.
 - Restored the preferred candidate sign-in surface and rebuilt only its visual companion as a spacious, interactive career-journey showcase with stronger depth, progression, and hierarchy.
 - Fully re-composed both access experiences: an asymmetric candidate sign-in with side-by-side authentication choices, and a recruiter workspace selector with a compact command narrative and expansive organization canvas.
 - Rebuilt candidate and recruiter access pages with a cleaner two-surface composition, stronger hierarchy, compact forms, improved organization cards, and responsive mobile layouts.
