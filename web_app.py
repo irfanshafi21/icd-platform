@@ -13,6 +13,7 @@ import base64
 import hashlib
 import io
 import logging
+import math
 import os
 import secrets
 import threading
@@ -80,6 +81,19 @@ def _numeric_score(value: Any) -> float:
         return max(0.0, min(100.0, float(value)))
     except (TypeError, ValueError):
         return 0.0
+
+
+def _interview_score(value: Any) -> int:
+    """Return a database-safe whole-number interview score."""
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Interview score must be a number between 0 and 100")
+    if not math.isfinite(numeric) or numeric < 0 or numeric > 100:
+        raise HTTPException(400, "Interview score must be between 0 and 100")
+    if not numeric.is_integer():
+        raise HTTPException(400, "Interview score must be a whole number between 0 and 100")
+    return int(numeric)
 
 
 def _hiring_average(ats_score: Any, interview_score: Any) -> float | None:
@@ -1138,9 +1152,17 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
         raise HTTPException(404, "Interview not found")
     interview = current[0]
     if "interview_score" in allowed:
-        if interview.get("interview_score") not in (None, ""):
+        score = _interview_score(allowed["interview_score"])
+        existing_score = interview.get("interview_score")
+        if existing_score not in (None, "") and _interview_score(existing_score) != score:
             raise HTTPException(409, "The interview score is locked and cannot be changed")
-        score = _numeric_score(allowed["interview_score"])
+        if existing_score not in (None, ""):
+            candidate_rows = (session.client.table("screening_history").select("overall_score,decision_status,job_role")
+                              .eq("company_id", session.company["id"])
+                              .eq("candidate_name", interview.get("candidate_name")).limit(20).execute().data or [])
+            candidate = next((item for item in candidate_rows if str(item.get("job_role") or "").strip().casefold() == str(interview.get("job_role") or "").strip().casefold()), candidate_rows[0] if len(candidate_rows) == 1 else None)
+            return {**interview, "decision_status": candidate.get("decision_status") if candidate else None,
+                    "hiring_average": _hiring_average(candidate.get("overall_score"), score) if candidate else None}
         allowed["interview_score"] = score
         allowed["status"] = "Completed"
     rows = (session.client.table("interviews").update(allowed).eq("id", interview_id)
