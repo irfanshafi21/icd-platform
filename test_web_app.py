@@ -149,9 +149,9 @@ class WebAppTests(unittest.TestCase):
         score = {"overall_score": 80, "breakdown": {"skills_match": 80, "experience_fit": 80,
                                                      "education_fit": 80}, "matched_skills": [], "gaps": []}
         parse.side_effect = lambda text, _description: (_ for _ in ()).throw(RuntimeError("provider timeout")) if text == "bad" else ({"name": "Good"}, score.copy())
-        response = MagicMock(data=[])
         client = MagicMock()
-        client.table.return_value.insert.return_value.execute.return_value = response
+        client.table.return_value.insert.side_effect = lambda row: SimpleNamespace(
+            execute=lambda: SimpleNamespace(data=[{**row, "id": 1}]))
         results, skipped = _screen_payloads([("good.pdf", b"good"), ("bad.pdf", b"bad")], "Engineer", "Python", "",
                                             {"skills_match": 40, "experience_fit": 40, "education_fit": 20},
                                             SimpleNamespace(client=client, company={"id": "company"}), "Web Upload")

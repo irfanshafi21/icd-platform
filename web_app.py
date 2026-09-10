@@ -739,9 +739,21 @@ def create_job(payload: JobPayload, session: RecruiterSession = Depends(_session
 
 @app.patch("/api/jobs/{job_id}")
 def update_job(job_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
-    result = (session.client.table("jobs").update(payload).eq("id", job_id)
+    allowed = {key: value for key, value in payload.items()
+               if key in set(JobPayload.model_fields) | {"status", "published_to_portal"}}
+    if not allowed:
+        raise HTTPException(400, "No supported job fields were supplied")
+    if "title" in allowed and not str(allowed["title"] or "").strip():
+        raise HTTPException(400, "A job title is required")
+    if "status" in allowed and allowed["status"] not in {"active", "archived"}:
+        raise HTTPException(400, "Choose an active or archived job status")
+    if "published_to_portal" in allowed and not isinstance(allowed["published_to_portal"], bool):
+        raise HTTPException(400, "The publication setting must be true or false")
+    result = (session.client.table("jobs").update(allowed).eq("id", job_id)
               .eq("company_id", session.company["id"]).execute().data or [])
-    return result[0] if result else {"ok": True}
+    if not result:
+        raise HTTPException(404, "Job not found or no longer available")
+    return result[0]
 
 
 @app.delete("/api/jobs/{job_id}")
@@ -779,6 +791,8 @@ def change_access_code(payload: dict[str, Any], session: RecruiterSession = Depe
 @app.get("/api/reports/{report_type}.{file_type}")
 def export_report(report_type: str, file_type: str, role: str = "",
                   session: RecruiterSession = Depends(_session)):
+    if report_type not in {"screened", "shortlisted", "selected", "interviews"}:
+        raise HTTPException(400, "Choose a screened, shortlisted, selected or interviews report")
     candidates = [_candidate(row) for row in
                   ((_company_query(session, "screening_history").neq("status", "cleared")
                     .order("screened_at", desc=True).limit(1000).execute().data) or [])]
@@ -933,11 +947,7 @@ def screen_job_applications(job_id: int, session: RecruiterSession = Depends(_se
         if applications:
             return {"processed": 0, "candidates": [], "skipped": [], "message": "All submitted resumes are already screened"}
         raise HTTPException(400, "No usable submitted resumes were found for this job")
-    resume_batch = io.BytesIO()
-    with zipfile.ZipFile(resume_batch, "w", zipfile.ZIP_DEFLATED) as archive:
-        for index, (name, content) in enumerate(payloads, 1):
-            archive.writestr(f"{index:03d}-{Path(name).name}", content)
-    payloads = [(f"job-{job_id}-submitted-resumes.zip", resume_batch.getvalue())]
+    # Keep the original filename: it is part of the duplicate-screening key.
     job = jobs[0]
     required_skills = _json_field(job.get("required_skills"), [])
     required_skills = required_skills if isinstance(required_skills, list) else []
@@ -1033,6 +1043,8 @@ def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_
     if not rows:
         raise HTTPException(404, "Candidate not found")
     row = rows[0]
+    existing_profile = _json_field(row.get("profile_json"), {})
+    existing_score = _json_field(row.get("score_json"), {})
     resume_text = (row.get("raw_text") or "").strip()
     if not resume_text:
         profile = _json_field(row.get("profile_json"), {})
@@ -1053,8 +1065,17 @@ def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_
     except Exception as exc:
         raise HTTPException(503, f"ATS analysis is temporarily unavailable: {exc}") from exc
     profile["extraction_flags"] = assess_extraction_confidence(profile, resume_text)
+    profile["_screening_source"] = existing_profile.get("_screening_source") or "ATS Re-analysis"
+    priorities = existing_score.get("priority_weights")
+    if isinstance(priorities, dict) and priorities:
+        score = _weighted_score(score, {"skills_match": priorities.get("skills", 40),
+                                        "experience_fit": priorities.get("experience", 40),
+                                        "education_fit": priorities.get("education", 20)})
     decision = row.get("decision_status")
-    if decision not in {"Rejected", "Selected", "Interview Scheduled", "Interview Completed"}:
+    if row.get("interview_score") not in (None, "") and decision != "Rejected":
+        average = _hiring_average(score.get("overall_score"), row["interview_score"])
+        decision = "Selected" if average is not None and average > 70 else "Interview Completed"
+    elif decision not in {"Rejected", "Selected", "Interview Scheduled", "Interview Completed"}:
         decision = "Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"
     values = {"profile_json": json.dumps(profile), "score_json": json.dumps(score),
               "overall_score": score.get("overall_score", 0),
@@ -1066,7 +1087,20 @@ def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_
               "decision_status": decision}
     updated = (session.client.table("screening_history").update(values).eq("id", candidate_id)
                .eq("company_id", session.company["id"]).execute().data or [])
-    return _candidate(updated[0] if updated else {**row, **values})
+    if not updated:
+        raise HTTPException(409, "This candidate changed during analysis. Refresh the candidate profile and try again")
+    email = row.get("email") or existing_profile.get("email") or ""
+    if email:
+        try:
+            query = (session.client.table("public_applications").update({"status": decision})
+                     .eq("company_id", session.company["id"]).eq("applicant_email", email))
+            if row.get("job_id"):
+                query = query.eq("job_id", row["job_id"])
+            query.execute()
+        except Exception as exc:
+            logger.warning("ATS analysis saved but candidate portal sync failed: candidate=%s", candidate_id, exc_info=True)
+            raise HTTPException(503, "ATS analysis was saved, but candidate portal progress could not be updated. Try ATS re-analysis again to finish syncing") from exc
+    return _candidate(updated[0])
 
 
 @app.get("/api/candidates/{candidate_id}/report.pdf")
@@ -1156,17 +1190,23 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
         existing_score = interview.get("interview_score")
         if existing_score not in (None, "") and _interview_score(existing_score) != score:
             raise HTTPException(409, "The interview score is locked and cannot be changed")
-        if existing_score not in (None, ""):
-            candidate_rows = (session.client.table("screening_history").select("overall_score,decision_status,job_role")
-                              .eq("company_id", session.company["id"])
-                              .eq("candidate_name", interview.get("candidate_name")).limit(20).execute().data or [])
-            candidate = next((item for item in candidate_rows if str(item.get("job_role") or "").strip().casefold() == str(interview.get("job_role") or "").strip().casefold()), candidate_rows[0] if len(candidate_rows) == 1 else None)
-            return {**interview, "decision_status": candidate.get("decision_status") if candidate else None,
-                    "hiring_average": _hiring_average(candidate.get("overall_score"), score) if candidate else None}
         allowed["interview_score"] = score
         allowed["status"] = "Completed"
-    rows = (session.client.table("interviews").update(allowed).eq("id", interview_id)
-            .eq("company_id", session.company["id"]).execute().data or [])
+    query = (session.client.table("interviews").update(allowed).eq("id", interview_id)
+             .eq("company_id", session.company["id"]))
+    if "interview_score" in allowed:
+        # The database filter also protects against two concurrent final saves.
+        query = (query.is_("interview_score", "null") if interview.get("interview_score") is None
+                 else query.eq("interview_score", interview["interview_score"]))
+    rows = query.execute().data or []
+    if not rows:
+        latest = (session.client.table("interviews").select("*").eq("id", interview_id)
+                  .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        if not latest:
+            raise HTTPException(404, "Interview no longer available")
+        if "interview_score" not in allowed or latest[0].get("interview_score") != allowed["interview_score"]:
+            raise HTTPException(409, "This interview changed while saving. Refresh to see the saved score")
+        rows = latest
     decision = None
     average = None
     if "interview_score" in allowed:
@@ -1182,7 +1222,11 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
             if candidate:
                 average = _hiring_average(candidate.get("overall_score"), allowed["interview_score"])
                 decision = "Selected" if average is not None and average > 70 else "Interview Completed"
-                session.client.table("screening_history").update({"interview_score": allowed["interview_score"], "decision_status": decision}).eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute()
+                synced = (session.client.table("screening_history")
+                          .update({"interview_score": allowed["interview_score"], "decision_status": decision})
+                          .eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute().data or [])
+                if not synced:
+                    raise RuntimeError("Candidate progress was not updated")
                 email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
                 if email:
                     application_query = (session.client.table("public_applications").update({"status": decision})
@@ -1190,9 +1234,10 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
                     if candidate.get("job_id"):
                         application_query = application_query.eq("job_id", candidate["job_id"])
                     application_query.execute()
-        except Exception:
+        except Exception as exc:
             logger.warning("Interview score saved but downstream candidate sync failed: company=%s interview=%s",
                            session.company["id"], interview_id, exc_info=True)
+            raise HTTPException(503, "Your interview score was saved, but candidate progress could not be updated. Retry the same score to finish syncing") from exc
     result = rows[0] if rows else {"ok": True, **allowed}
     return {**result, "decision_status": decision, "hiring_average": average}
 
@@ -1337,10 +1382,14 @@ def offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depend
 
 @app.post("/api/offers/send")
 def send_offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depends(_session)):
+    if not payload.candidate_ids:
+        raise HTTPException(400, "Choose at least one selected candidate")
     rows = (session.client.table("screening_history").select("*").in_("id", payload.candidate_ids)
             .eq("company_id", session.company["id"]).execute().data or [])
     chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"
               and (_hiring_average(row.get("overall_score"), row.get("interview_score")) or 0) > 70]
+    if not chosen:
+        raise HTTPException(400, "No candidates eligible for an offer were found")
     company, sent, failed = session.company, [], []
     logo_bytes = None
     if company.get("logo_base64"):
@@ -1413,18 +1462,25 @@ def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_detai
                      weights: dict[str, float], session: RecruiterSession,
                      source: str) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     payloads = _expand_resume_payloads(payloads)
+    if not payloads:
+        raise HTTPException(400, "Upload at least one PDF, DOCX, or DOC resume")
     if not check_api_key():
         raise HTTPException(503, "No AI provider is configured")
     extracted: list[tuple[str, str]] = []
+    skipped: list[dict[str, str]] = []
     with ThreadPoolExecutor(max_workers=min(6, len(payloads))) as pool:
         futures = {pool.submit(extract_text_from_bytes, name, data): name for name, data in payloads}
         for future in as_completed(futures):
-            text = future.result()
-            if text.strip() and heuristic_resume_check(text).get("looks_like_resume"):
-                extracted.append((futures[future], text))
+            try:
+                text = future.result()
+                if text.strip() and heuristic_resume_check(text).get("looks_like_resume"):
+                    extracted.append((futures[future], text))
+                else:
+                    skipped.append({"filename": futures[future], "reason": "No readable candidate resume evidence was found"})
+            except Exception:
+                skipped.append({"filename": futures[future], "reason": "This file could not be read. Upload a readable PDF or DOCX resume"})
     description = f"Job Role: {job_role}\n\nKey Requirements:\n{job_details}".strip()
     results: list[dict[str, Any]] = []
-    skipped: list[dict[str, str]] = []
     if not extracted:
         return results, skipped
     with ThreadPoolExecutor(max_workers=min(6, len(extracted))) as pool:
@@ -1452,7 +1508,9 @@ def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_detai
                     "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"),
                 }
                 saved = session.client.table("screening_history").insert(row).execute().data or []
-                results.append(_candidate(saved[0] if saved else row))
+                if not saved:
+                    raise RuntimeError("The screened candidate could not be saved. Please retry this resume")
+                results.append(_candidate(saved[0]))
             except Exception as exc:
                 logger.exception("AI screening failed for %s", name)
                 skipped.append({"filename": name, "reason": str(exc)[:300] or "AI screening failed"})

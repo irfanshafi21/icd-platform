@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-11
+
+- Introduced a cohesive product-wide visual system: compact page headers, a forest-toned recruiter navigation, restrained white cards, consistent actions, and distinct candidate and owner surfaces. Jobs, candidates, and portal opportunities use three-column desktop grids with responsive tablet and phone layouts.
+- Rebuilt interview rows with contained status, score, and delete controls; streamlined screening priorities, searchable role selection, offer preparation, AI answers, notifications, and mobile navigation.
+- Corrected overflow menus, unread notification tracking, hidden filters, ATS modal closure, readable button hover states, and floating AI scrolling to the beginning of the latest answer.
+- Hardened final interview-score persistence against concurrent edits and interrupted downstream updates. A saved score stays immutable while “Sync saved score” can retry candidate/application progress updates.
+- Preserved candidate screening provenance and priority weights during ATS reruns. Validated job updates, unreadable/empty resume uploads, empty database writes, report types, offer eligibility, and delivery failures.
+- Added isolated backend workflow tests and browser checks across desktop, tablet, and phone. Browser fixtures block external requests; provider authentication and actual inbox delivery require separate live-account checks.
+
 ## 2026-09-09
 
 - Differentiated the recruiter login with a straight operational dashboard and grid backdrop while retaining the candidate page's tilted career story. Hardened interview-score validation and made identical retries safe after interrupted requests.
