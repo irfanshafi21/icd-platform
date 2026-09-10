@@ -198,8 +198,29 @@ let origin;
     for (const width of process.env.QA_WIDTHS ? process.env.QA_WIDTHS.split(',').map(Number) : [1440, 768, 390]) {
       const { page, context, controls } = await setup(browser, width, 'recruiter');
       await page.goto(origin); await snap(page, width, 'landing');
+      await page.locator('.landing-cta .recruiter-go').scrollIntoViewIfNeeded();
+      await page.locator('.landing-cta .recruiter-go').click();
+      await page.locator('.recruiter-access').waitFor();
+      check(width, 'bottom recruiter CTA opens recruiter access', true);
+      await page.locator('#back').click();
+      await page.locator('.landing-cta .candidate-go').scrollIntoViewIfNeeded();
+      await page.locator('.landing-cta .candidate-go').click();
+      await page.locator('.candidate-access').waitFor();
+      check(width, 'bottom candidate CTA opens candidate access', true);
       await page.goto(origin + '/?recruiter=1'); await page.locator('[data-org]').first().waitFor(); await snap(page, width, 'recruiter-login');
       await page.locator('[data-org]').first().click(); await page.locator('#code').fill('123456'); await page.locator('#login').click(); await page.locator('.workspace').waitFor();
+      if (width > 900) {
+        await page.setViewportSize({ width, height: 620 });
+        const sidebarPosition = await page.locator('.workspace>aside').evaluate(sidebar => { window.scrollTo(0, 360); return { position: getComputedStyle(sidebar).position, top: Math.round(sidebar.getBoundingClientRect().top) }; });
+        assert.deepEqual(sidebarPosition, { position: 'fixed', top: 0 });
+        const nav = page.locator('.workspace>aside nav');
+        const savedNavTop = await nav.evaluate(element => { element.scrollTop = Math.min(90, element.scrollHeight - element.clientHeight); return element.scrollTop; });
+        assert(savedNavTop > 0, 'Short desktop viewport should make sidebar navigation scrollable');
+        await page.locator('button[data-page="reports"]').first().click(); await page.locator('.page-reports').waitFor();
+        assert(Math.abs(await page.locator('.workspace>aside nav').evaluate(element => element.scrollTop) - savedNavTop) <= 1, 'Sidebar navigation position should survive page changes');
+        check(width, 'desktop sidebar stays fixed and preserves its navigation position', true, { savedNavTop });
+        await page.setViewportSize({ width, height: 1000 }); await page.evaluate(() => window.scrollTo(0, 0));
+      }
       for (const name of ['home', 'jobs', 'screening', 'candidates', 'interviews', 'reports', 'offers', 'insights', 'settings']) {
         await goRecruiter(page, name); await snap(page, width, name);
         check(width, `${name} navigation is reachable`, await page.locator(`button[data-page="${name}"]`).first().isVisible());

@@ -67,6 +67,7 @@ body { background: var(--ui-canvas) !important; font-family: 'Segoe UI', Arial, 
 /* Workspace: quiet canvas, compact navigation, a real content hierarchy. */
 #app .workspace { display: grid !important; grid-template-columns: 232px minmax(0,1fr) !important; max-width: none !important; background: var(--ui-canvas) !important; min-height: 100vh !important; }
 #app .workspace>aside { position: sticky !important; top: 0 !important; width: 232px !important; height: 100dvh !important; padding: 24px 16px 16px !important; background: #122d30 !important; box-shadow: none !important; border: 0 !important; display: flex !important; flex-direction: column !important; }
+#app .workspace>aside { position: fixed !important; left: 0 !important; z-index: 40 !important; }
 #app .company-sidebar-brand { padding: 0 4px 24px !important; margin: 0 0 14px !important; background: transparent !important; border: 0 !important; border-bottom: 1px solid #ffffff15 !important; border-radius: 0 !important; gap: 12px !important; }
 #app .company-sidebar-brand .company-mark { width: 42px !important; height: 42px !important; border-radius: 11px !important; flex: 0 0 42px !important; background: #f0f8f5 !important; }
 #app .company-sidebar-brand small { color: #9bb9b6 !important; font-size: 9px !important; letter-spacing: .1em !important; }
@@ -88,7 +89,7 @@ body { background: var(--ui-canvas) !important; font-family: 'Segoe UI', Arial, 
 #app .workspace-help b { font-size: 12px !important; }
 #app .workspace-help span { font-size: 10px !important; color: #a0beb6 !important; }
 #app #logout { min-height: 40px !important; color: #d3e3dd !important; -webkit-text-fill-color: #d3e3dd !important; background: transparent !important; border-color: #ffffff25 !important; font-size: 11px !important; }
-#app .workspace-page { width: 100% !important; max-width: 1600px !important; min-width: 0 !important; margin: 0 auto !important; padding: 24px 30px 90px !important; background: var(--ui-canvas) !important; }
+#app .workspace-page { grid-column: 2 !important; width: 100% !important; max-width: 1600px !important; min-width: 0 !important; margin: 0 auto !important; padding: 24px 30px 90px !important; background: var(--ui-canvas) !important; }
 #app .workspace-head { display: flex !important; align-items: center !important; justify-content: space-between !important; min-height: 0 !important; margin: 0 0 26px !important; padding: 5px 0 23px !important; border: 0 !important; border-bottom: 1px solid #dce4e1 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--ui-ink) !important; gap: 16px !important; }
 #app .workspace-head::before,#app .workspace-head::after { content: none !important; }
 #app .workspace-head h1 { margin: 5px 0 5px !important; font-size: clamp(28px,2.5vw,36px) !important; line-height: 1.15 !important; color: #183731 !important; letter-spacing: -.045em !important; }
@@ -460,7 +461,7 @@ body>.notification-panel .notification-close { color: #fff !important; }
 }
 @media(max-width:900px) {
   #app .workspace { display: block !important; }
-  #app .workspace>aside { position: relative !important; width: 100% !important; height: auto !important; padding: 14px 20px 10px !important; display: block !important; }
+  #app .workspace>aside { position: relative !important; left: auto !important; width: 100% !important; height: auto !important; padding: 14px 20px 10px !important; display: block !important; }
   #app .company-sidebar-brand { display: flex !important; align-items: center !important; max-width: calc(100% - 180px) !important; border: 0 !important; margin: 0 0 14px !important; padding: 0 !important; }
   #app .company-sidebar-brand .company-mark { width: 34px !important; height: 34px !important; flex-basis: 34px !important; }
   #app .company-sidebar-brand small { display: none !important; }
@@ -476,7 +477,7 @@ body>.notification-panel .notification-close { color: #fff !important; }
   #app .sidebar-footer { display: block !important; position: absolute !important; top: 14px !important; right: 20px !important; width: auto !important; padding: 0 !important; border: 0 !important; margin: 0 !important; }
   #app .sidebar-footer .workspace-help { display: none !important; }
   #app #logout { font-size: 10px !important; padding: 8px 11px !important; min-height: 34px !important; }
-  #app .workspace-page { padding: 24px 20px 85px !important; }
+  #app .workspace-page { grid-column: auto !important; padding: 24px 20px 85px !important; }
   #app .workspace-head { gap: 15px !important; }
   #app .header-actions .online { display: none !important; }
   #app .section-title { flex-wrap: wrap !important; }
@@ -604,6 +605,8 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app .floating-ai-history>div.user { background: #eaf3e9 !important; color: #446a42 !important; border: 1px solid #dce9d8 !important; }
 #app .floating-ai-history>div.assistant { background: #f7f9f5 !important; color: #435a3b !important; border: 1px solid #e4ebdd !important; }
 #app .floating-ai-history>div h3 { font-size: 15px !important; margin: 12px 0 6px !important; }
+#app .landing-cta::after { pointer-events: none !important; }
+#app .landing-cta>div { position: relative !important; z-index: 1 !important; }
 /* Secondary text remains readable on the white and sage surfaces. */
 #app :is(.operations-overview,.executive-kpis)>article>small,
 #app .job-admin-cards .card-top>span:last-child,
