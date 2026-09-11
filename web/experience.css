@@ -649,6 +649,38 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #tracking-form input { display:block; width:100%; margin-top:8px; }
 #tracking-result { margin-top:20px; padding:18px; border-radius:12px; background:#f0f7f3; overflow-wrap:anywhere; }
 #app [data-track-request] { margin-top:18px !important; }
+/* Readable, compact information hierarchy across the product. */
+#app .workspace-head .kicker,#app .owner-company-label { font-size:11px !important; letter-spacing:.08em !important; }
+#app :is(.operations-overview,.executive-kpis)>article>small,
+#app .job-admin-cards>article>p,#app .premium-job-card .company-row span,
+#app .premium-job-card .job-meta>span,#app .job-card-footer>span,
+#app .owner-company-primary small { font-size:12px !important; line-height:1.5 !important; color:#596d64 !important; }
+#app .chips span,#app .verified-employer { font-size:11px !important; color:#41644f !important; }
+#app .job-card-role p { color:#5b6e56 !important; font-size:14px !important; min-height:0 !important; }
+#app .premium-job-card { height:auto !important; padding:22px !important; }
+#app .premium-job-card .job-card-top { padding-bottom:14px !important; margin-bottom:16px !important; }
+#app .premium-job-card .job-card-role { height:auto !important; }
+#app .premium-job-card .job-card-footer { margin-top:20px !important; }
+#app .owner-company-primary>div { min-height:0 !important; height:auto !important; padding:9px 0 !important; border-bottom:1px solid #edf0ee !important; }
+#app .owner-company-details { margin:8px 0 18px !important; }
+#app .owner-company-details small { font-size:11px !important; letter-spacing:.03em !important; color:#607065 !important; }
+#app .owner-company-details b { font-size:13px !important; line-height:1.5 !important; }
+#app .owner-company-card { height:auto !important; }
+#app .owner-directory-tools { flex-wrap:wrap !important; }
+#app .landing-paths,#app .landing-capabilities { padding-top:64px !important; padding-bottom:40px !important; }
+#app .landing-workflow { margin-top:36px !important; margin-bottom:36px !important; }
+#app .job-card-actions button { font-size:12px !important; min-height:44px !important; }
+#app .notification-item { line-height:1.5 !important; }
+@media(max-width:600px) {
+  #app :is(.workspace-page,.candidate-portal) { padding-left:16px !important; padding-right:16px !important; }
+  #app .workspace-head { margin-bottom:18px !important; padding-bottom:16px !important; }
+  #app .job-card-role h3 { min-height:0 !important; }
+  #app .premium-job-card { padding:18px !important; }
+  #app :is(input:not([type=checkbox]):not([type=range]):not([type=hidden]),select,textarea),
+  .modal-shell :is(input:not([type=checkbox]):not([type=hidden]),select,textarea) { font-size:16px !important; }
+  .modal-shell .form-grid { gap:16px !important; }
+  #app .landing-paths,#app .landing-capabilities { padding-top:36px !important; padding-bottom:24px !important; }
+}
 /* Finishing touches: quiet motion without moving navigation or action targets. */
 #app { opacity: 1 !important; }
 #app .landing-reveal {
