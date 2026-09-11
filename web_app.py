@@ -502,7 +502,12 @@ class OwnerDecision(BaseModel):
 def owner_registrations(session: CandidateSession = Depends(_owner_session)):
     registrations = (session.client.table("company_registrations").select("*")
                      .order("created_at", desc=True).execute().data or [])
-    companies = (_public_client().table("companies_public").select("*").order("name").execute().data or [])
+    # The public directory deliberately omits settings. This owner-only endpoint
+    # reads current profiles using an explicit list that excludes credentials.
+    companies = (session.client.table("owner_company_profiles").select(
+        "id,name,logo_base64,industry,website,company_size,created_at,"
+        "verification_status,billing_plan,approved_at,approved_by"
+    ).order("name").execute().data or [])
     return {"owner_email": OWNER_EMAIL, "registrations": registrations, "companies": companies}
 
 

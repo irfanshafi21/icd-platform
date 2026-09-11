@@ -126,6 +126,20 @@ class BackendWorkflowTests(unittest.TestCase):
                 {"overall_score": 80, "breakdown": {"skills_match": 80, "experience_fit": 80, "education_fit": 80},
                  "matched_skills": ["Python"], "gaps": []})
 
+    def test_owner_reads_latest_settings_for_legacy_company(self):
+        self.database.rows['companies'] = [{'id': 'company', 'name': 'Acme', 'website': '', 'company_size': ''}]
+        self.candidate_session.user.email = web_app.OWNER_EMAIL
+        result = self.client.patch('/api/company', json={'website': 'https://acme.test', 'company_size': '11–50'})
+        self.assertEqual(result.status_code, 200)
+        self.database.rows['owner_company_profiles'] = self.database.rows['companies']
+        result = self.client.get('/api/owner/registrations')
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()['companies'][0]['website'], 'https://acme.test')
+        self.assertEqual(result.json()['companies'][0]['company_size'], '11–50')
+
+    def test_owner_directory_rejects_non_owner(self):
+        self.assertEqual(self.client.get('/api/owner/registrations').status_code, 403)
+
     def seed_candidate(self, score=80, interview_score=None):
         profile, analysis = self.analysis()
         profile["_screening_source"] = "Web Upload"
