@@ -181,6 +181,10 @@ def _session(icd_session: str | None = Cookie(default=None)) -> RecruiterSession
         if not session or time.monotonic() - session.last_seen > SESSION_TTL:
             _sessions.pop(icd_session, None)
             raise HTTPException(401, "Recruiter session expired")
+        current = session.client.table("companies").select("verification_status").eq("id", session.company["id"]).limit(1).execute().data or []
+        if not current or current[0].get("verification_status", "approved") not in {"approved", "demo_approved"}:
+            _sessions.pop(icd_session, None)
+            raise HTTPException(403, "Company access is not active")
         session.last_seen = time.monotonic()
         return session
 
@@ -357,7 +361,7 @@ def register_company(payload: CompanyRegistration):
     email = payload.business_email.strip().lower()
     if "@" not in email:
         raise HTTPException(400, "Enter a valid business email")
-    access_code = secrets.token_urlsafe(18)
+    access_code = f"{secrets.randbelow(10000):04d}"
     row = {**payload.model_dump(), "access_code": access_code, "company_name": payload.company_name.strip(),
            "contact_name": payload.contact_name.strip(), "business_email": email,
            "status": "pending", "logo_base64": _validated_logo(payload.logo_base64)}
@@ -374,7 +378,7 @@ def register_company(payload: CompanyRegistration):
 
 class RegistrationTracking(BaseModel):
     business_email: str = Field(min_length=5, max_length=180)
-    access_code: str = Field(min_length=24, max_length=100)
+    access_code: str = Field(pattern=r"^[0-9]{4}$")
 
 
 @app.post("/api/company-registrations/track")
@@ -384,7 +388,7 @@ def track_registration(payload: RegistrationTracking):
         "p_code": payload.access_code.strip(),
     }).execute().data or []
     if not rows:
-        raise HTTPException(404, "No request matches that email and code")
+        raise HTTPException(404, "No matching request, or too many attempts. After five checks, wait 15 minutes")
     return rows[0]
 
 
@@ -523,9 +527,17 @@ def owner_registrations(session: CandidateSession = Depends(_owner_session)):
     # reads current profiles using an explicit list that excludes credentials.
     companies = (session.client.table("owner_company_profiles").select(
         "id,name,logo_base64,industry,website,company_size,created_at,"
-        "verification_status,billing_plan,approved_at,approved_by"
+        "verification_status,billing_plan,approved_at,approved_by,access_code"
     ).order("name").execute().data or [])
     return {"owner_email": OWNER_EMAIL, "registrations": registrations, "companies": companies}
+
+
+@app.post("/api/owner/companies/{company_id}/deactivate")
+def deactivate_company(company_id: str, session: CandidateSession = Depends(_owner_session)):
+    result = session.client.rpc("owner_deactivate_company", {"p_id": company_id}).execute().data
+    if not result:
+        raise HTTPException(404, "Company not found")
+    return {"ok": True}
 
 
 @app.post("/api/owner/registrations/{registration_id}/decision")
@@ -544,7 +556,7 @@ def decide_registration(registration_id: str, payload: OwnerDecision,
     if decision == "approved":
         internal_email = f"org-{secrets.token_hex(12)}@login.icd-platform.internal"
         internal_password = secrets.token_urlsafe(36)
-        access_code = registration.get("access_code") or secrets.token_urlsafe(18)
+        access_code = registration.get("access_code") or f"{secrets.randbelow(10000):04d}"
         company_client = _public_client()
         auth_result = company_client.auth.sign_up({"email": internal_email, "password": internal_password})
         if not auth_result.user or not auth_result.session:
@@ -826,6 +838,8 @@ def update_company(payload: dict[str, Any], session: RecruiterSession = Depends(
 
 @app.post("/api/company/access-code")
 def change_access_code(payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
+    if session.company.get("verification_status", "approved") not in {"approved", "demo_approved"}:
+        raise HTTPException(403, "Initial owner approval is required")
     code = str(payload.get("access_code", "")).strip()
     if not (code.isdigit() and len(code) == 4):
         raise HTTPException(400, "Access code must contain exactly four digits")
@@ -833,6 +847,8 @@ def change_access_code(payload: dict[str, Any], session: RecruiterSession = Depe
             .eq("id", session.company["id"]).execute().data or [])
     if rows:
         session.company = rows[0]
+    else:
+        raise HTTPException(400, "Access code was not saved")
     return {"ok": True}
 
 
