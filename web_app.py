@@ -357,7 +357,8 @@ def register_company(payload: CompanyRegistration):
     email = payload.business_email.strip().lower()
     if "@" not in email:
         raise HTTPException(400, "Enter a valid business email")
-    row = {**payload.model_dump(), "company_name": payload.company_name.strip(),
+    access_code = secrets.token_urlsafe(18)
+    row = {**payload.model_dump(), "access_code": access_code, "company_name": payload.company_name.strip(),
            "contact_name": payload.contact_name.strip(), "business_email": email,
            "status": "pending", "logo_base64": _validated_logo(payload.logo_base64)}
     try:
@@ -368,7 +369,23 @@ def register_company(payload: CompanyRegistration):
         if "duplicate" in str(exc).lower():
             raise HTTPException(409, "A registration for this email is already under review") from exc
         raise HTTPException(400, "Could not submit the registration") from exc
-    return {"ok": True, "message": "Registration submitted for owner review"}
+    return {"ok": True, "message": "Registration submitted for owner review", "access_code": access_code}
+
+
+class RegistrationTracking(BaseModel):
+    business_email: str = Field(min_length=5, max_length=180)
+    access_code: str = Field(min_length=24, max_length=100)
+
+
+@app.post("/api/company-registrations/track")
+def track_registration(payload: RegistrationTracking):
+    rows = _public_client().rpc("track_company_registration", {
+        "p_email": payload.business_email.strip().lower(),
+        "p_code": payload.access_code.strip(),
+    }).execute().data or []
+    if not rows:
+        raise HTTPException(404, "No request matches that email and code")
+    return rows[0]
 
 
 def _company_branding(client: Client, company_ids: set[str]) -> dict[str, dict[str, Any]]:
@@ -527,7 +544,7 @@ def decide_registration(registration_id: str, payload: OwnerDecision,
     if decision == "approved":
         internal_email = f"org-{secrets.token_hex(12)}@login.icd-platform.internal"
         internal_password = secrets.token_urlsafe(36)
-        access_code = f"{secrets.randbelow(10000):04d}"
+        access_code = registration.get("access_code") or secrets.token_urlsafe(18)
         company_client = _public_client()
         auth_result = company_client.auth.sign_up({"email": internal_email, "password": internal_password})
         if not auth_result.user or not auth_result.session:
@@ -641,6 +658,8 @@ def recruiter_login(payload: RecruiterLogin, response: Response):
     company_rows = client.table("companies").select("*").eq("id", payload.company_id).limit(1).execute().data or []
     if not company_rows:
         raise HTTPException(404, "Organization was not found")
+    if company_rows[0].get("verification_status", "approved") not in {"approved", "demo_approved"}:
+        raise HTTPException(403, "Owner approval is required before workspace access")
     session_id = secrets.token_urlsafe(32)
     with _sessions_lock:
         _sessions[session_id] = RecruiterSession(client, company_rows[0])

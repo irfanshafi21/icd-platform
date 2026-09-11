@@ -645,6 +645,10 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app#app .primary:hover:not(:disabled),.modal-shell.modal-shell .primary:hover:not(:disabled) { background:linear-gradient(115deg,#105a68,#06685f) !important; color:white !important; -webkit-text-fill-color:white !important; box-shadow:0 5px 13px #154e4130 !important; }
 #app#app .secondary,.modal-shell.modal-shell .secondary { border-color:#bccfc7 !important; box-shadow:0 2px 5px #203e3010 !important; }
 @media(max-width:500px) { .company-logo-editor { align-items:flex-start; padding:14px; gap:12px; } .logo-upload-preview { flex-basis:48px; height:48px; } }
+#tracking-form label { display:block; margin:18px 0; font-weight:600; }
+#tracking-form input { display:block; width:100%; margin-top:8px; }
+#tracking-result { margin-top:20px; padding:18px; border-radius:12px; background:#f0f7f3; overflow-wrap:anywhere; }
+#app [data-track-request] { margin-top:18px !important; }
 /* Finishing touches: quiet motion without moving navigation or action targets. */
 #app { opacity: 1 !important; }
 #app .landing-reveal {
