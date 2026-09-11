@@ -615,4 +615,45 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app .interview-control-rail :is(p,small),
 #app .interview-control-rail .rail-next>span { color: #596b50 !important; }
 #app [hidden][hidden][hidden],body>.notification-panel[hidden],.modal-shell [hidden][hidden] { display: none !important; }
-@media(prefers-reduced-motion:reduce) { #app *, .modal-shell * { scroll-behavior: auto !important; transition: none !important; } }
+/* Finishing touches: quiet motion without moving navigation or action targets. */
+#app { opacity: 1 !important; }
+#app .landing-reveal {
+  filter: none !important; clip-path: none !important;
+  transform: translateY(12px) !important;
+  transition: opacity .32s ease, transform .32s ease !important;
+  transition-delay: min(var(--reveal-delay,0ms),120ms) !important;
+  will-change: auto !important;
+}
+#app .landing-reveal.is-visible { opacity: 1 !important; transform: none !important; }
+#app .landing-reveal:focus-within { opacity: 1 !important; transform: none !important; }
+#app :is(.path-card,.capability-card,.premium-job-card,.owner-company-card),
+#app .job-admin-cards>article {
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease !important;
+}
+#app .candidate-tabs button {
+  color: #596e60 !important;
+  transition: color .18s ease, background-color .18s ease, border-color .18s ease !important;
+}
+#app .candidate-tabs button.active { color: #216044 !important; background: #edf4ed !important; }
+#app .premium-candidate-hero p { color: #596e50 !important; }
+#app .landing-cta h2 { text-wrap: balance; }
+#app :is(.path-card,.capability-card) h3 { text-wrap: balance; }
+#app :is(button,a,input,select,textarea,summary):focus-visible {
+  outline: 2px solid #087f72 !important; outline-offset: 3px !important;
+}
+#app .workspace>aside :is(button,a):focus-visible { outline-color: #a8e2cf !important; }
+@media(hover:hover) and (pointer:fine) {
+  #app :is(.path-card,.capability-card):hover {
+    border-color: #a7c4b5 !important; box-shadow: 0 8px 26px #244c3910 !important;
+  }
+  #app .candidate-tabs button:not(.active):hover { background: #f0f4ef !important; color: #285b40 !important; }
+  #app .workspace>aside nav button:not(.active):hover { background: #ffffff0d !important; color: #fff !important; }
+}
+@media(prefers-reduced-motion:no-preference) {
+  #app.view-ready .workspace-page>header { animation: workspace-enter .24s ease both; }
+  @keyframes workspace-enter { from { opacity: .6; } to { opacity: 1; } }
+}
+@media(prefers-reduced-motion:reduce) {
+  #app#app#app *, .modal-shell.modal-shell * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
+  #app .landing-reveal { opacity: 1 !important; transform: none !important; }
+}

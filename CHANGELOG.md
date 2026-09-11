@@ -2,6 +2,7 @@
 
 ## 2026-09-11
 
+- Polished the existing visual system with gentle landing reveals, restrained card hover depth, clearer candidate tabs and supporting text, keyboard focus indicators, and a quiet recruiter header entrance. Preserved layouts and disabled motion for reduced-motion preferences.
 - Bound the asynchronously inserted screening-result actions so “View all candidates” opens the Candidates page and each result opens its profile. Notification items now mark themselves read on selection and route interview-related candidate updates to Interviews.
 - Fixed the landing page's lower recruiter and candidate calls to action by keeping decorative artwork out of the pointer target. Made the desktop recruiter sidebar viewport-fixed and preserved its vertical or horizontal navigation position across page changes.
 - Introduced a cohesive product-wide visual system: compact page headers, a forest-toned recruiter navigation, restrained white cards, consistent actions, and distinct candidate and owner surfaces. Jobs, candidates, and portal opportunities use three-column desktop grids with responsive tablet and phone layouts.
