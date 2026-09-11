@@ -321,6 +321,24 @@ def organizations(search: str = ""):
     return query.limit(50).execute().data or []
 
 
+def _validated_logo(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        if not isinstance(value, str) or len(value) > 3_000_000:
+            raise ValueError("Logo too large")
+        raw = base64.b64decode(value, validate=True)
+        with Image.open(io.BytesIO(raw)) as image:
+            if image.format not in {"PNG", "JPEG", "WEBP"} or image.width * image.height > 16_000_000:
+                raise ValueError("Unsupported image")
+            image.thumbnail((512, 512))
+            output = io.BytesIO()
+            image.convert("RGBA").save(output, format="PNG")
+        return base64.b64encode(output.getvalue()).decode("ascii")
+    except Exception as exc:
+        raise HTTPException(400, "Choose a valid PNG, JPG or WebP logo under 2 MB") from exc
+
+
 class CompanyRegistration(BaseModel):
     company_name: str = Field(min_length=2, max_length=120)
     contact_name: str = Field(min_length=2, max_length=120)
@@ -331,6 +349,7 @@ class CompanyRegistration(BaseModel):
     phone: str = Field(default="", max_length=40)
     registration_number: str = Field(default="", max_length=80)
     message: str = Field(default="", max_length=1000)
+    logo_base64: str = Field(default="", max_length=3_000_000)
 
 
 @app.post("/api/company-registrations")
@@ -340,7 +359,7 @@ def register_company(payload: CompanyRegistration):
         raise HTTPException(400, "Enter a valid business email")
     row = {**payload.model_dump(), "company_name": payload.company_name.strip(),
            "contact_name": payload.contact_name.strip(), "business_email": email,
-           "status": "pending"}
+           "status": "pending", "logo_base64": _validated_logo(payload.logo_base64)}
     try:
         _public_client().table("company_registrations").insert(
             row, returning=ReturnMethod.minimal
@@ -510,6 +529,7 @@ def decide_registration(registration_id: str, payload: OwnerDecision,
             raise HTTPException(500, "Could not provision the organization account")
         company_row = {
             "owner_user_id": str(auth_result.user.id), "name": registration["company_name"],
+            "logo_base64": _validated_logo(registration.get("logo_base64") or ""),
             "website": registration.get("website") or "", "industry": registration.get("industry") or "",
             "company_size": registration.get("company_size") or "", "access_code": access_code,
             "internal_auth_email": internal_email, "internal_auth_password": internal_password,
@@ -769,10 +789,14 @@ def update_company(payload: dict[str, Any], session: RecruiterSession = Depends(
                if key in {"name", "industry", "website", "company_size", "logo_base64"}}
     if not allowed:
         raise HTTPException(400, "No supported company fields were supplied")
+    if "logo_base64" in allowed:
+        allowed["logo_base64"] = _validated_logo(allowed["logo_base64"])
     rows = (session.client.table("companies").update(allowed).eq("id", session.company["id"])
             .execute().data or [])
     if rows:
         session.company = rows[0]
+    else:
+        raise HTTPException(400, "Company changes were not saved. Please try again")
     return session.company
 
 

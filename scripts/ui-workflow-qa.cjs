@@ -223,6 +223,13 @@ let origin;
       }
       for (const name of ['home', 'jobs', 'screening', 'candidates', 'interviews', 'reports', 'offers', 'insights', 'settings']) {
         await goRecruiter(page, name); await snap(page, width, name);
+        if (name === 'settings') {
+          const upload=page.locator('.company-logo-editor input[type=file]');
+          await upload.setInputFiles({name:'logo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6XkAAAAASUVORK5CYII=','base64')});
+          await page.locator('.company-logo-editor [role=status]').filter({hasText:'Logo ready'}).waitFor();
+          assert((await page.locator('[name=logo_base64]').inputValue()).length>20);
+          check(width,'company logo upload produces preview and serializable form value',true);
+        }
         check(width, `${name} navigation is reachable`, await page.locator(`button[data-page="${name}"]`).first().isVisible());
         if (name === 'interviews') await checkContained(page, width, '.interview-actions input, .interview-actions button, .interview-actions select, .interview-person button, .interview-person a', '.interview-card', 'interview controls stay inside their cards');
       }

@@ -626,6 +626,25 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app .interview-control-rail :is(p,small),
 #app .interview-control-rail .rail-next>span { color: #596b50 !important; }
 #app [hidden][hidden][hidden],body>.notification-panel[hidden],.modal-shell [hidden][hidden] { display: none !important; }
+.company-logo-editor { display:flex; gap:18px; align-items:center; padding:20px; margin:20px 0; border:1px solid #d6e5df; border-radius:14px; background:#f4faf7; }
+.company-logo-editor>div:last-of-type { min-width:0; flex:1; }
+.company-logo-editor label { display:block; font-weight:600; }
+.company-logo-editor input[type=file] { width:100%; margin:10px 0; font-size:13px; }
+.company-logo-editor small,.company-logo-editor p { display:block; font-size:12px; color:#527166; margin:6px 0; }
+.logo-upload-preview { flex:0 0 64px; height:64px; display:grid; place-items:center; border:1px solid #d6e5df; border-radius:12px; background:white; overflow:hidden; }
+.logo-upload-preview img { width:100%; height:100%; object-fit:contain; padding:6px; }
+#app .job-option-list { display:grid !important; grid-template-columns:minmax(0,1fr) !important; gap:7px !important; padding:5px !important; }
+#app .job-option { border:1px solid #e0eae5 !important; background:#fbfdfc !important; gap:12px !important; min-height:76px !important; }
+#app .job-option>span { min-width:0 !important; flex:1 !important; }
+#app .job-option b { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; font-size:13px !important; line-height:1.4 !important; }
+#app .job-option.manual { background:#edf7f3 !important; border-style:dashed !important; }
+#app .job-picker-search { outline:none !important; }
+#app #job-picker-search { border:1px solid #bad3c9 !important; box-shadow:none !important; border-radius:9px !important; }
+#app #job-picker-search:focus { outline:none !important; border-color:#087f72 !important; box-shadow:inset 0 0 0 1px #087f72 !important; }
+#app#app .primary,.modal-shell.modal-shell .primary { background:linear-gradient(115deg,#126c78,#087f72) !important; border:1px solid #076b68 !important; box-shadow:0 3px 8px #154e4120,inset 0 1px 0 #ffffff20 !important; }
+#app#app .primary:hover:not(:disabled),.modal-shell.modal-shell .primary:hover:not(:disabled) { background:linear-gradient(115deg,#105a68,#06685f) !important; color:white !important; -webkit-text-fill-color:white !important; box-shadow:0 5px 13px #154e4130 !important; }
+#app#app .secondary,.modal-shell.modal-shell .secondary { border-color:#bccfc7 !important; box-shadow:0 2px 5px #203e3010 !important; }
+@media(max-width:500px) { .company-logo-editor { align-items:flex-start; padding:14px; gap:12px; } .logo-upload-preview { flex-basis:48px; height:48px; } }
 /* Finishing touches: quiet motion without moving navigation or action targets. */
 #app { opacity: 1 !important; }
 #app .landing-reveal {

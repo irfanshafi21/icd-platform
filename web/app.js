@@ -306,4 +306,22 @@ function ownerRegistrationCard(r){return `<article class="owner-review-card"><di
 
 async function ownerDecision(id,decision){if(!confirm(`${decision==='approved'?'Approve':'Reject'} this organization?`))return;const notes=document.querySelector(`[data-owner-notes="${id}"]`)?.value||'';try{const result=await api(`/api/owner/registrations/${id}/decision`,{method:'POST',body:JSON.stringify({decision,notes})});if(result.access_code)alert(`Organization approved. Access code: ${result.access_code}\n\nShare this code securely with the company contact.`);note(`Organization ${decision}`);ownerPortal()}catch(e){note(e.message,'error')}}
 
+function mountLogoEditors(){
+  document.querySelectorAll('#registration-form,#company-settings').forEach(form=>{
+    if(form.querySelector('.company-logo-editor'))return;
+    const current=form.id==='company-settings'?(state.recruiter?.company?.logo_base64||''):'';
+    const editor=document.createElement('section');editor.className='company-logo-editor';
+    editor.innerHTML=`<div class="logo-upload-preview">${current?`<img src="data:image/png;base64,${esc(current)}" alt="Current company logo">`:'<span>◇</span>'}</div><div><label>Company logo<input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Upload company logo"></label><small>PNG, JPG or WebP · Up to 2 MB. Used across your workspace and company communications.</small><p role="status" aria-live="polite"></p></div><input type="hidden" name="logo_base64" value="${esc(current)}">`;
+    const anchor=form.querySelector('.form-grid')||form.querySelector('label');form.insertBefore(editor,anchor);
+    const fileInput=editor.querySelector('input[type=file]'),value=editor.querySelector('input[type=hidden]'),status=editor.querySelector('[role=status]');
+    let busy=false;form.addEventListener('submit',e=>{if(busy){e.preventDefault();e.stopImmediatePropagation();status.textContent='Please wait for the logo preview.'}},true);
+    fileInput.onchange=async()=>{
+      const file=fileInput.files[0];if(!file)return;
+      if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>2*1024*1024){status.textContent='Choose a PNG, JPG or WebP under 2 MB.';fileInput.value='';return;}
+      busy=true;status.textContent='Preparing logo…';const url=URL.createObjectURL(file);
+      try{const img=new Image();img.src=url;await img.decode();if(img.width*img.height>16000000)throw Error('Image dimensions too large');const scale=Math.min(1,512/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);const data=canvas.toDataURL('image/png');value.value=data.split(',')[1];editor.querySelector('.logo-upload-preview').innerHTML=`<img src="${data}" alt="New company logo preview">`;status.textContent='Logo ready. Submit the form to save it.';}catch(_){status.textContent='This image could not be read. Choose another logo.';fileInput.value='';}finally{busy=false;URL.revokeObjectURL(url);}
+    };
+  });
+}
+new MutationObserver(mountLogoEditors).observe(document.body,{childList:true,subtree:true});
 const params=new URLSearchParams(location.search),knownPath=['/','/index.html'].includes(location.pathname);knownPath?(params.has('owner')?ownerPortal():params.has('candidate')?candidateEntry():params.has('recruiter')?recruiterGate():welcome()):notFound();
