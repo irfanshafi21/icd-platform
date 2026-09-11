@@ -397,13 +397,24 @@ body { background: var(--ui-canvas) !important; font-family: 'Segoe UI', Arial, 
 #app .landing-v2 { background: #f7f8f4 !important; }
 #app .landing-nav { box-shadow: none !important; background: #f7f8f4f5 !important; border-bottom: 1px solid #e2e8dc !important; }
 #app .landing-hero { gap: 50px !important; }
-#app .hero-copy h1 { color: #1b4536 !important; }
-#app .hero-copy h1 em { color: #778e55 !important; background: none !important; -webkit-text-fill-color: #778e55 !important; }
-#app .hero-copy p { color: #75816d !important; }
+#app .hero-copy h1 { color: #f6fbfa !important; -webkit-text-fill-color: #f6fbfa !important; }
+#app .hero-copy h1 em { color: #8ce0c9 !important; background: none !important; -webkit-text-fill-color: #8ce0c9 !important; }
+#app .hero-copy p { color: #c3d8db !important; }
 #app .hero-label { background: #eef3e5 !important; border-color: #dbe7cd !important; color: #6b874e !important; }
-#app .product-stage.hiring-canvas { background: #193e33 !important; border-color: #315447 !important; box-shadow: 0 25px 70px #243f3620 !important; border-radius: 20px !important; }
+#app .product-stage.hiring-canvas { background: #123c49 !important; border-color: #ffffff30 !important; box-shadow: 0 20px 50px #041d3433 !important; border-radius: 20px !important; }
+#app .canvas-role { background: #f5fbfa !important; border: 1px solid #d9ece7 !important; }
+#app .canvas-role p,#app .canvas-team p small { color: #547078 !important; }
+#app .canvas-team p b { color: #234e58 !important; }
+#app .landing-outcomes { background: #fff !important; border: 1px solid #dce9e6 !important; border-radius: 16px !important; box-shadow: 0 12px 30px #183e3710 !important; }
+#app .landing-outcomes>article { background: transparent !important; box-shadow: none !important; }
 #app .landing-trust { border-radius: 12px !important; box-shadow: none !important; gap: 18px !important; margin-top: 28px !important; }
-#app .landing-trust>div { border: 1px solid #e1e8d9 !important; background: #fff !important; border-radius: 12px !important; }
+#app .landing-trust>div { border: 0 !important; background: transparent !important; border-radius: 0 !important; }
+#app .recruiter-access .auth-panel .search-wrap { padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; outline: none !important; }
+#app .recruiter-access #org-search { width: 100% !important; margin: 0 !important; border: 1px solid #cbd9df !important; border-radius: 10px !important; background: #fafcfd !important; box-shadow: none !important; }
+#app .recruiter-access #access { padding: 22px !important; border: 1px solid #d8e6e2 !important; border-radius: 14px !important; background: #f5faf8 !important; }
+#app .recruiter-access #access label { display: block !important; margin: 18px 0 8px !important; }
+#app .recruiter-access #code { display: block !important; width: 100% !important; margin: 0 !important; border-radius: 9px !important; }
+#app .recruiter-access #login { margin-top: 14px !important; border-radius: 9px !important; }
 #app .landing-workflow { background: #243f35 !important; box-shadow: none !important; border-radius: 20px !important; }
 #app .path-card { border-radius: 16px !important; box-shadow: 0 4px 18px #28423705 !important; }
 #app .capability-card { border-radius: 12px !important; box-shadow: none !important; border-color: #e1e7db !important; }
