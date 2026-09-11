@@ -185,6 +185,7 @@ async function checkButtonContrast(page, width, locator, name) {
   check(width, `${name} hover text contrast`, style.disabled || style.minimumRatio >= 4.5, style);
 }
 async function goRecruiter(page, name) {
+  if (page.viewportSize().width <= 900) await page.getByRole('button',{name:'Open navigation',exact:true}).click();
   const button = page.locator(`button[data-page="${name}"]`).first();
   await button.click();
   await page.locator(`.page-${name}`).waitFor();
@@ -223,6 +224,15 @@ let origin;
       }
       for (const name of ['home', 'jobs', 'screening', 'candidates', 'interviews', 'reports', 'offers', 'insights', 'settings']) {
         await goRecruiter(page, name); await snap(page, width, name);
+        if(name==='home'&&width<=900){
+          const trigger=page.getByRole('button',{name:'Open navigation',exact:true});
+          await trigger.click();await snap(page,width,'navigation-drawer');
+          assert.equal(await trigger.getAttribute('aria-expanded'),'true');
+          await page.keyboard.press('Escape');assert.equal(await trigger.getAttribute('aria-expanded'),'false');
+          await trigger.click();await page.locator('.mobile-sidebar-backdrop').click({position:{x:width-10,y:100}});
+          assert.equal(await trigger.getAttribute('aria-expanded'),'false');
+          check(width,'drawer opens and closes with Escape and backdrop',true);
+        }
         if (name === 'settings') {
           const upload=page.locator('.company-logo-editor input[type=file]');
           await upload.setInputFiles({name:'logo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a6XkAAAAASUVORK5CYII=','base64')});
@@ -230,7 +240,7 @@ let origin;
           assert((await page.locator('[name=logo_base64]').inputValue()).length>20);
           check(width,'company logo upload produces preview and serializable form value',true);
         }
-        check(width, `${name} navigation is reachable`, await page.locator(`button[data-page="${name}"]`).first().isVisible());
+        check(width, `${name} navigation is reachable`, await page.locator(`.page-${name}`).isVisible());
         if (name === 'interviews') await checkContained(page, width, '.interview-actions input, .interview-actions button, .interview-actions select, .interview-person button, .interview-person a', '.interview-card', 'interview controls stay inside their cards');
       }
       {
@@ -246,8 +256,7 @@ let origin;
         await page.locator('#talent-filter').selectOption('selected'); check(width, 'candidate status filter hides unmatched cards', await page.locator('.candidate-job-card:visible').count() === 1); await page.locator('#talent-filter').selectOption('all');
         const candidateMenu = page.locator('.candidate-actions-menu').first(); await checkMenu(page, width, candidateMenu, 'candidates-menu');
         await page.locator('[data-view-candidate]').first().click(); await page.locator('#candidate-modal').waitFor(); await snap(page, width, 'candidate-profile');
-        await page.locator('#rerun-ats').click(); await page.locator('#toast').filter({ hasText: 'ATS analysis recalculated' }).waitFor();
-        check(width, 'candidate profile ATS rerun closes stale profile', await page.locator('#candidate-modal').count() === 0);
+        check(width, 'candidate details omit requested tools', await page.locator('#candidate-modal .ai-prep,#candidate-notes,.candidate-record-tools').count() === 0);
         if (await page.locator('#candidate-modal').count()) await page.locator('#modal-close').click();
         await openMenu(page, page.locator('.candidate-actions-menu').first()); await page.locator('[data-compare-candidate]').first().check(); await page.keyboard.press('Escape'); assert.match(await page.locator('#compare-selected').innerText(), /1/); check(width, 'candidate comparison selection updates count', true);
         await goRecruiter(page, 'screening'); await page.locator('#screening-candidates-link').click(); await page.locator('.page-candidates').waitFor(); check(width, 'screening results button opens candidates page', true); await goRecruiter(page, 'screening'); await page.locator('.screening-results [data-view-candidate]').first().click(); await page.locator('#candidate-modal').waitFor(); await page.locator('#modal-close').click(); check(width, 'screening result card opens candidate profile', true); await page.locator('#job-picker-trigger').click(); await snap(page, width, 'screening-picker'); await page.locator('[data-job-option="1"]').click(); assert.equal(await page.locator('#role').inputValue(), 'Senior Product Designer');
