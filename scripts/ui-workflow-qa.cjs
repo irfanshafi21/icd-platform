@@ -283,6 +283,17 @@ let origin;
         await goRecruiter(page, 'candidates'); await openMenu(page, page.locator('.candidate-actions-menu').last()); await page.locator('.candidate-actions-menu').last().locator('[data-status="Rejected"]').click(); await page.locator('#toast').filter({ hasText: 'not delivered' }).waitFor(); assert.equal(await page.locator('.candidate-job-card').count(), 3); check(width, 'failed rejection email retains candidate for retry', true);
         await openMenu(page, page.locator('.candidate-actions-menu').last()); await page.locator('.candidate-actions-menu').last().locator('[data-status="Rejected"]').click(); await page.locator('#toast').filter({ hasText: 'candidate data erased' }).waitFor(); assert.equal(await page.locator('.candidate-job-card').count(), 2); check(width, 'successful rejection email removes candidate from company view', true);
       }
+      await goRecruiter(page,'interviews');
+      await page.evaluate(()=>{const b=document.createElement('button');b.id='empty-schedule';b.textContent='Schedule the first interview';document.querySelector('.interview-card-list').append(b)});
+      await page.locator('#empty-schedule').click();assert.equal(await page.locator('#interview-form').isVisible(),true);
+      check(width,'dynamically rebuilt empty schedule action opens form',true);
+      await goRecruiter(page,'candidates');
+      await page.route('**/api/candidates',route=>route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({detail:'Test removal failure'})}));
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#clear-candidates').evaluate(b=>b.replaceWith(b.cloneNode(true)));
+      await page.locator('#clear-candidates').click();await page.locator('#toast').filter({hasText:'Test removal failure'}).waitFor();
+      assert.equal(await page.locator('#clear-candidates').isEnabled(),true);
+      check(width,'rebuilt clear action reaches API and reports failure without removing cards',true);
       await context.close();
       const guest = await setup(browser, width, 'guest'); await guest.page.goto(origin + '/?candidate=1'); await guest.page.locator('#send').waitFor(); await snap(guest.page, width, 'candidate-login'); await checkButtonContrast(guest.page, width, guest.page.locator('#send'), 'candidate email sign in');
       if (width === 1440) { await guest.page.locator('#email').fill('alex@example.test'); await guest.page.locator('#send').click(); await guest.page.locator('#token').fill('123456'); await guest.page.locator('#verify').click(); await guest.page.locator('.candidate-portal').waitFor(); report.checks.push({ width, name: 'candidate email code flow reaches portal with mocked transport', passed: true }); }

@@ -140,6 +140,20 @@ class BackendWorkflowTests(unittest.TestCase):
     def test_owner_directory_rejects_non_owner(self):
         self.assertEqual(self.client.get('/api/owner/registrations').status_code, 403)
 
+    def test_reports_exclude_incomplete_legacy_rows(self):
+        self.seed_candidate()
+        self.database.rows['screening_history'].append({'id':8,'company_id':'company','candidate_name':'Asha','status':'active','overall_score':70})
+        response=self.client.get('/api/reports/screened.csv')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.text.count('Asha'),1)
+
+    def test_clear_candidates_is_company_scoped(self):
+        self.seed_candidate()
+        self.database.rows['screening_history'].append({'id':8,'company_id':'other','status':'active'})
+        self.assertEqual(self.client.delete('/api/candidates').status_code,200)
+        self.assertEqual(self.database.rows['screening_history'][0]['status'],'cleared')
+        self.assertEqual(self.database.rows['screening_history'][1]['status'],'active')
+
     def seed_candidate(self, score=80, interview_score=None):
         profile, analysis = self.analysis()
         profile["_screening_source"] = "Web Upload"

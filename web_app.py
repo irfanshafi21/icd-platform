@@ -859,7 +859,7 @@ def export_report(report_type: str, file_type: str, role: str = "",
         raise HTTPException(400, "Choose a screened, shortlisted, selected or interviews report")
     candidates = [_candidate(row) for row in
                   ((_company_query(session, "screening_history").neq("status", "cleared")
-                    .order("screened_at", desc=True).limit(1000).execute().data) or [])]
+                    .order("screened_at", desc=True).limit(1000).execute().data) or []) if _is_completed_screening(row)]
     interviews = ((_company_query(session, "interviews").order("scheduled_at").limit(500)
                    .execute().data) or [])
     if role:
@@ -1097,6 +1097,9 @@ def update_candidate(candidate_id: int, payload: dict[str, Any], session: Recrui
 @app.delete("/api/candidates")
 def clear_candidates(session: RecruiterSession = Depends(_session)):
     session.client.table("screening_history").update({"status": "cleared"}).eq("company_id", session.company["id"]).execute()
+    remaining = session.client.table("screening_history").select("id").eq("company_id", session.company["id"]).neq("status", "cleared").limit(1).execute().data or []
+    if remaining:
+        raise HTTPException(400, "Candidates were not removed. Please try again")
     return {"ok": True}
 
 
