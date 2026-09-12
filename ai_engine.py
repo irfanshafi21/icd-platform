@@ -791,7 +791,10 @@ their identified gaps, and the job description, generate targeted interview ques
 For EACH question, also provide "what_good_looks_like": concrete, specific points a strong
 answer should cover, grounded in the job description and this candidate's actual background
 (not generic advice). This is what the recruiter will use to judge the candidate's real answer,
-so be specific and evidence-based rather than vague.
+so be specific and evidence-based rather than vague. Never invent employers, projects, skills,
+qualifications, or experience that are absent from the supplied evidence. Every technical or
+experience question must test an explicit role requirement, a claimed candidate strength, or an
+identified gap. Avoid duplicate questions and avoid questions answerable with only yes or no.
 
 JOB DESCRIPTION:
 ---
@@ -803,6 +806,9 @@ CANDIDATE PROFILE:
 
 IDENTIFIED GAPS:
 {json.dumps(score_data.get('gaps', []))}
+
+MATCHED SKILLS AND SCORE EVIDENCE:
+{json.dumps({"matched_skills": score_data.get('matched_skills', []), "breakdown": score_data.get('breakdown', {}), "summary": score_data.get('summary', '')})}
 
 Return ONLY valid JSON with this exact schema (3-4 items per section):
 {{
@@ -872,11 +878,14 @@ def ask_assistant(question: str, candidates: list, job_role: str, job_details: s
     """
     candidate_summaries = []
     for c in candidates:
-        if c["score"].get("error"):
+        p = c.get("profile") if isinstance(c, dict) else {}
+        s = c.get("score") if isinstance(c, dict) else {}
+        p = p if isinstance(p, dict) else {}
+        s = s if isinstance(s, dict) else {}
+        if s.get("error"):
             continue
-        p, s = c["profile"], c["score"]
         candidate_summaries.append({
-            "name": c["name"],
+            "name": c.get("name") or p.get("name") or "Unknown candidate",
             "years_experience": p.get("years_experience"),
             "education": p.get("education"),
             "skills": p.get("skills", []),

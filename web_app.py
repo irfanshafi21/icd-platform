@@ -12,6 +12,8 @@ import json
 import base64
 import hashlib
 import io
+import logging
+import math
 import os
 import secrets
 import threading
@@ -29,6 +31,7 @@ from typing import Any
 from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
 from postgrest.types import ReturnMethod
 from supabase import Client, create_client
@@ -50,6 +53,7 @@ from reports import (
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
+logger = logging.getLogger(__name__)
 
 
 def _settings() -> dict[str, Any]:
@@ -79,6 +83,19 @@ def _numeric_score(value: Any) -> float:
         return 0.0
 
 
+def _interview_score(value: Any) -> int:
+    """Return a database-safe whole-number interview score."""
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Interview score must be a number between 0 and 100")
+    if not math.isfinite(numeric) or numeric < 0 or numeric > 100:
+        raise HTTPException(400, "Interview score must be between 0 and 100")
+    if not numeric.is_integer():
+        raise HTTPException(400, "Interview score must be a whole number between 0 and 100")
+    return int(numeric)
+
+
 def _hiring_average(ats_score: Any, interview_score: Any) -> float | None:
     if interview_score in (None, ""):
         return None
@@ -95,9 +112,15 @@ def _company_logo(company: dict[str, Any]) -> bytes | None:
 def _send_company_email(company: dict[str, Any], email: str, subject: str, body: str,
                         badge: str) -> tuple[bool, str]:
     if not email:
+        logger.warning("Email automation skipped: company=%s type=%s reason=missing_recipient",
+                       company.get("id"), badge)
         return False, "Candidate email was not captured"
-    return send_plain_email(email, subject, body, logo_bytes=_company_logo(company),
-                            company_name=company.get("name") or "ICD Platform", badge_text=badge)
+    delivered, message = send_plain_email(email, subject, body, logo_bytes=_company_logo(company),
+                                          company_name=company.get("name") or "ICD Platform", badge_text=badge)
+    log = logger.info if delivered else logger.error
+    log("Email automation result: company=%s type=%s delivered=%s detail=%s",
+        company.get("id"), badge, delivered, message)
+    return delivered, message
 
 
 def _create_google_meet(company: dict[str, Any], data: dict[str, Any]) -> str:
@@ -119,6 +142,7 @@ def _create_google_meet(company: dict[str, Any], data: dict[str, Any]) -> str:
     link = str(result.get("meeting_link") or result.get("hangoutLink") or "").strip()
     if not link.startswith("https://meet.google.com/"):
         raise HTTPException(502, "Google Calendar did not return a valid Meet link")
+    logger.info("Calendar automation created meeting: company=%s mode=online", company.get("id"))
     return link
 
 
@@ -157,6 +181,10 @@ def _session(icd_session: str | None = Cookie(default=None)) -> RecruiterSession
         if not session or time.monotonic() - session.last_seen > SESSION_TTL:
             _sessions.pop(icd_session, None)
             raise HTTPException(401, "Recruiter session expired")
+        current = session.client.table("companies").select("verification_status").eq("id", session.company["id"]).limit(1).execute().data or []
+        if not current or current[0].get("verification_status", "approved") not in {"approved", "demo_approved"}:
+            _sessions.pop(icd_session, None)
+            raise HTTPException(403, "Company access is not active")
         session.last_seen = time.monotonic()
         return session
 
@@ -240,7 +268,25 @@ def _candidate(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _assistant_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    """Return the structured candidate shape expected by the AI assistant."""
+    profile = _json_field(row.get("profile_json"), {})
+    score = _json_field(row.get("score_json"), {})
+    return {
+        "name": row.get("candidate_name") or profile.get("name") or row.get("filename"),
+        "profile": profile if isinstance(profile, dict) else {},
+        "score": score if isinstance(score, dict) else {},
+    }
+
+
+def _is_completed_screening(row: dict[str, Any]) -> bool:
+    profile = _json_field(row.get("profile_json"), {})
+    return bool(row.get("filename") and row.get("score_json") and
+                isinstance(profile, dict) and profile.get("_screening_source"))
+
+
 app = FastAPI(title="ICD Platform API", version="2.0")
+app.add_middleware(GZipMiddleware, minimum_size=700, compresslevel=6)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
@@ -279,6 +325,24 @@ def organizations(search: str = ""):
     return query.limit(50).execute().data or []
 
 
+def _validated_logo(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        if not isinstance(value, str) or len(value) > 3_000_000:
+            raise ValueError("Logo too large")
+        raw = base64.b64decode(value, validate=True)
+        with Image.open(io.BytesIO(raw)) as image:
+            if image.format not in {"PNG", "JPEG", "WEBP"} or image.width * image.height > 16_000_000:
+                raise ValueError("Unsupported image")
+            image.thumbnail((512, 512))
+            output = io.BytesIO()
+            image.convert("RGBA").save(output, format="PNG")
+        return base64.b64encode(output.getvalue()).decode("ascii")
+    except Exception as exc:
+        raise HTTPException(400, "Choose a valid PNG, JPG or WebP logo under 2 MB") from exc
+
+
 class CompanyRegistration(BaseModel):
     company_name: str = Field(min_length=2, max_length=120)
     contact_name: str = Field(min_length=2, max_length=120)
@@ -289,6 +353,7 @@ class CompanyRegistration(BaseModel):
     phone: str = Field(default="", max_length=40)
     registration_number: str = Field(default="", max_length=80)
     message: str = Field(default="", max_length=1000)
+    logo_base64: str = Field(default="", max_length=3_000_000)
 
 
 @app.post("/api/company-registrations")
@@ -296,9 +361,10 @@ def register_company(payload: CompanyRegistration):
     email = payload.business_email.strip().lower()
     if "@" not in email:
         raise HTTPException(400, "Enter a valid business email")
-    row = {**payload.model_dump(), "company_name": payload.company_name.strip(),
+    access_code = f"{secrets.randbelow(10000):04d}"
+    row = {**payload.model_dump(), "access_code": access_code, "company_name": payload.company_name.strip(),
            "contact_name": payload.contact_name.strip(), "business_email": email,
-           "status": "pending"}
+           "status": "pending", "logo_base64": _validated_logo(payload.logo_base64)}
     try:
         _public_client().table("company_registrations").insert(
             row, returning=ReturnMethod.minimal
@@ -307,7 +373,23 @@ def register_company(payload: CompanyRegistration):
         if "duplicate" in str(exc).lower():
             raise HTTPException(409, "A registration for this email is already under review") from exc
         raise HTTPException(400, "Could not submit the registration") from exc
-    return {"ok": True, "message": "Registration submitted for owner review"}
+    return {"ok": True, "message": "Registration submitted for owner review", "access_code": access_code}
+
+
+class RegistrationTracking(BaseModel):
+    business_email: str = Field(min_length=5, max_length=180)
+    access_code: str = Field(pattern=r"^[0-9]{4}$")
+
+
+@app.post("/api/company-registrations/track")
+def track_registration(payload: RegistrationTracking):
+    rows = _public_client().rpc("track_company_registration", {
+        "p_email": payload.business_email.strip().lower(),
+        "p_code": payload.access_code.strip(),
+    }).execute().data or []
+    if not rows:
+        raise HTTPException(404, "No matching request, or too many attempts. After five checks, wait 15 minutes")
+    return rows[0]
 
 
 def _company_branding(client: Client, company_ids: set[str]) -> dict[str, dict[str, Any]]:
@@ -441,8 +523,21 @@ class OwnerDecision(BaseModel):
 def owner_registrations(session: CandidateSession = Depends(_owner_session)):
     registrations = (session.client.table("company_registrations").select("*")
                      .order("created_at", desc=True).execute().data or [])
-    companies = (_public_client().table("companies_public").select("*").order("name").execute().data or [])
+    # The public directory deliberately omits settings. This owner-only endpoint
+    # reads current profiles using an explicit list that excludes credentials.
+    companies = (session.client.table("owner_company_profiles").select(
+        "id,name,logo_base64,industry,website,company_size,created_at,"
+        "verification_status,billing_plan,approved_at,approved_by,access_code"
+    ).order("name").execute().data or [])
     return {"owner_email": OWNER_EMAIL, "registrations": registrations, "companies": companies}
+
+
+@app.post("/api/owner/companies/{company_id}/deactivate")
+def deactivate_company(company_id: str, session: CandidateSession = Depends(_owner_session)):
+    result = session.client.rpc("owner_deactivate_company", {"p_id": company_id}).execute().data
+    if not result:
+        raise HTTPException(404, "Company not found")
+    return {"ok": True}
 
 
 @app.post("/api/owner/registrations/{registration_id}/decision")
@@ -461,13 +556,14 @@ def decide_registration(registration_id: str, payload: OwnerDecision,
     if decision == "approved":
         internal_email = f"org-{secrets.token_hex(12)}@login.icd-platform.internal"
         internal_password = secrets.token_urlsafe(36)
-        access_code = f"{secrets.randbelow(10000):04d}"
+        access_code = registration.get("access_code") or f"{secrets.randbelow(10000):04d}"
         company_client = _public_client()
         auth_result = company_client.auth.sign_up({"email": internal_email, "password": internal_password})
         if not auth_result.user or not auth_result.session:
             raise HTTPException(500, "Could not provision the organization account")
         company_row = {
             "owner_user_id": str(auth_result.user.id), "name": registration["company_name"],
+            "logo_base64": _validated_logo(registration.get("logo_base64") or ""),
             "website": registration.get("website") or "", "industry": registration.get("industry") or "",
             "company_size": registration.get("company_size") or "", "access_code": access_code,
             "internal_auth_email": internal_email, "internal_auth_password": internal_password,
@@ -529,6 +625,12 @@ async def candidate_apply(job_id: int = Form(...), full_name: str = Form(...), p
     filename = resume.filename or "resume.pdf"
     if Path(filename).suffix.lower() not in {".pdf", ".docx"}:
         raise HTTPException(400, "Only PDF and DOCX resumes are supported")
+    try:
+        extracted = extract_text_from_bytes(filename, content)
+    except Exception as exc:
+        raise HTTPException(400, "The uploaded resume could not be read") from exc
+    if not extracted.strip() or not heuristic_resume_check(extracted).get("looks_like_resume"):
+        raise HTTPException(400, "Upload a candidate resume rather than a report or unrelated document")
     user_id = str(session.user.id)
     existing = (session.client.table("public_applications").select("id").eq("candidate_user_id", user_id)
                 .eq("job_id", job_id).limit(1).execute().data or [])
@@ -568,6 +670,8 @@ def recruiter_login(payload: RecruiterLogin, response: Response):
     company_rows = client.table("companies").select("*").eq("id", payload.company_id).limit(1).execute().data or []
     if not company_rows:
         raise HTTPException(404, "Organization was not found")
+    if company_rows[0].get("verification_status", "approved") not in {"approved", "demo_approved"}:
+        raise HTTPException(403, "Owner approval is required before workspace access")
     session_id = secrets.token_urlsafe(32)
     with _sessions_lock:
         _sessions[session_id] = RecruiterSession(client, company_rows[0])
@@ -609,7 +713,9 @@ def bootstrap(session: RecruiterSession = Depends(_session)):
                                .eq("company_id", company_id).limit(1).execute().data or [])
     except Exception:
         linkedin_connection = []
-    parsed = [_candidate(row) for row in candidates]
+    # Only expose records produced by a completed screening run. Older demo or
+    # incomplete placeholder rows do not contain both structured AI payloads.
+    parsed = [_candidate(row) for row in candidates if _is_completed_screening(row)]
     return {
         "company": session.company,
         "jobs": jobs,
@@ -680,7 +786,7 @@ def import_jobs(payload: JobImportPayload, session: RecruiterSession = Depends(_
 @app.post("/api/jobs")
 def create_job(payload: JobPayload, session: RecruiterSession = Depends(_session)):
     row = {**payload.model_dump(), "company_id": session.company["id"], "status": "active",
-           "published_to_portal": True}
+           "published_to_portal": False}
     result = session.client.table("jobs").insert(row).execute().data or []
     if not result:
         raise HTTPException(500, "The job could not be saved")
@@ -689,9 +795,21 @@ def create_job(payload: JobPayload, session: RecruiterSession = Depends(_session
 
 @app.patch("/api/jobs/{job_id}")
 def update_job(job_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
-    result = (session.client.table("jobs").update(payload).eq("id", job_id)
+    allowed = {key: value for key, value in payload.items()
+               if key in set(JobPayload.model_fields) | {"status", "published_to_portal"}}
+    if not allowed:
+        raise HTTPException(400, "No supported job fields were supplied")
+    if "title" in allowed and not str(allowed["title"] or "").strip():
+        raise HTTPException(400, "A job title is required")
+    if "status" in allowed and allowed["status"] not in {"active", "archived"}:
+        raise HTTPException(400, "Choose an active or archived job status")
+    if "published_to_portal" in allowed and not isinstance(allowed["published_to_portal"], bool):
+        raise HTTPException(400, "The publication setting must be true or false")
+    result = (session.client.table("jobs").update(allowed).eq("id", job_id)
               .eq("company_id", session.company["id"]).execute().data or [])
-    return result[0] if result else {"ok": True}
+    if not result:
+        raise HTTPException(404, "Job not found or no longer available")
+    return result[0]
 
 
 @app.delete("/api/jobs/{job_id}")
@@ -707,15 +825,21 @@ def update_company(payload: dict[str, Any], session: RecruiterSession = Depends(
                if key in {"name", "industry", "website", "company_size", "logo_base64"}}
     if not allowed:
         raise HTTPException(400, "No supported company fields were supplied")
+    if "logo_base64" in allowed:
+        allowed["logo_base64"] = _validated_logo(allowed["logo_base64"])
     rows = (session.client.table("companies").update(allowed).eq("id", session.company["id"])
             .execute().data or [])
     if rows:
         session.company = rows[0]
+    else:
+        raise HTTPException(400, "Company changes were not saved. Please try again")
     return session.company
 
 
 @app.post("/api/company/access-code")
 def change_access_code(payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
+    if session.company.get("verification_status", "approved") not in {"approved", "demo_approved"}:
+        raise HTTPException(403, "Initial owner approval is required")
     code = str(payload.get("access_code", "")).strip()
     if not (code.isdigit() and len(code) == 4):
         raise HTTPException(400, "Access code must contain exactly four digits")
@@ -723,15 +847,19 @@ def change_access_code(payload: dict[str, Any], session: RecruiterSession = Depe
             .eq("id", session.company["id"]).execute().data or [])
     if rows:
         session.company = rows[0]
+    else:
+        raise HTTPException(400, "Access code was not saved")
     return {"ok": True}
 
 
 @app.get("/api/reports/{report_type}.{file_type}")
 def export_report(report_type: str, file_type: str, role: str = "",
                   session: RecruiterSession = Depends(_session)):
+    if report_type not in {"screened", "shortlisted", "selected", "interviews"}:
+        raise HTTPException(400, "Choose a screened, shortlisted, selected or interviews report")
     candidates = [_candidate(row) for row in
                   ((_company_query(session, "screening_history").neq("status", "cleared")
-                    .order("screened_at", desc=True).limit(1000).execute().data) or [])]
+                    .order("screened_at", desc=True).limit(1000).execute().data) or []) if _is_completed_screening(row)]
     interviews = ((_company_query(session, "interviews").order("scheduled_at").limit(500)
                    .execute().data) or [])
     if role:
@@ -790,9 +918,35 @@ def application_resume(application_id: int, session: RecruiterSession = Depends(
 @app.patch("/api/applications/{application_id}")
 def update_application(application_id: int, payload: dict[str, Any], session: RecruiterSession = Depends(_session)):
     status = str(payload.get("status", "")).strip()
-    if status not in {"Submitted", "Screening", "Shortlisted", "Interview", "Selected", "Rejected"}:
+    if status not in {"Screening", "Rejected"}:
         raise HTTPException(400, "Unsupported application status")
-    _application_row(application_id, session)
+    application = _application_row(application_id, session)
+    if status == "Rejected":
+        jobs = (session.client.table("jobs").select("title").eq("id", application.get("job_id"))
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        role = (jobs[0].get("title") if jobs else None) or "the position"
+        company_name = session.company.get("name") or "the hiring company"
+        email = application.get("applicant_email") or ""
+        delivered, delivery_message = _send_company_email(
+            session.company, email, f"Update on your application for {role}",
+            f"Hello {application.get('applicant_name') or 'Candidate'},\n\nThank you for the time and effort you invested in applying for {role} at {company_name}. After reviewing your application against the role requirements, the hiring team will not be moving forward with your application at this stage.\n\nThis decision applies only to this position. We appreciate your interest and wish you every success in your job search.\n\nRegards,\n{company_name} Hiring Team",
+            "Application update")
+        if not delivered:
+            raise HTTPException(502, f"Rejection email could not be sent, so the candidate record was kept: {delivery_message}")
+        try:
+            if email:
+                screening_query = (session.client.table("screening_history").delete()
+                                   .eq("company_id", session.company["id"]).eq("email", email))
+                if application.get("job_id"):
+                    screening_query = screening_query.eq("job_id", application["job_id"])
+                screening_query.execute()
+            (session.client.table("interviews").delete().eq("company_id", session.company["id"])
+             .eq("candidate_name", application.get("applicant_name") or "").eq("job_role", role).execute())
+            (session.client.table("public_applications").delete().eq("id", application_id)
+             .eq("company_id", session.company["id"]).execute())
+        except Exception as exc:
+            raise HTTPException(500, "The rejection email was sent, but the company record could not be fully erased. Please retry the cleanup.") from exc
+        return {"ok": True, "deleted": True, "email_delivery": {"sent": True, "message": delivery_message}}
     rows = (session.client.table("public_applications").update({"status": status}).eq("id", application_id)
             .eq("company_id", session.company["id"]).execute().data or [])
     return rows[0] if rows else {"ok": True}
@@ -828,6 +982,49 @@ def applications_zip(job_id: int, session: RecruiterSession = Depends(_session))
     filename = "".join(c for c in owned[0]["title"] if c.isalnum() or c in "-_") or "applications"
     return StreamingResponse(output, media_type="application/zip",
                              headers={"Content-Disposition": f'attachment; filename="{filename}-applications.zip"'})
+
+
+@app.post("/api/jobs/{job_id}/screen-applications")
+def screen_job_applications(job_id: int, session: RecruiterSession = Depends(_session)):
+    jobs = (session.client.table("jobs").select("*").eq("id", job_id)
+            .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+    if not jobs:
+        raise HTTPException(404, "Job not found")
+    applications = (session.client.table("public_applications").select("*").eq("job_id", job_id)
+                    .eq("company_id", session.company["id"]).neq("status", "Rejected").execute().data or [])
+    screened_rows = (session.client.table("screening_history").select("email,filename,profile_json,score_json")
+                     .eq("job_id", job_id).eq("company_id", session.company["id"]).execute().data or [])
+    screened_keys = {(str(row.get("email") or "").lower(), str(row.get("filename") or ""))
+                     for row in screened_rows if _is_completed_screening(row)}
+    pending_applications = [row for row in applications
+                            if (str(row.get("applicant_email") or "").lower(),
+                                str(row.get("resume_filename") or "")) not in screened_keys]
+    payloads = []
+    for row in pending_applications:
+        try:
+            content = base64.b64decode(row.get("resume_base64") or "", validate=True)
+        except Exception:
+            continue
+        if content:
+            payloads.append((row.get("resume_filename") or f"candidate-{row.get('id')}.pdf", content))
+    if not payloads:
+        if applications:
+            return {"processed": 0, "candidates": [], "skipped": [], "message": "All submitted resumes are already screened"}
+        raise HTTPException(400, "No usable submitted resumes were found for this job")
+    # Keep the original filename: it is part of the duplicate-screening key.
+    job = jobs[0]
+    required_skills = _json_field(job.get("required_skills"), [])
+    required_skills = required_skills if isinstance(required_skills, list) else []
+    details = "\n\n".join(filter(None, [job.get("description"), job.get("responsibilities"),
+                                            "Required skills: " + ", ".join(map(str, required_skills))]))
+    ids = [row["id"] for row in pending_applications if row.get("id") is not None]
+    if ids:
+        (session.client.table("public_applications").update({"status": "Screening"})
+         .in_("id", ids).eq("company_id", session.company["id"]).execute())
+    results, skipped = _screen_payloads(payloads, job.get("title") or "Open role", details, str(job_id),
+                                        {"skills_match": 40, "experience_fit": 40, "education_fit": 20},
+                                        session, "Job Applications")
+    return {"processed": len(results), "candidates": results, "skipped": skipped}
 
 
 @app.get("/api/jobs/{job_id}/qr")
@@ -867,25 +1064,42 @@ def update_candidate(candidate_id: int, payload: dict[str, Any], session: Recrui
             raise HTTPException(400, "An ATS/interview average above 70 is required before offer selection")
     if "interview_score" in allowed and candidate.get("interview_score") not in (None, ""):
         raise HTTPException(409, "The interview score is locked and cannot be changed")
-    result = (session.client.table("screening_history").update(allowed).eq("id", candidate_id)
-              .eq("company_id", session.company["id"]).execute().data or [])
     if requested_status == "Rejected":
         email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
         role = candidate.get("job_role") or "the position"
         company_name = session.company.get("name") or "the hiring company"
-        _send_company_email(session.company, email, f"Update on your application for {role}",
+        delivered, delivery_message = _send_company_email(session.company, email, f"Update on your application for {role}",
             f"Hello {candidate.get('candidate_name') or 'Candidate'},\n\nThank you for the time and effort you invested in applying for {role} at {company_name}. After reviewing your application against the role requirements, the hiring team will not be moving forward with your application at this stage.\n\nThis decision applies only to this position. We appreciate your interest and wish you every success in your job search.\n\nRegards,\n{company_name} Hiring Team", "Application update")
-        if email:
-            query = session.client.table("public_applications").update({"status": "Rejected"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
+        if not delivered:
+            raise HTTPException(502, f"Rejection email could not be sent, so the candidate record was kept: {delivery_message}")
+        try:
+            if email:
+                query = session.client.table("public_applications").delete().eq("company_id", session.company["id"]).eq("applicant_email", email)
+                if candidate.get("job_id"):
+                    query = query.eq("job_id", candidate["job_id"])
+                query.execute()
+            interview_query = (session.client.table("interviews").delete()
+                               .eq("company_id", session.company["id"])
+                               .eq("candidate_name", candidate.get("candidate_name") or ""))
             if candidate.get("job_id"):
-                query = query.eq("job_id", candidate["job_id"])
-            query.execute()
+                interview_query = interview_query.eq("job_role", role)
+            interview_query.execute()
+            (session.client.table("screening_history").delete().eq("id", candidate_id)
+             .eq("company_id", session.company["id"]).execute())
+        except Exception as exc:
+            raise HTTPException(500, "The rejection email was sent, but the company record could not be fully erased. Please retry the cleanup.") from exc
+        return {"ok": True, "deleted": True, "email_delivery": {"sent": True, "message": delivery_message}}
+    result = (session.client.table("screening_history").update(allowed).eq("id", candidate_id)
+              .eq("company_id", session.company["id"]).execute().data or [])
     return _candidate(result[0]) if result else {"ok": True}
 
 
 @app.delete("/api/candidates")
 def clear_candidates(session: RecruiterSession = Depends(_session)):
     session.client.table("screening_history").update({"status": "cleared"}).eq("company_id", session.company["id"]).execute()
+    remaining = session.client.table("screening_history").select("id").eq("company_id", session.company["id"]).neq("status", "cleared").limit(1).execute().data or []
+    if remaining:
+        raise HTTPException(400, "Candidates were not removed. Please try again")
     return {"ok": True}
 
 
@@ -896,15 +1110,39 @@ def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_
     if not rows:
         raise HTTPException(404, "Candidate not found")
     row = rows[0]
-    if not (row.get("raw_text") or "").strip():
-        raise HTTPException(400, "The original resume text is unavailable")
+    existing_profile = _json_field(row.get("profile_json"), {})
+    existing_score = _json_field(row.get("score_json"), {})
+    resume_text = (row.get("raw_text") or "").strip()
+    if not resume_text:
+        profile = _json_field(row.get("profile_json"), {})
+        resume_text = "\n".join(f"{key.replace('_', ' ').title()}: {value}" for key, value in profile.items()
+                                if value not in (None, "", [], {}))
+    if not resume_text:
+        raise HTTPException(400, "This candidate has no resume evidence available for ATS re-analysis")
+    job_details = (row.get("job_details") or "").strip()
+    if not job_details and row.get("job_id"):
+        jobs = (session.client.table("jobs").select("*").eq("id", row["job_id"])
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        if jobs:
+            job = jobs[0]
+            job_details = "\n".join(str(job.get(key) or "") for key in
+                                    ("title", "description", "responsibilities", "required_skills"))
     try:
-        profile, score = parse_and_score(row["raw_text"], f"Job Role: {row.get('job_role') or ''}\n\n{row.get('job_details') or ''}")
+        profile, score = parse_and_score(resume_text, f"Job Role: {row.get('job_role') or ''}\n\n{job_details}")
     except Exception as exc:
         raise HTTPException(503, f"ATS analysis is temporarily unavailable: {exc}") from exc
-    profile["extraction_flags"] = assess_extraction_confidence(profile, row["raw_text"])
+    profile["extraction_flags"] = assess_extraction_confidence(profile, resume_text)
+    profile["_screening_source"] = existing_profile.get("_screening_source") or "ATS Re-analysis"
+    priorities = existing_score.get("priority_weights")
+    if isinstance(priorities, dict) and priorities:
+        score = _weighted_score(score, {"skills_match": priorities.get("skills", 40),
+                                        "experience_fit": priorities.get("experience", 40),
+                                        "education_fit": priorities.get("education", 20)})
     decision = row.get("decision_status")
-    if decision not in {"Rejected", "Selected", "Interview Scheduled", "Interview Completed"}:
+    if row.get("interview_score") not in (None, "") and decision != "Rejected":
+        average = _hiring_average(score.get("overall_score"), row["interview_score"])
+        decision = "Selected" if average is not None and average > 70 else "Interview Completed"
+    elif decision not in {"Rejected", "Selected", "Interview Scheduled", "Interview Completed"}:
         decision = "Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"
     values = {"profile_json": json.dumps(profile), "score_json": json.dumps(score),
               "overall_score": score.get("overall_score", 0),
@@ -916,7 +1154,20 @@ def rerun_candidate_ats(candidate_id: int, session: RecruiterSession = Depends(_
               "decision_status": decision}
     updated = (session.client.table("screening_history").update(values).eq("id", candidate_id)
                .eq("company_id", session.company["id"]).execute().data or [])
-    return _candidate(updated[0] if updated else {**row, **values})
+    if not updated:
+        raise HTTPException(409, "This candidate changed during analysis. Refresh the candidate profile and try again")
+    email = row.get("email") or existing_profile.get("email") or ""
+    if email:
+        try:
+            query = (session.client.table("public_applications").update({"status": decision})
+                     .eq("company_id", session.company["id"]).eq("applicant_email", email))
+            if row.get("job_id"):
+                query = query.eq("job_id", row["job_id"])
+            query.execute()
+        except Exception as exc:
+            logger.warning("ATS analysis saved but candidate portal sync failed: candidate=%s", candidate_id, exc_info=True)
+            raise HTTPException(503, "ATS analysis was saved, but candidate portal progress could not be updated. Try ATS re-analysis again to finish syncing") from exc
+    return _candidate(updated[0])
 
 
 @app.get("/api/candidates/{candidate_id}/report.pdf")
@@ -977,14 +1228,15 @@ def create_interview(payload: InterviewPayload, session: RecruiterSession = Depe
     company_name = session.company.get("name") or "the hiring company"
     when = payload.scheduled_at.replace("T", " ")
     venue = data.get("meeting_link") if payload.mode.lower() == "online" else data.get("location")
-    _send_company_email(session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
+    delivered, delivery_message = _send_company_email(session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
         f"Hello {payload.candidate_name},\n\nYour application has progressed to the interview stage for {payload.job_role or 'the position'} at {company_name}.\n\nInterview type: {payload.interview_type}\nDate and time: {when}\nDuration: {payload.duration_minutes} minutes\nMode: {payload.mode}\n{'Google Meet link' if payload.mode.lower() == 'online' else 'Location'}: {venue}\n\nPlease join a few minutes early and reply to this email if you need assistance. Your candidate portal status has also been updated.\n\nRegards,\n{company_name} Hiring Team", "Interview invitation")
     if email:
         query = session.client.table("public_applications").update({"status": "Interview Scheduled"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
         if candidate.get("job_id"):
             query = query.eq("job_id", candidate["job_id"])
         query.execute()
-    return {**rows[0], "meeting_link": data.get("meeting_link", "")}
+    return {**rows[0], "meeting_link": data.get("meeting_link", ""),
+            "email_delivery": {"sent": delivered, "message": delivery_message}}
 
 
 @app.patch("/api/interviews/{interview_id}")
@@ -1001,22 +1253,60 @@ def update_interview(interview_id: int, payload: dict[str, Any], session: Recrui
         raise HTTPException(404, "Interview not found")
     interview = current[0]
     if "interview_score" in allowed:
-        if interview.get("interview_score") not in (None, ""):
+        score = _interview_score(allowed["interview_score"])
+        existing_score = interview.get("interview_score")
+        if existing_score not in (None, "") and _interview_score(existing_score) != score:
             raise HTTPException(409, "The interview score is locked and cannot be changed")
-        score = _numeric_score(allowed["interview_score"])
         allowed["interview_score"] = score
         allowed["status"] = "Completed"
-    rows = (session.client.table("interviews").update(allowed).eq("id", interview_id)
-            .eq("company_id", session.company["id"]).execute().data or [])
+    query = (session.client.table("interviews").update(allowed).eq("id", interview_id)
+             .eq("company_id", session.company["id"]))
     if "interview_score" in allowed:
-        matches = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
-                   .eq("candidate_name", interview.get("candidate_name")).eq("job_role", interview.get("job_role")).limit(1).execute().data or [])
-        if matches:
-            candidate = matches[0]
-            average = _hiring_average(candidate.get("overall_score"), allowed["interview_score"])
-            decision = "Selected" if average is not None and average > 70 else "Interview Completed"
-            session.client.table("screening_history").update({"interview_score": allowed["interview_score"], "decision_status": decision}).eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute()
-    return rows[0] if rows else {"ok": True}
+        # The database filter also protects against two concurrent final saves.
+        query = (query.is_("interview_score", "null") if interview.get("interview_score") is None
+                 else query.eq("interview_score", interview["interview_score"]))
+    rows = query.execute().data or []
+    if not rows:
+        latest = (session.client.table("interviews").select("*").eq("id", interview_id)
+                  .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        if not latest:
+            raise HTTPException(404, "Interview no longer available")
+        if "interview_score" not in allowed or latest[0].get("interview_score") != allowed["interview_score"]:
+            raise HTTPException(409, "This interview changed while saving. Refresh to see the saved score")
+        rows = latest
+    decision = None
+    average = None
+    if "interview_score" in allowed:
+        try:
+            matches = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
+                       .eq("candidate_name", interview.get("candidate_name")).limit(20).execute().data or [])
+            if matches:
+                role = str(interview.get("job_role") or "").strip().casefold()
+                candidate = next((item for item in matches if str(item.get("job_role") or "").strip().casefold() == role),
+                                 matches[0] if len(matches) == 1 else None)
+            else:
+                candidate = None
+            if candidate:
+                average = _hiring_average(candidate.get("overall_score"), allowed["interview_score"])
+                decision = "Selected" if average is not None and average > 70 else "Interview Completed"
+                synced = (session.client.table("screening_history")
+                          .update({"interview_score": allowed["interview_score"], "decision_status": decision})
+                          .eq("id", candidate["id"]).eq("company_id", session.company["id"]).execute().data or [])
+                if not synced:
+                    raise RuntimeError("Candidate progress was not updated")
+                email = candidate.get("email") or _json_field(candidate.get("profile_json"), {}).get("email") or ""
+                if email:
+                    application_query = (session.client.table("public_applications").update({"status": decision})
+                                         .eq("company_id", session.company["id"]).eq("applicant_email", email))
+                    if candidate.get("job_id"):
+                        application_query = application_query.eq("job_id", candidate["job_id"])
+                    application_query.execute()
+        except Exception as exc:
+            logger.warning("Interview score saved but downstream candidate sync failed: company=%s interview=%s",
+                           session.company["id"], interview_id, exc_info=True)
+            raise HTTPException(503, "Your interview score was saved, but candidate progress could not be updated. Retry the same score to finish syncing") from exc
+    result = rows[0] if rows else {"ok": True, **allowed}
+    return {**result, "decision_status": decision, "hiring_average": average}
 
 
 @app.delete("/api/interviews/{interview_id}")
@@ -1041,7 +1331,7 @@ class InsightPayload(BaseModel):
 def generate_insight(payload: InsightPayload, session: RecruiterSession = Depends(_session)):
     rows = (session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
             .neq("status", "cleared").order("screened_at", desc=True).limit(300).execute().data or [])
-    candidates = [_candidate(row) for row in rows]
+    candidates = [_assistant_candidate(row) for row in rows]
     try:
         answer = ask_assistant(payload.question.strip(), candidates, "All active roles", "", payload.chat_history[-12:])
     except Exception as exc:
@@ -1060,10 +1350,18 @@ def interview_questions(payload: InterviewQuestionsPayload, session: RecruiterSe
     if not rows:
         raise HTTPException(404, "Candidate not found")
     row = rows[0]
+    job_details = (row.get("job_details") or "").strip()
+    if not job_details and row.get("job_id"):
+        jobs = (session.client.table("jobs").select("*").eq("id", row["job_id"])
+                .eq("company_id", session.company["id"]).limit(1).execute().data or [])
+        if jobs:
+            job = jobs[0]
+            job_details = "\n".join(str(job.get(key) or "") for key in
+                                    ("title", "description", "responsibilities", "required_skills"))
     try:
         result = generate_interview_questions(_json_field(row.get("profile_json"), {}),
                                               _json_field(row.get("score_json"), {}),
-                                              row.get("job_details") or row.get("job_role") or "")
+                                              job_details or row.get("job_role") or "")
     except Exception as exc:
         raise HTTPException(503, f"Interview preparation is temporarily unavailable: {exc}") from exc
     return result
@@ -1151,10 +1449,14 @@ def offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depend
 
 @app.post("/api/offers/send")
 def send_offer_letters(payload: OfferBatchPayload, session: RecruiterSession = Depends(_session)):
+    if not payload.candidate_ids:
+        raise HTTPException(400, "Choose at least one selected candidate")
     rows = (session.client.table("screening_history").select("*").in_("id", payload.candidate_ids)
             .eq("company_id", session.company["id"]).execute().data or [])
     chosen = [row for row in rows if (row.get("decision_status") or "") == "Selected"
               and (_hiring_average(row.get("overall_score"), row.get("interview_score")) or 0) > 70]
+    if not chosen:
+        raise HTTPException(400, "No candidates eligible for an offer were found")
     company, sent, failed = session.company, [], []
     logo_bytes = None
     if company.get("logo_base64"):
@@ -1224,44 +1526,64 @@ def _weighted_score(score: dict[str, Any], weights: dict[str, float]) -> dict[st
 
 
 def _screen_payloads(payloads: list[tuple[str, bytes]], job_role: str, job_details: str, job_id: str,
-                     weights: dict[str, float], session: RecruiterSession, source: str) -> list[dict[str, Any]]:
+                     weights: dict[str, float], session: RecruiterSession,
+                     source: str) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     payloads = _expand_resume_payloads(payloads)
+    if not payloads:
+        raise HTTPException(400, "Upload at least one PDF, DOCX, or DOC resume")
     if not check_api_key():
         raise HTTPException(503, "No AI provider is configured")
     extracted: list[tuple[str, str]] = []
+    skipped: list[dict[str, str]] = []
     with ThreadPoolExecutor(max_workers=min(6, len(payloads))) as pool:
         futures = {pool.submit(extract_text_from_bytes, name, data): name for name, data in payloads}
         for future in as_completed(futures):
-            text = future.result()
-            if text.strip() and heuristic_resume_check(text).get("looks_like_resume"):
-                extracted.append((futures[future], text))
+            try:
+                text = future.result()
+                if text.strip() and heuristic_resume_check(text).get("looks_like_resume"):
+                    extracted.append((futures[future], text))
+                else:
+                    skipped.append({"filename": futures[future], "reason": "No readable candidate resume evidence was found"})
+            except Exception:
+                skipped.append({"filename": futures[future], "reason": "This file could not be read. Upload a readable PDF or DOCX resume"})
     description = f"Job Role: {job_role}\n\nKey Requirements:\n{job_details}".strip()
     results: list[dict[str, Any]] = []
+    if not extracted:
+        return results, skipped
     with ThreadPoolExecutor(max_workers=min(6, len(extracted))) as pool:
         futures = {pool.submit(parse_and_score, text, description): (name, text) for name, text in extracted}
         for future in as_completed(futures):
             name, raw_text = futures[future]
-            profile, score = future.result()
-            score = _weighted_score(score, weights)
-            profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
-            row = {
-                "company_id": session.company["id"], "job_id": int(job_id) if job_id.isdigit() else None,
-                "job_role": job_role, "job_details": job_details, "candidate_name": profile.get("name") or name,
-                "filename": name, "email": profile.get("email"), "phone": profile.get("phone"),
-                "years_experience": profile.get("years_experience"), "education": profile.get("education"),
-                "skills": json.dumps(profile.get("skills") or []), "past_roles": json.dumps(profile.get("past_roles") or []),
-                "raw_text": raw_text, "profile_json": json.dumps(profile), "score_json": json.dumps(score),
-                "overall_score": score.get("overall_score", 0),
-                "skills_match": (score.get("breakdown") or {}).get("skills_match"),
-                "experience_fit": (score.get("breakdown") or {}).get("experience_fit"),
-                "education_fit": (score.get("breakdown") or {}).get("education_fit"),
-                "matched_skills": json.dumps(score.get("matched_skills") or []),
-                "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
-                "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"), "source": source,
-            }
-            saved = session.client.table("screening_history").insert(row).execute().data or []
-            results.append(_candidate(saved[0] if saved else row))
-    return sorted(results, key=lambda item: item["score"], reverse=True)
+            try:
+                profile, score = future.result()
+                score = _weighted_score(score, weights)
+                profile["extraction_flags"] = assess_extraction_confidence(profile, raw_text)
+                profile["_screening_source"] = source
+                row = {
+                    "company_id": session.company["id"], "job_id": int(job_id) if job_id.isdigit() else None,
+                    "job_role": job_role, "job_details": job_details, "candidate_name": profile.get("name") or name,
+                    "filename": name, "email": profile.get("email"), "phone": profile.get("phone"),
+                    "years_experience": profile.get("years_experience"), "education": profile.get("education"),
+                    "skills": json.dumps(profile.get("skills") or []), "past_roles": json.dumps(profile.get("past_roles") or []),
+                    "raw_text": raw_text, "profile_json": json.dumps(profile), "score_json": json.dumps(score),
+                    "overall_score": score.get("overall_score", 0),
+                    "skills_match": (score.get("breakdown") or {}).get("skills_match"),
+                    "experience_fit": (score.get("breakdown") or {}).get("experience_fit"),
+                    "education_fit": (score.get("breakdown") or {}).get("education_fit"),
+                    "matched_skills": json.dumps(score.get("matched_skills") or []),
+                    "gaps": json.dumps(score.get("gaps") or []), "recruiter_summary": score.get("summary"),
+                    "status": "active", "decision_status": ("Interview Eligible" if _numeric_score(score.get("overall_score")) > 49 else "Waiting"),
+                }
+                saved = session.client.table("screening_history").insert(row).execute().data or []
+                if not saved:
+                    raise RuntimeError("The screened candidate could not be saved. Please retry this resume")
+                results.append(_candidate(saved[0]))
+            except Exception as exc:
+                logger.exception("AI screening failed for %s", name)
+                skipped.append({"filename": name, "reason": str(exc)[:300] or "AI screening failed"})
+    if extracted and not results and skipped:
+        raise HTTPException(503, f"AI screening is temporarily unavailable: {skipped[0]['reason']}")
+    return sorted(results, key=lambda item: item["score"], reverse=True), skipped
 
 
 @app.post("/api/screen")
@@ -1271,10 +1593,10 @@ async def screen_resumes(
     files: list[UploadFile] = File(...), session: RecruiterSession = Depends(_session),
 ):
     payloads = [(file.filename or "resume.pdf", await file.read()) for file in files]
-    results = _screen_payloads(payloads, job_role, job_details, job_id,
-                               {"skills_match": skills_weight, "experience_fit": experience_weight, "education_fit": education_weight},
-                               session, "Web Upload")
-    return {"processed": len(results), "candidates": results}
+    results, skipped = _screen_payloads(payloads, job_role, job_details, job_id,
+                                        {"skills_match": skills_weight, "experience_fit": experience_weight, "education_fit": education_weight},
+                                        session, "Web Upload")
+    return {"processed": len(results), "candidates": results, "skipped": skipped}
 
 
 class InboxScreenPayload(BaseModel):
@@ -1293,11 +1615,11 @@ def screen_inbox(payload: InboxScreenPayload, session: RecruiterSession = Depend
     resumes, error = fetch_new_resumes()
     if error:
         raise HTTPException(502, error)
-    results = _screen_payloads([(item["filename"], item["data"]) for item in resumes], payload.job_role,
-                               payload.job_details, payload.job_id,
-                               {"skills_match": payload.skills_weight, "experience_fit": payload.experience_weight,
-                                "education_fit": payload.education_weight}, session, "Email Inbox")
-    return {"found": len(resumes), "processed": len(results), "candidates": results}
+    results, skipped = _screen_payloads([(item["filename"], item["data"]) for item in resumes], payload.job_role,
+                                        payload.job_details, payload.job_id,
+                                        {"skills_match": payload.skills_weight, "experience_fit": payload.experience_weight,
+                                         "education_fit": payload.education_weight}, session, "Email Inbox")
+    return {"found": len(resumes), "processed": len(results), "candidates": results, "skipped": skipped}
 
 
 def _linkedin_redirect(request: Request) -> str:
@@ -1362,6 +1684,12 @@ def linkedin_post_job(job_id: int, request: Request, session: RecruiterSession =
     if not response.ok:
         raise HTTPException(response.status_code if response.status_code in {401, 403} else 502, "LinkedIn publishing failed; reconnect and try again")
     return {"ok": True, "message": "Job posted to LinkedIn"}
+
+
+@app.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/privacy/", response_class=HTMLResponse, include_in_schema=False)
+def privacy_policy():
+    return HTMLResponse((WEB / "privacy.html").read_text(encoding="utf-8"))
 
 
 @app.get("/")
