@@ -761,18 +761,3 @@ body>.notification-panel .notification-close { color: #fff !important; }
   #app#app#app *, .modal-shell.modal-shell * { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
   #app .landing-reveal { opacity: 1 !important; transform: none !important; }
 }
-/* Candidate-facing progress: private details, responsive cards and notifications. */
-.candidate-application-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px}
-.candidate-application-detail{background:white;border:1px solid #d5e4df;border-radius:22px;padding:24px;min-width:0}
-.candidate-application-detail header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.candidate-application-detail h3{margin:20px 0 8px;font-size:24px}.candidate-application-detail p,.candidate-application-detail small{overflow-wrap:anywhere}
-.candidate-application-detail footer{margin-top:22px;padding-top:16px;border-top:1px solid #e0e9e5;font-size:13px;color:#61756e}
-.candidate-interview-details,.candidate-offer-details{margin-top:20px;padding:20px;background:#f0f8f5;border-radius:16px}
-.candidate-offer-details{background:#edf5ff}.candidate-application-detail h4{font-size:18px;margin:8px 0}
-.candidate-application-detail a.primary{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:12px 18px;border-radius:12px;min-height:44px}
-.candidate-notification-dialog{width:min(560px,calc(100vw - 24px));max-height:85dvh;background:white;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 70px #082b3633}
-.candidate-notification-dialog>header{padding:24px;background:#16473e;color:white;display:flex;justify-content:space-between;align-items:center;gap:16px}
-.candidate-notification-dialog h2{color:white!important;margin:6px 0!important}.candidate-notification-dialog .kicker{color:#b0ebd8!important}
-.candidate-notification-feed{padding:16px;overflow:auto}.candidate-notification-item{display:flex!important;flex-direction:column;align-items:flex-start!important;text-align:left!important;width:100%;gap:6px;padding:18px!important;margin-bottom:10px;background:#f6f9f8!important;border:1px solid #d7e4df!important;border-radius:14px!important;color:#234d42!important;white-space:normal!important;height:auto!important}
-.candidate-notification-item.unread{background:#e8f6f0!important;border-left:4px solid #008577!important}.candidate-notification-item small{font-size:12px}.candidate-notification-dialog>footer{padding:16px;border-top:1px solid #d7e4df}
-@media(max-width:600px){.candidate-notification-bell{font-size:13px!important;padding:10px!important}.candidate-application-detail{padding:20px}.candidate-notification-dialog>header{padding:18px}}

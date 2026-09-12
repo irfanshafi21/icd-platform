@@ -124,7 +124,7 @@ class WebAppTests(unittest.TestCase):
         self.assertTrue(result["deleted"])
         self.assertTrue(result["email_delivery"]["sent"])
         tables["screening_history"].delete.assert_called_once()
-        tables["public_applications"].update.assert_called_with({"status": "Rejected"})
+        tables["public_applications"].delete.assert_called_once()
         tables["interviews"].delete.assert_called_once()
 
     @patch("web_app._send_company_email", return_value=(True, "sent"))
@@ -147,7 +147,7 @@ class WebAppTests(unittest.TestCase):
         result = update_application(11, {"status": "Rejected"}, session)
         self.assertTrue(result["deleted"])
         self.assertTrue(result["email_delivery"]["sent"])
-        tables["public_applications"].update.assert_called_with({"status": "Rejected"})
+        tables["public_applications"].delete.assert_called_once()
         tables["screening_history"].delete.assert_called_once()
         tables["interviews"].delete.assert_called_once()
 

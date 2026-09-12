@@ -56,13 +56,6 @@ class MemoryQuery:
         self.operation, self.values = "insert", values
         return self
 
-    def upsert(self, values, on_conflict=None):
-        existing = next((r for r in self.database.rows.get(self.table_name, []) if r.get(on_conflict) == values.get(on_conflict)), None)
-        if existing is not None:
-            self.eq(on_conflict, values[on_conflict])
-            return self.update(values)
-        return self.insert(values)
-
     def execute(self):
         failure = (self.table_name, self.operation)
         if self.database.fail_once == failure:
@@ -160,30 +153,6 @@ class BackendWorkflowTests(unittest.TestCase):
         self.assertEqual(self.client.delete('/api/candidates').status_code,200)
         self.assertEqual(self.database.rows['screening_history'][0]['status'],'cleared')
         self.assertEqual(self.database.rows['screening_history'][1]['status'],'active')
-
-    def test_candidate_progress_and_offer_download_are_private(self):
-        row = self.seed_candidate()
-        self.database.rows['public_applications'][0]['candidate_user_id'] = 'user'
-        interview = {'id': 11, 'status': 'Scheduled', 'meeting_link': 'https://meet.google.com/abc-defg-hij', 'notes': 'INTERNAL ONLY'}
-        web_app._publish_candidate_update(row, self.session, status='Interview Scheduled', interview=interview)
-        web_app._publish_candidate_update(row, self.session, status='Offer Sent', offer_pdf=b'%PDF-test')
-        data = self.client.get('/api/candidate/me').json()
-        self.assertEqual(data['applications'][0]['status'], 'Offer Sent')
-        self.assertEqual(data['applications'][0]['interview']['meeting_link'], interview['meeting_link'])
-        self.assertNotIn('INTERNAL ONLY', str(data))
-        self.assertEqual(self.client.get('/api/candidate/applications/4/offer.pdf').content, b'%PDF-test')
-        self.candidate_session.user.id = 'another-user'
-        self.assertEqual(self.client.get('/api/candidate/applications/4/offer.pdf').status_code, 404)
-        self.assertEqual(self.client.get('/api/candidate/me').json()['applications'], [])
-
-    def test_ambiguous_or_different_role_does_not_receive_private_update(self):
-        row = self.seed_candidate()
-        self.database.rows['public_applications'].append({**self.database.rows['public_applications'][0], 'id': 5})
-        self.assertFalse(web_app._publish_candidate_update(row, self.session, status='Offer Sent', offer_pdf=b'%PDF'))
-        self.assertEqual(self.database.rows.get('candidate_application_updates', []), [])
-        row['application_id'] = 4
-        self.assertTrue(web_app._publish_candidate_update(row, self.session, status='Selected'))
-        self.assertEqual(self.database.rows['public_applications'][1]['status'], 'Screening')
 
     def seed_candidate(self, score=80, interview_score=None):
         profile, analysis = self.analysis()
@@ -405,15 +374,10 @@ class BackendWorkflowTests(unittest.TestCase):
             self.assertEqual(failed.status_code, 200, failed.text)
             self.assertEqual(failed.json()["failed_count"], 1)
             self.assertEqual(failed.json()["sent_count"], 0)
-            self.assertEqual(self.database.rows.get("candidate_application_updates", []), [])
             delivery.return_value = (True, "Mock delivery accepted")
             sent = self.client.post("/api/offers/send", json={"candidate_ids": [7]})
             self.assertEqual(sent.json()["sent_count"], 1)
             self.assertTrue(delivery.call_args.args[3].startswith(b"%PDF"))
-            import base64
-            shared = self.database.rows["candidate_application_updates"][0]
-            self.assertEqual(base64.b64decode(shared["offer_pdf_base64"]), delivery.call_args.args[3])
-            self.assertEqual(self.database.rows["public_applications"][0]["status"], "Offer Sent")
             candidate["decision_status"] = "Interview Completed"
             self.assertEqual(self.client.post("/api/offers/send", json={"candidate_ids": [7]}).status_code, 400)
             self.assertEqual(self.client.post("/api/offers/send", json={"candidate_ids": []}).status_code, 400)
