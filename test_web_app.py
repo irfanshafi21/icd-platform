@@ -24,6 +24,16 @@ class WebAppTests(unittest.TestCase):
         self.assertIn("image/png", icon.headers["content-type"])
         self.assertEqual(self.client.get("/missing-page").status_code, 404)
 
+    def test_privacy_policy_is_public_and_server_rendered(self):
+        for path in ("/privacy", "/privacy/"):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("text/html", response.headers["content-type"])
+            self.assertIn("Privacy Policy | ICD Platform", response.text)
+            self.assertIn("Google sign-in", response.text)
+            self.assertIn("without permanently erasing", response.text)
+            self.assertNotIn('<div id="app">', response.text)
+
     def test_candidate_rows_are_normalized_for_frontend(self):
         row = {
             "id": 7,

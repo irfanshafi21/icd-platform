@@ -1686,6 +1686,12 @@ def linkedin_post_job(job_id: int, request: Request, session: RecruiterSession =
     return {"ok": True, "message": "Job posted to LinkedIn"}
 
 
+@app.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/privacy/", response_class=HTMLResponse, include_in_schema=False)
+def privacy_policy():
+    return HTMLResponse((WEB / "privacy.html").read_text(encoding="utf-8"))
+
+
 @app.get("/")
 @app.get("/{path:path}")
 def index(path: str = ""):
