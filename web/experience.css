@@ -810,3 +810,28 @@ body>.notification-panel .notification-close { color: #fff !important; }
  #app .candidate-help { padding:20px; }
  #app .candidate-help form button { width:100%; }
 }
+/* Compact candidate masthead; explicitly reset inherited button minimums. */
+#app .candidate-portal .candidate-nav { display:flex!important; flex-wrap:nowrap!important; justify-content:space-between!important; align-items:center!important; padding:8px 0 20px!important; gap:16px!important; }
+#app .candidate-portal .candidate-brand { display:flex!important; align-items:center!important; flex:0 1 auto!important; margin:0!important; gap:14px!important; min-width:0!important; }
+#app .candidate-portal .candidate-brand .brand-logo { width:124px!important; height:54px!important; object-fit:contain!important; padding:4px!important; margin:0!important; border:0!important; background:transparent!important; box-shadow:none!important; }
+#app .candidate-portal .candidate-brand>span { font-size:11px!important; letter-spacing:.08em!important; }
+#app .candidate-portal .candidate-nav-actions { width:auto!important; display:flex!important; flex:0 0 auto!important; flex-wrap:nowrap!important; gap:10px!important; margin:0!important; }
+#app .candidate-portal .candidate-nav-actions button { min-width:0!important; width:auto!important; height:44px!important; min-height:44px!important; padding:10px 14px!important; flex:0 0 auto!important; font-size:13px!important; border-radius:12px!important; box-shadow:none!important; }
+#app .candidate-portal .candidate-nav-actions .candidate-notification-bell { width:44px!important; max-width:44px!important; padding:10px!important; }
+#app .candidate-portal .candidate-nav-actions .identity { display:grid!important; grid-template-columns:1fr!important; gap:2px!important; padding:0 12px!important; text-align:right!important; border-left:1px solid #dce5e0!important; }
+#app .candidate-portal .candidate-nav-actions .identity-status { display:none!important; }
+#app .candidate-portal .candidate-nav-actions .identity b { font-size:13px!important; }
+#app .candidate-portal .candidate-nav-actions .identity small { font-size:11px!important; }
+@media(max-width:1000px){
+ #app .candidate-portal .candidate-brand>span { display:none!important; }
+ #app .candidate-portal .candidate-nav-actions .identity { display:none!important; }
+}
+@media(max-width:600px){
+ #app .candidate-portal .candidate-nav { gap:8px!important; padding:4px 0 14px!important; }
+ #app .candidate-portal .candidate-brand .brand-logo { width:96px!important; height:44px!important; }
+ #app .candidate-portal .candidate-nav-actions { gap:6px!important; }
+ #app .candidate-portal .candidate-nav-actions button { padding:8px!important; font-size:12px!important; }
+ #app .candidate-portal .candidate-home { font-size:0!important; width:44px!important; }
+ #app .candidate-portal .candidate-nav-actions .candidate-home { font-size:0!important; }
+ #app .candidate-portal .candidate-home:after { content:'←'; font-size:22px; }
+}
