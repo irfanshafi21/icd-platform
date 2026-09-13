@@ -836,3 +836,110 @@ body>.notification-panel .notification-close { color: #fff !important; }
  #app .candidate-portal .candidate-home:after { content:'←'; font-size:22px; }
 }
  #app .candidate-portal header.candidate-nav { flex-direction:row!important; }
+/* Workspace refinement: readable, task-first, and deliberately quiet. */
+#app :is(.workspace,.candidate-portal,.owner-portal) { --ui-border:#dce6e1; --ui-muted:#52675e; }
+#app :is(.workspace,.candidate-portal,.owner-portal) button { transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease!important; }
+#app :is(.workspace,.candidate-portal,.owner-portal) button:disabled { opacity:.48!important; cursor:not-allowed!important; transform:none!important; box-shadow:none!important; }
+#app :is(button,a,input,textarea,select,summary):focus-visible { outline:2px solid #087e75!important; outline-offset:3px!important; }
+#app :is(.workspace,.candidate-portal,.owner-portal) :is(button.primary,.candidate-help form button) { color:#fff!important; background:#087d76!important; border:1px solid #087d76!important; border-radius:10px!important; min-height:44px!important; padding:11px 18px!important; box-shadow:0 2px 4px #163d2910!important; }
+#app :is(.workspace,.candidate-portal,.owner-portal) button.primary:hover:not(:disabled) { background:#06655e!important; border-color:#06655e!important; }
+#app :is(.workspace,.candidate-portal,.owner-portal) button.secondary { border-radius:10px!important; box-shadow:none!important; }
+#app .workspace :is(.panel,.section-title,.operations-overview) { border-color:var(--ui-border)!important; border-radius:16px!important; box-shadow:0 3px 12px #173b2d03!important; }
+#app .workspace :is(.workspace-head,.section-title) { gap:16px!important; }
+#app .workspace .workspace-head { padding-bottom:20px!important; margin-bottom:24px!important; }
+#app .workspace .workspace-head h1 { font-size:32px!important; line-height:1.2!important; }
+#app .workspace :is(.command-hero,.screening-intro,.offer-hero,.insight-hero) { min-height:0!important; padding:28px!important; border-radius:18px!important; }
+#app .workspace :is(.screening-intro,.offer-hero,.insight-hero) h2 { font-size:28px!important; line-height:1.25!important; }
+#app .workspace .command-hero h2 { font-size:34px!important; line-height:1.2!important; }
+#app .workspace :is(.command-hero,.screening-intro,.offer-hero,.insight-hero) p { max-width:65ch; font-size:14px!important; line-height:1.6!important; margin:10px 0 16px!important; }
+#app .workspace .executive-kpis article { min-height:108px!important; padding:20px!important; border-radius:14px!important; box-shadow:none!important; }
+#app .workspace .executive-kpis article>strong { font-size:32px!important; }
+#app .workspace :is(.job-admin-cards,.talent-cards) { gap:18px!important; }
+#app .workspace .job-admin-cards>article { padding:24px!important; border-radius:16px!important; box-shadow:none!important; }
+#app .workspace .talent-card h3 { font-size:24px!important; line-height:1.2!important; }
+#app .workspace .talent-card .chips { margin:18px 0!important; min-height:0!important; }
+#app .workspace .candidate-decision-line { margin:18px 0 0!important; padding:14px 0!important; border-radius:0!important; background:transparent!important; border-top:1px solid var(--ui-border)!important; }
+#app .workspace .job-card-actions { gap:8px!important; }
+#app .workspace .job-option { border:1px solid transparent!important; border-radius:10px!important; box-shadow:none!important; padding:14px!important; }
+#app .workspace .job-option:hover { background:#eff7f3!important; border-color:#c4dbcf!important; }
+#app .workspace .job-picker-menu { box-shadow:0 12px 32px #143c2c12!important; border-radius:14px!important; }
+#app .workspace .screening-checks { background:transparent!important; border:0!important; padding:12px 0!important; }
+#app :is(.workspace,.candidate-portal) input[type=file]::file-selector-button { border:0; border-radius:8px; padding:10px 14px; margin-right:12px; background:#e4f2eb; color:#1c5741; font:inherit; font-weight:600; cursor:pointer; }
+#app .workspace .funnel-row i:after { min-width:0!important; }
+#app .workspace .modern-columns i span { min-height:0!important; }
+#app .candidate-portal .premium-candidate-hero { min-height:0!important; padding:30px!important; border-radius:18px!important; gap:28px!important; }
+#app .candidate-portal .premium-candidate-hero h1 { font-size:38px!important; line-height:1.2!important; }
+#app .candidate-portal .premium-candidate-hero p { font-size:14px!important; max-width:60ch; margin:12px 0!important; }
+#app .candidate-portal .candidate-pulse { padding:20px!important; border:0!important; box-shadow:none!important; border-radius:14px!important; }
+#app .candidate-portal .candidate-trust { gap:12px!important; margin-top:16px!important; }
+#app .candidate-portal .candidate-trust span { background:transparent!important; border:0!important; padding:0!important; font-size:11px!important; }
+#app .candidate-portal .candidate-tabs { margin:24px 0!important; }
+#app .candidate-portal .job-discovery-head { margin-bottom:18px!important; }
+#app .candidate-portal .premium-job-grid { gap:18px!important; }
+#app .candidate-portal .premium-job-card { min-height:0!important; padding:24px!important; border-radius:16px!important; box-shadow:0 3px 12px #173b2d03!important; }
+#app .candidate-portal .premium-job-card h3 { font-size:23px!important; }
+#app .candidate-portal .job-card-top { padding-bottom:14px!important; margin-bottom:16px!important; }
+#app .candidate-portal .job-card-role { padding:0!important; }
+#app .candidate-portal .job-card-footer { min-height:0!important; margin-top:20px!important; padding-top:16px!important; gap:12px!important; }
+#app .candidate-portal .job-card-footer>span { display:none!important; }
+#app .candidate-portal .candidate-help form button { font-size:14px!important; }
+#app :is(.landing-v2,.candidate-auth,.recruiter-auth) button { transition:background-color .16s ease,box-shadow .16s ease!important; }
+@media(max-width:900px){
+ #app .workspace .workspace-head { padding:18px 0!important; margin-bottom:18px!important; }
+ #app .workspace .workspace-head h1 { font-size:28px!important; }
+ #app .workspace :is(.command-hero,.screening-intro,.offer-hero,.insight-hero) { padding:20px!important; margin-bottom:18px!important; }
+ #app .workspace :is(.command-hero,.screening-intro,.offer-hero,.insight-hero) h2 { font-size:25px!important; line-height:1.22!important; }
+ #app .workspace :is(.command-hero,.screening-intro,.offer-hero,.insight-hero) p { font-size:13px!important; margin:8px 0 12px!important; }
+ #app .workspace .screening-badges { display:none!important; }
+ #app .workspace :is(.screening-steps,.offer-progress) { margin:14px 0!important; }
+ #app .workspace .executive-kpis { gap:10px!important; margin:18px 0!important; }
+ #app .workspace .executive-kpis article { min-height:88px!important; padding:14px!important; }
+ #app .workspace .executive-kpis article>strong { font-size:27px!important; }
+ #app .workspace .section-title { padding:20px!important; }
+ #app .workspace .interview-rhythm { display:none!important; }
+ #app .candidate-portal .premium-candidate-hero { padding:22px!important; gap:16px!important; }
+ #app .candidate-portal .premium-candidate-hero h1 { font-size:28px!important; }
+ #app .candidate-portal .candidate-pulse { padding:14px!important; }
+ #app .candidate-portal .profile-ready { display:none!important; }
+ #app .candidate-portal .pulse-stats { margin:10px 0 0!important; padding:0!important; }
+ #app .candidate-portal .pulse-stats strong { font-size:25px!important; }
+ #app .candidate-portal .candidate-trust { display:none!important; }
+ #app .candidate-portal .premium-job-card { padding:20px!important; }
+ #app .candidate-portal .job-card-footer { margin-top:16px!important; }
+}
+@media(prefers-reduced-motion:reduce){#app *,#app *:before,#app *:after { animation:none!important; transition:none!important; scroll-behavior:auto!important; }}
+/* Consistent density for public discovery and administration. */
+#app .owner-portal .owner-company-card { border-radius:16px!important; box-shadow:none!important; padding:22px!important; }
+#app .owner-portal .owner-company-card h3 { font-size:22px!important; }
+#app .owner-portal .owner-company-card :is(small,label) { line-height:1.5!important; }
+#app .candidate-portal .candidate-search input { min-height:46px!important; font-size:14px!important; }
+#app .candidate-portal .premium-job-card .chips { margin:14px 0!important; }
+#app .candidate-portal .premium-job-card .job-meta { margin:14px 0!important; gap:8px!important; }
+#app .candidate-portal .premium-job-card .job-card-footer button { min-height:44px!important; width:100%!important; }
+#app .candidate-portal .candidate-help { border-radius:16px!important; background:#f7faf8!important; }
+#app .candidate-portal .candidate-help small { color:#52675e!important; font-size:12px!important; }
+#app .workspace .designed-empty { min-height:160px!important; padding:28px 20px!important; }
+#app .workspace .offer-note { font-size:12px!important; color:#52675e!important; }
+#app .workspace :is(.report-tools,.report-grid) select { min-height:44px!important; }
+@media(max-width:900px){
+ #app .workspace .screening-layout label.premium-upload { min-height:165px!important; padding:20px!important; }
+ #app .workspace .screening-layout textarea { min-height:130px!important; height:150px!important; }
+ #app .workspace .screening-checks { display:none!important; }
+ #app .workspace .section-title h2 { font-size:23px!important; }
+ #app .candidate-portal .premium-candidate-hero h1 em { font-size:22px!important; }
+ #app .candidate-portal .premium-candidate-hero p { font-size:13px!important; line-height:1.55!important; }
+ #app .candidate-portal .premium-candidate-hero .pulse-top { margin:0!important; }
+ #app .candidate-portal .candidate-tabs { margin:18px 0!important; }
+ #app .candidate-portal .job-discovery-head h2 { font-size:25px!important; }
+ #app .workspace .floating-ai { min-width:44px!important; padding:10px!important; border-radius:50%!important; }
+}
+@media(max-width:900px){
+ #app .candidate-portal .premium-candidate-hero .candidate-pulse { min-height:0!important; margin:0!important; }
+ #app .candidate-portal .premium-candidate-hero .pulse-stats { min-height:0!important; gap:12px!important; }
+ #app .candidate-portal .premium-candidate-hero .pulse-stats article { min-height:0!important; padding:8px 0!important; }
+ #app .candidate-portal .premium-candidate-hero .pulse-stats strong { margin:0 0 4px!important; }
+ #app .candidate-portal .premium-candidate-hero .pulse-stats span { font-size:11px!important; }
+}
+@media(max-width:900px){
+ body>.notification-panel { position:fixed!important; left:auto!important; right:12px!important; width:min(440px,calc(100vw - 24px))!important; max-width:calc(100vw - 24px)!important; box-sizing:border-box!important; }
+}
