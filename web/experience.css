@@ -943,3 +943,47 @@ body>.notification-panel .notification-close { color: #fff !important; }
 @media(max-width:900px){
  body>.notification-panel { position:fixed!important; left:auto!important; right:12px!important; width:min(440px,calc(100vw - 24px))!important; max-width:calc(100vw - 24px)!important; box-sizing:border-box!important; }
 }
+/* Screening: stronger structure, quieter supporting information. */
+#app .page-screening .screening-intro { background:#143d35!important; border:0!important; }
+#app .page-screening .screening-intro h2 { color:#fff!important; }
+#app .page-screening .screening-intro p { color:#cfdfd7!important; }
+#app .page-screening .screening-intro .kicker { color:#89deca!important; }
+#app .page-screening .screening-badges span { color:#e2f3eb!important; background:#ffffff12!important; border-color:#ffffff26!important; }
+#app .page-screening .screening-layout { gap:22px!important; align-items:start!important; }
+#app .page-screening .screening-layout>.panel { padding:26px!important; border-radius:18px!important; }
+#app .page-screening .screening-layout .panel-heading { padding-bottom:18px!important; margin-bottom:20px!important; border-bottom:1px solid #dce6e1!important; }
+#app .page-screening .screening-layout .panel-heading h2 { font-size:24px!important; }
+#app .page-screening .step-badge { background:#e7f2ed!important; color:#245b48!important; border:0!important; }
+#app .page-screening .premium-upload { border:1.5px dashed #73a99b!important; background:#f3faf6!important; border-radius:14px!important; }
+#app .page-screening .premium-upload:focus-within { outline:2px solid #087d76; outline-offset:3px; }
+#app .page-screening .selected-role-preview { border:0!important; border-left:3px solid #168a78!important; border-radius:0!important; background:#f1f7f3!important; box-shadow:none!important; }
+#app .page-screening .job-picker-trigger { min-height:72px!important; border-radius:12px!important; }
+#app .page-screening .job-option-list { grid-template-columns:1fr!important; max-height:320px!important; gap:4px!important; }
+#app .page-screening .job-option b { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; }
+#app .page-screening .criteria-tip { padding:12px 0!important; border:0!important; background:transparent!important; box-shadow:none!important; }
+#app .shortlist-intro { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:22px; padding:24px; }
+#app .shortlist-intro p { max-width:72ch; line-height:1.6; color:#52675e; }
+#app .shortlist-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+#app .shortlist-card { padding:24px; min-width:0; }
+#app .shortlist-card h2 { font-size:24px; margin:18px 0 6px; }
+#app .shortlist-card>p { color:#52675e; }
+#app .shortlist-reason { display:inline-flex; padding:7px 10px; border-radius:8px; background:#e5f5ee; color:#116e52; font-size:12px; font-weight:700; }
+#app .shortlist-scores { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:20px 0 12px; }
+#app .shortlist-scores>div { padding:12px; border-radius:10px; background:#f3f7f5; min-width:0; }
+#app .shortlist-scores small { display:block; color:#52675e; font-size:12px; margin-bottom:8px; }
+#app .shortlist-scores strong { display:block; font-size:22px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; color:#164e3b; }
+#app .shortlist-scores em { font-size:11px; font-weight:400; font-style:normal; margin-left:3px; }
+#app .shortlist-scores .average-qualifies { background:#eae8fa; }
+#app .shortlist-scores .average-qualifies strong { color:#55429a; }
+#app .shortlist-explanation { font-size:12px; line-height:1.6; }
+#app .shortlist-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; border-top:1px solid #dce6e1; padding-top:16px; margin-top:20px; }
+#app .shortlist-footer>span { font-size:12px; color:#52675e; }
+@media(max-width:900px){
+ #app .shortlist-grid { grid-template-columns:1fr; }
+ #app .shortlist-intro { align-items:flex-start; flex-direction:column; padding:20px; }
+ #app .shortlist-card { padding:20px; }
+ #app .shortlist-scores { gap:6px; }
+ #app .shortlist-scores>div { padding:10px 8px; }
+ #app .shortlist-scores strong { font-size:18px; }
+ #app .page-screening .screening-layout>.panel { padding:20px!important; }
+}

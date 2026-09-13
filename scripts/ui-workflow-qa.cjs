@@ -215,14 +215,16 @@ let origin;
         const sidebarPosition = await page.locator('.workspace>aside').evaluate(sidebar => { window.scrollTo(0, 360); return { position: getComputedStyle(sidebar).position, top: Math.round(sidebar.getBoundingClientRect().top) }; });
         assert.deepEqual(sidebarPosition, { position: 'fixed', top: 0 });
         const nav = page.locator('.workspace>aside nav');
-        const savedNavTop = await nav.evaluate(element => { element.scrollTop = Math.min(90, element.scrollHeight - element.clientHeight); return element.scrollTop; });
+        await nav.evaluate(element => { element.scrollTop = Math.min(90, element.scrollHeight - element.clientHeight); });
+        await page.locator('button[data-page="reports"]').first().scrollIntoViewIfNeeded();
+        const savedNavTop = await nav.evaluate(element => element.scrollTop);
         assert(savedNavTop > 0, 'Short desktop viewport should make sidebar navigation scrollable');
         await page.locator('button[data-page="reports"]').first().click(); await page.locator('.page-reports').waitFor();
         assert(Math.abs(await page.locator('.workspace>aside nav').evaluate(element => element.scrollTop) - savedNavTop) <= 1, 'Sidebar navigation position should survive page changes');
         check(width, 'desktop sidebar stays fixed and preserves its navigation position', true, { savedNavTop });
         await page.setViewportSize({ width, height: 1000 }); await page.evaluate(() => window.scrollTo(0, 0));
       }
-      for (const name of ['home', 'jobs', 'screening', 'candidates', 'interviews', 'reports', 'offers', 'insights', 'settings']) {
+      for (const name of ['home', 'jobs', 'screening', 'candidates', 'shortlisted', 'interviews', 'reports', 'offers', 'insights', 'settings']) {
         await goRecruiter(page, name); await snap(page, width, name);
         if(name==='home'&&width<=900){
           const trigger=page.getByRole('button',{name:'Open navigation',exact:true});
@@ -249,6 +251,14 @@ let origin;
         await checkButtonContrast(page, width, page.locator('[data-screen]').first(), 'screen candidates');
         await page.locator('.notification-button').click(); await snap(page, width, 'notifications'); const interviewNotice=page.locator('.notification-item').filter({ hasText: 'Interview Scheduled' }); const unreadBefore=Number(await page.locator('.notification-summary b').innerText()); assert.equal(await interviewNotice.isVisible(),true); await interviewNotice.click(); await page.locator('.page-interviews').waitFor(); await page.locator('.notification-button').click(); assert.equal(await page.locator('.notification-item').filter({ hasText: 'Interview Scheduled' }).evaluate(item=>item.classList.contains('unread')),false); assert.equal(Number(await page.locator('.notification-summary b').innerText()),Math.max(0,unreadBefore-1)); await page.locator('#mark-notifications-read').click(); assert.equal(await page.locator('.notification-summary b').innerText(), '0'); await page.locator('.notification-close').click(); await goRecruiter(page,'jobs'); report.checks.push({ width, name: 'notification click marks one item read and opens its accurate page', passed: true });
         await page.locator('[data-post-app="1"]').click(); await page.locator('[data-post-app="1"]').filter({ hasText: 'Posted on app' }).waitFor(); assert.equal(await page.locator('[data-post-app="1"]').isDisabled(), true); assert.equal(await page.locator('.page-jobs').count(), 1); report.checks.push({ width, name: 'publish job locks button and stays on jobs page', passed: true });
+        await goRecruiter(page, 'shortlisted');
+        assert.equal(await page.locator('.shortlist-card').count(),3);
+        assert.equal(await page.locator('.shortlist-reason').filter({hasText:'ATS + average qualify'}).count(),1);
+        assert.equal(await page.locator('.shortlist-reason').filter({hasText:'Qualifies by ATS'}).count(),2);
+        await page.locator('.shortlist-card [data-view-candidate]').first().click();
+        await page.locator('#candidate-modal').waitFor();
+        await page.locator('#modal-close').click();
+        check(width,'shortlist shows qualification reason and opens profile',true);
         await goRecruiter(page, 'candidates');
         const searchWidth = await page.locator('#talent-search').evaluate(el => el.getBoundingClientRect().width);
         check(width, 'candidate search field has usable width', searchWidth >= 140, { searchWidth });
