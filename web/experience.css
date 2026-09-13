@@ -987,3 +987,40 @@ body>.notification-panel .notification-close { color: #fff !important; }
  #app .shortlist-scores strong { font-size:18px; }
  #app .page-screening .screening-layout>.panel { padding:20px!important; }
 }
+/* Chosen score treatment: a number-only ring with an accessible label. */
+#app .icd-score-ring,#candidate-modal .icd-score-ring {
+ display:inline-grid!important; place-items:center!important; position:relative!important;
+ width:78px!important; height:78px!important; min-width:78px!important; flex:0 0 78px!important;
+ padding:0!important; margin:0!important; border:0!important; border-radius:50%!important;
+ background:conic-gradient(#078576 calc(var(--ring-score)*1%),#e2eee8 0)!important;
+ box-shadow:none!important; isolation:isolate;
+}
+#app .icd-score-ring:before,#candidate-modal .icd-score-ring:before {
+ content:''; position:absolute; inset:6px; border-radius:50%; background:#fff; z-index:-1;
+}
+#app .icd-score-ring>b,#candidate-modal .icd-score-ring>b {
+ position:static!important; font-size:27px!important; font-weight:750!important; line-height:1!important;
+ color:#12634f!important; padding:0!important; margin:0!important; background:transparent!important; font-variant-numeric:tabular-nums;
+}
+#app .screening-results .icd-score-ring { width:64px!important; height:64px!important; min-width:64px!important; flex-basis:64px!important; }
+#app .screening-results .icd-score-ring>b { font-size:23px!important; }
+@media(max-width:600px){
+ #app .candidate-job-card .icd-score-ring { width:72px!important; height:72px!important; min-width:72px!important; flex-basis:72px!important; }
+}
+#app .shortlist-scores .icd-score-ring { width:64px!important; height:64px!important; min-width:64px!important; }
+#app .shortlist-scores .icd-score-ring>b { font-size:21px!important; }
+#app .shortlist-scores .average-qualifies .icd-score-ring { background:conic-gradient(#7360b4 calc(var(--ring-score)*1%),#ddd8ef 0)!important; }
+#app .shortlist-scores .average-qualifies .icd-score-ring>b { color:#55429a!important; }
+#app .workspace .workspace-page .candidate-job-card .card-top .icd-score-ring,
+#app .workspace .workspace-page .screening-results .icd-score-ring,
+#app .workspace .workspace-page .shortlist-scores .icd-score-ring {
+ display:inline-grid!important; place-items:center!important; position:relative!important;
+ border-radius:50%!important; padding:0!important;
+ background:conic-gradient(#078576 calc(var(--ring-score)*1%),#e2eee8 0)!important;
+}
+#app .workspace .workspace-page .candidate-job-card .card-top .icd-score-ring { width:78px!important; height:78px!important; min-width:78px!important; }
+#app .workspace .workspace-page .icd-score-ring:before { content:''!important; display:block!important; position:absolute!important; inset:6px!important; border-radius:50%!important; background:#fff!important; z-index:-1!important; }
+#app .workspace .workspace-page .icd-score-ring>b { font-size:27px!important; color:#12634f!important; padding:0!important; line-height:1!important; }
+#app .workspace .workspace-page .shortlist-scores .average-qualifies .icd-score-ring { background:conic-gradient(#7360b4 calc(var(--ring-score)*1%),#ddd8ef 0)!important; }
+#app .workspace .workspace-page .shortlist-scores .icd-score-ring>b { font-size:21px!important; }
+#app .workspace .workspace-page .screening-results .icd-score-ring>b { font-size:23px!important; }
