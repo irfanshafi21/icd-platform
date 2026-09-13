@@ -835,3 +835,4 @@ body>.notification-panel .notification-close { color: #fff !important; }
  #app .candidate-portal .candidate-nav-actions .candidate-home { font-size:0!important; }
  #app .candidate-portal .candidate-home:after { content:'←'; font-size:22px; }
 }
+ #app .candidate-portal header.candidate-nav { flex-direction:row!important; }
