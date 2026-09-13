@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from postgrest.types import ReturnMethod
 from supabase import Client, create_client
 
-from ai_engine import ask_assistant, check_api_key, generate_interview_questions, parse_and_score
+from ai_engine import ask_assistant, ask_candidate_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
 from email_utils import is_configured as email_is_configured, send_email_with_pdf, send_plain_email
 from inbox_intake import is_configured as inbox_is_configured, fetch_new_resumes
@@ -661,6 +661,31 @@ def _publish_candidate_update(candidate: dict, session: RecruiterSession, *, sta
     if status:
         session.client.table("public_applications").update({"status": status}).eq("id", application["id"]).eq("company_id", session.company["id"]).execute()
     return True
+
+
+class CandidateHelpPayload(BaseModel):
+    question: str = Field(min_length=1, max_length=1500)
+
+
+@app.post("/api/candidate/assistant")
+def candidate_assistant(payload: CandidateHelpPayload, session: CandidateSession = Depends(_candidate_session)):
+    question = payload.question.strip()
+    if not question:
+        raise HTTPException(400, "Enter a candidate-related question")
+    with _sessions_lock:
+        now = time.monotonic()
+        if now - getattr(session, "last_help_request", float("-inf")) < 5:
+            raise HTTPException(429, "Please wait a few seconds before asking again")
+        session.last_help_request = now
+    rows = (session.client.table("public_applications").select("status,jobs(title)")
+            .eq("candidate_user_id", str(session.user.id)).limit(30).execute().data or [])
+    context = [{"role": (row.get("jobs") or {}).get("title"), "status": row.get("status")} for row in rows]
+    try:
+        answer = ask_candidate_assistant(question, context)
+    except Exception as exc:
+        logger.warning("Candidate assistant unavailable", exc_info=True)
+        raise HTTPException(503, "The candidate assistant is unavailable. Please try again shortly.") from exc
+    return {"answer": answer}
 
 
 class CandidateProfile(BaseModel):

@@ -776,3 +776,37 @@ body>.notification-panel .notification-close { color: #fff !important; }
 .candidate-notification-feed{padding:16px;overflow:auto}.candidate-notification-item{display:flex!important;flex-direction:column;align-items:flex-start!important;text-align:left!important;width:100%;gap:6px;padding:18px!important;margin-bottom:10px;background:#f6f9f8!important;border:1px solid #d7e4df!important;border-radius:14px!important;color:#234d42!important;white-space:normal!important;height:auto!important}
 .candidate-notification-item.unread{background:#e8f6f0!important;border-left:4px solid #008577!important}.candidate-notification-item small{font-size:12px}.candidate-notification-dialog>footer{padding:16px;border-top:1px solid #d7e4df}
 @media(max-width:600px){.candidate-notification-bell{font-size:13px!important;padding:10px!important}.candidate-application-detail{padding:20px}.candidate-notification-dialog>header{padding:18px}}
+/* Portal action alignment and candidate-only help. */
+#app .candidate-nav { align-items:center!important; gap:20px!important; }
+#app .candidate-nav-actions { display:flex!important; align-items:center!important; flex-wrap:wrap; gap:12px!important; }
+#app .candidate-nav-actions button { min-height:44px!important; margin:0!important; white-space:nowrap; }
+#app .candidate-home:before { content:none!important; }
+#app .candidate-notification-bell { position:relative; display:inline-flex!important; align-items:center; justify-content:center; width:46px!important; height:46px!important; padding:10px!important; flex:0 0 46px; }
+#app .candidate-bell-count { position:absolute; top:-5px; right:-5px; min-width:19px; padding:2px 4px; border-radius:20px; background:#ba3453; color:white; font-size:11px; }
+#app .candidate-help { margin-top:28px; padding:28px; border:1px solid #cbded5; border-radius:20px; background:#fff; }
+#app .candidate-help h2 { font-size:26px; margin:8px 0; }
+#app .candidate-help p { color:#526c60; }
+#app .candidate-help form { display:grid; gap:12px; margin:20px 0; }
+#app .candidate-help textarea { width:100%; box-sizing:border-box; resize:vertical; }
+#app .candidate-help form button { justify-self:start; }
+#app #candidate-help-answer { white-space:pre-wrap; line-height:1.65; margin-bottom:16px; }
+@media(max-width:900px){
+ #app .mobile-workspace-bar .notification-button { margin-left:auto!important; width:44px!important; height:44px!important; min-width:44px!important; padding:10px!important; }
+ #app .workspace>aside { width:min(280px,82vw)!important; padding:12px!important; gap:6px!important; }
+ #app .workspace>aside .mobile-sidebar-close { margin:0!important; padding:8px 12px!important; }
+ #app .workspace>aside .company-sidebar-brand { margin:0!important; padding:10px 6px!important; }
+ #app .workspace>aside nav { gap:4px!important; padding:0!important; }
+ #app .workspace>aside nav button { min-height:44px!important; padding:10px 12px!important; margin:0!important; font-size:14px!important; }
+ #app .workspace>aside nav>small { margin:14px 8px 6px!important; padding:0!important; font-size:10px!important; }
+ #app .workspace>aside .sidebar-footer { padding:8px 0 0!important; }
+ #app .workspace>aside .sidebar-footer>div { display:none!important; }
+}
+@media(max-width:600px){
+ #app .candidate-nav { display:flex!important; flex-wrap:wrap!important; padding:16px 0!important; }
+ #app .candidate-nav-actions { width:100%!important; gap:8px!important; }
+ #app .candidate-nav-actions .identity { display:none!important; }
+ #app .candidate-nav-actions .candidate-home { flex:1; padding:10px!important; font-size:13px!important; }
+ #app .candidate-nav-actions #signout { padding:10px!important; font-size:13px!important; }
+ #app .candidate-help { padding:20px; }
+ #app .candidate-help form button { width:100%; }
+}

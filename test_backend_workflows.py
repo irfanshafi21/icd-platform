@@ -260,6 +260,16 @@ class BackendWorkflowTests(unittest.TestCase):
         self.assertEqual(retried.status_code, 200, retried.text)
         self.assertEqual(self.database.rows["public_applications"][0]["status"], "Selected")
 
+    def test_candidate_assistant_only_receives_own_public_status(self):
+        self.database.rows["public_applications"] = [
+            {"candidate_user_id": "user", "status": "Applied", "jobs": {"title": "Engineer"}, "recruiter_notes": "secret"},
+            {"candidate_user_id": "someone-else", "status": "Rejected", "jobs": {"title": "Private"}},
+        ]
+        with patch("web_app.ask_candidate_assistant", return_value="Check My applications.") as helper:
+            response = self.client.post("/api/candidate/assistant", json={"question": "What is my status?"})
+            self.assertEqual(response.status_code, 200, response.text)
+            helper.assert_called_once_with("What is my status?", [{"role": "Engineer", "status": "Applied"}])
+
     def test_score_zero_is_saved_and_locked(self):
         self.seed_candidate()
         saved = self.client.patch("/api/interviews/11", json={"interview_score": 0})
