@@ -1042,3 +1042,51 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app .workspace .workspace-page .shortlist-scores .average-qualifies .icd-score-ring { background:conic-gradient(#7360b4 calc(var(--ring-score)*1%),#ddd8ef 0)!important; }
 #app .workspace .workspace-page .shortlist-scores .icd-score-ring>b { font-size:21px!important; }
 #app .workspace .workspace-page .screening-results .icd-score-ring>b { font-size:23px!important; }
+/* Candidate workspace: task-first summary and a private floating guide. */
+#app .candidate-workspace-summary { display:flex; align-items:center; justify-content:space-between; gap:32px; padding:28px 32px; margin:24px 0; border:1px solid #cbded5; border-radius:18px; background:linear-gradient(110deg,#eef7f2,#fff); }
+#app .candidate-workspace-summary h1 { font-size:32px!important; line-height:1.2!important; margin:8px 0 10px!important; color:#123f32!important; }
+#app .candidate-workspace-summary p { font-size:16px!important; color:#536d61!important; margin:0!important; }
+#app .candidate-workspace-summary dl { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin:0; flex-shrink:0; }
+#app .candidate-workspace-summary dl>div { display:flex; flex-direction:column-reverse; gap:5px; padding-left:24px; border-left:1px solid #d5e4dc; }
+#app .candidate-workspace-summary dt { font-size:12px; color:#576f62; }
+#app .candidate-workspace-summary dd { margin:0; font-size:30px; line-height:1.2; font-weight:700; color:#1e5c46; font-variant-numeric:tabular-nums; }
+#app .candidate-portal .candidate-tabs { display:flex!important; width:fit-content; max-width:100%; padding:5px!important; gap:5px!important; border:1px solid #dbe6e0!important; border-radius:13px!important; background:#eaf0ec!important; }
+#app .candidate-portal .candidate-tabs button { min-height:44px!important; padding:10px 18px!important; border:0!important; border-radius:9px!important; background:transparent!important; color:#536b60!important; font-size:14px!important; }
+#app .candidate-portal .candidate-tabs button.active { color:#174a39!important; background:#fff!important; box-shadow:0 2px 5px #163a2812!important; }
+#app .candidate-portal .premium-job-card { display:flex!important; flex-direction:column!important; border:1px solid #d8e4dd!important; background:#fff!important; }
+#app .candidate-portal .premium-job-card:hover { border-color:#87b9a2!important; box-shadow:0 6px 22px #1843300c!important; }
+#app .candidate-portal .job-card-role p { font-size:14px!important; line-height:1.6!important; color:#52685e!important; }
+#app .candidate-portal .job-card-footer { margin-top:auto!important; }
+#app .candidate-portal .premium-job-card .job-card-role { margin-top:0!important; }
+#app .candidate-portal .premium-job-card .job-card-role h3 { min-height:0!important; margin:8px 0 14px!important; }
+#app .candidate-portal .premium-job-card .job-card-role p { min-height:0!important; -webkit-line-clamp:3; }
+#app .candidate-portal .premium-job-card .chips { min-height:0!important; margin:14px 0 20px!important; }
+#app .candidate-portal .premium-job-card .job-card-footer { width:100%!important; margin-inline:0!important; padding-inline:0!important; }
+#app .candidate-portal .premium-job-card .job-card-footer button { flex:1!important; width:100%!important; }
+#app .candidate-portal .premium-job-grid>.designed-empty { grid-column:1/-1; }
+#app .candidate-portal .candidate-application-detail { border-radius:16px!important; border:1px solid #d5e3da!important; background:#fff!important; }
+#app .candidate-portal .candidate-application-detail h3 { font-size:23px!important; }
+#app .candidate-portal .candidate-application-detail .status { font-size:13px!important; }
+#app .candidate-ai-toggle { display:flex!important; align-items:center!important; justify-content:center!important; border-radius:14px!important; min-width:82px!important; padding:12px 16px!important; }
+#app #candidate-help { display:flex; flex-direction:column; gap:12px; box-sizing:border-box; overflow:auto; margin:0!important; }
+#app #candidate-help>header { flex-shrink:0; margin:0!important; align-items:center; }
+#app #candidate-help>header button { width:36px!important; min-height:36px!important; padding:4px!important; }
+#app #candidate-help .candidate-ai-scope { color:#52695e; font-size:13px; line-height:1.5; }
+#app #candidate-help #candidate-help-answer { margin:0!important; min-height:80px; max-height:36dvh!important; overflow:auto; }
+#app #candidate-help .floating-ai-history p { background:transparent!important; max-width:100%!important; padding:0!important; }
+#app #candidate-help form { display:grid; gap:8px; margin:0; }
+#app #candidate-help label { font-size:13px!important; margin:0!important; }
+#app #candidate-help textarea { margin:0!important; min-height:78px!important; max-height:140px; resize:vertical; font-size:16px!important; }
+#app #candidate-help .candidate-ai-actions { display:flex; gap:10px; justify-content:flex-end; }
+#app #candidate-help .candidate-ai-actions button { min-height:44px!important; width:auto!important; padding:10px 18px!important; font-size:14px!important; }
+#app #candidate-help>small { font-size:12px!important; color:#617568; }
+@media(max-width:900px){
+ #app .candidate-workspace-summary { display:block; padding:22px; margin:18px 0; }
+ #app .candidate-workspace-summary h1 { font-size:27px!important; }
+ #app .candidate-workspace-summary dl { margin-top:20px; gap:12px; padding-top:18px; border-top:1px solid #d5e4dc; }
+ #app .candidate-workspace-summary dl>div { padding-left:12px; }
+ #app .candidate-workspace-summary dl>div:first-child { padding-left:0; border-left:0; }
+ #app .candidate-workspace-summary dd { font-size:25px; }
+ #app .candidate-portal .candidate-tabs { width:100%; }
+ #app .candidate-portal .candidate-tabs button { flex:1; padding:10px 8px!important; white-space:normal!important; }
+}
