@@ -17,6 +17,7 @@ class MemoryQuery:
         self.database, self.table_name = database, table
         self.filters, self.operation, self.values = [], "select", None
         self.maximum = None
+        self.offset = 0
 
     def select(self, *_args):
         return self
@@ -46,6 +47,10 @@ class MemoryQuery:
 
     def limit(self, value):
         self.maximum = value
+        return self
+
+    def range(self, start, end):
+        self.offset, self.maximum = start, end - start + 1
         return self
 
     def update(self, values):
@@ -85,6 +90,7 @@ class MemoryQuery:
                 rows.append(row)
         else:
             rows = [row for row in table if all(test(row) for test in self.filters)]
+            rows = rows[self.offset:]
             if self.maximum is not None:
                 rows = rows[:self.maximum]
             if self.operation == "update":
@@ -300,37 +306,60 @@ class BackendWorkflowTests(unittest.TestCase):
         self.assertEqual(saved.json()["decision_status"], "Interview Completed")
         self.assertEqual(self.client.post("/api/offers/preview.pdf", json={"candidate_ids": [7]}).status_code, 400)
 
-    def test_ats_rerun_preserves_visibility_and_screening_priorities(self):
-        candidate = self.seed_candidate()
-        candidate["score_json"] = json.dumps({"priority_weights": {"skills": 70, "experience": 20, "education": 10}})
-        self.ai.side_effect = lambda *_: ({"name": "Asha"}, {"overall_score": 50,
-            "breakdown": {"skills_match": 90, "experience_fit": 40, "education_fit": 20}})
+    def test_ats_rerun_cannot_change_original_score(self):
+        candidate = self.seed_candidate(score=34)
         response = self.client.post("/api/candidates/7/ats-rerun")
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["score"], 73)
-        bootstrap = self.client.get("/api/bootstrap")
-        self.assertEqual(bootstrap.status_code, 200, bootstrap.text)
-        self.assertEqual(len(bootstrap.json()["candidates"]), 1)
-        self.assertEqual(bootstrap.json()["candidates"][0]["score"], 73)
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(candidate["overall_score"], 34)
+        self.ai.assert_not_called()
 
-    def test_ats_rerun_recalculates_offer_eligibility_after_final_score(self):
-        candidate = self.seed_candidate(score=80, interview_score=70)
-        candidate["decision_status"] = "Selected"
-        self.ai.side_effect = lambda *_: ({"name": "Asha"}, {"overall_score": 60})
-        response = self.client.post("/api/candidates/7/ats-rerun")
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["decision_status"], "Interview Completed")
-        self.assertEqual(self.database.rows["public_applications"][0]["status"], "Interview Completed")
+    def test_duplicate_content_same_job_skipped_but_different_job_allowed(self):
+        self.ai.side_effect = lambda *_: ({"name": "Asha"}, {"overall_score": 34,
+            "breakdown": {"skills_match": 34, "experience_fit": 34, "education_fit": 34}})
+        def screen(job, filename="asha.pdf"):
+            return self.client.post("/api/screen", data={"job_role": "Engineer", "job_id": job},
+                                    files={"files": (filename, b"resume", "application/pdf")})
+        self.assertEqual(screen("1").json()["processed"], 1)
+        duplicate = screen("1", "renamed.pdf")
+        self.assertEqual(duplicate.status_code, 200)
+        self.assertEqual(duplicate.json()["processed"], 0)
+        self.assertIn("Already screened", duplicate.json()["skipped"][0]["reason"])
+        self.assertEqual(self.ai.call_count, 1)
+        self.assertEqual(self.database.rows["screening_history"][0]["overall_score"], 34)
+        self.assertEqual(screen("2").json()["processed"], 1)
+        self.assertEqual(self.ai.call_count, 2)
 
-    def test_ats_rerun_failed_portal_sync_does_not_report_complete_success(self):
-        self.seed_candidate()
-        self.database.fail_once = ("public_applications", "update")
-        with self.assertLogs(web_app.logger, level="WARNING"):
-            response = self.client.post("/api/candidates/7/ats-rerun")
-        self.assertEqual(response.status_code, 503, response.text)
-        self.assertIn("ATS analysis was saved", response.json()["detail"])
-        self.assertEqual(self.client.post("/api/candidates/7/ats-rerun").status_code, 200)
-        self.assertEqual(self.database.rows["public_applications"][0]["status"], "Interview Eligible")
+    def test_duplicate_guard_is_company_scoped(self):
+        self.database.rows["screening_history"] = [{"id": 1, "company_id": "other", "job_id": 1,
+                                                   "raw_text": "Asha has five years of Python experience."}]
+        response = self.client.post("/api/screen", data={"job_role": "Engineer", "job_id": "1"},
+                                    files={"files": ("asha.pdf", b"resume", "application/pdf")})
+        self.assertEqual(response.json()["processed"], 1)
+
+    def test_ai_rejects_unverified_or_non_resume_document(self):
+        import ai_engine
+        for verdict in ({}, {"is_resume": False}):
+            with patch.object(ai_engine, "_call_json", return_value=verdict):
+                with self.assertRaises(ValueError):
+                    ai_engine.parse_and_score("Invoice with skills and education keywords", "Engineer")
+        with patch.object(ai_engine, "_call_json", return_value={"is_resume": True, "profile": {"name": "Asha"}, "score": {"overall_score": 34}}):
+            self.assertEqual(ai_engine.parse_and_score("Resume", "Engineer")[1]["overall_score"], 34)
+
+    def test_duplicate_in_same_batch_only_scored_once(self):
+        response = self.client.post("/api/screen", data={"job_role": "Engineer"}, files=[
+            ("files", ("a.pdf", b"resume", "application/pdf")),
+            ("files", ("renamed.pdf", b"resume", "application/pdf"))])
+        self.assertEqual(response.json()["processed"], 1)
+        self.assertEqual(len(response.json()["skipped"]), 1)
+        self.assertEqual(self.ai.call_count, 1)
+
+    def test_non_resume_is_not_saved(self):
+        self.ai.side_effect = ValueError("This document is not a resume and was not saved")
+        response = self.client.post("/api/screen", data={"job_role": "Engineer"},
+                                    files={"files": ("invoice.pdf", b"invoice", "application/pdf")})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["processed"], 0)
+        self.assertEqual(self.database.rows.get("screening_history"), [])
 
     def test_batch_screening_continues_after_unreadable_resume(self):
         with patch.object(web_app, "extract_text_from_bytes", side_effect=lambda name, _:
