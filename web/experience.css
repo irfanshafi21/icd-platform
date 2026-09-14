@@ -1043,6 +1043,81 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app .workspace .workspace-page .shortlist-scores .icd-score-ring>b { font-size:21px!important; }
 #app .workspace .workspace-page .screening-results .icd-score-ring>b { font-size:23px!important; }
 /* Candidate workspace: task-first summary and a private floating guide. */
+/* Candidate discovery and application share a framed brand and readable rhythm. */
+#app .candidate-portal .candidate-nav { padding:14px 20px!important; border:1px solid #d8e4e8!important; border-radius:18px!important; background:#fff!important; box-shadow:0 6px 22px #12394406!important; }
+#app .candidate-portal .candidate-brand .brand-logo,#app .premium-apply-page .apply-nav>.brand-logo { width:154px!important; height:66px!important; padding:10px 18px!important; border:1px solid #d5e2ec!important; border-radius:13px!important; background:#fff!important; object-fit:contain!important; box-sizing:border-box!important; }
+#app .candidate-portal .candidate-brand>span { font-size:12px!important; color:#566b7d!important; }
+#app .candidate-portal .premium-job-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; gap:22px!important; }
+#app .candidate-portal .premium-job-card { padding:28px!important; border-radius:20px!important; }
+#app .candidate-portal .premium-job-card .company-mark { width:52px!important; height:52px!important; border-radius:12px!important; }
+#app .candidate-portal .premium-job-card .company-row b { font-size:16px!important; }
+#app .candidate-portal .premium-job-card .company-row span { font-size:13px!important; }
+#app .candidate-portal .premium-job-card .job-card-role h3 { font-size:26px!important; line-height:1.25!important; letter-spacing:-.025em!important; color:#103b43!important; }
+#app .candidate-portal .premium-job-card .job-card-role p { font-size:16px!important; line-height:1.65!important; }
+#app .candidate-portal .premium-job-card .job-meta span,#app .candidate-portal .premium-job-card .chips span { font-size:12px!important; font-weight:500!important; padding:7px 10px!important; }
+#app .candidate-portal .job-discovery-head h2 { font-size:30px!important; }
+#app .candidate-portal .candidate-search input { font-size:16px!important; height:52px!important; }
+#app .premium-apply-page { max-width:1320px!important; padding:24px 32px 110px!important; margin:0 auto!important; }
+#app .premium-apply-page .apply-nav { min-height:90px!important; padding:12px 18px!important; border:1px solid #d8e4e8!important; border-radius:18px!important; background:#fff!important; }
+#app .premium-apply-page .premium-job-hero { min-height:0!important; margin:24px 0!important; padding:34px 40px!important; border-radius:22px!important; background:linear-gradient(115deg,#08283c,#105466)!important; box-shadow:none!important; }
+#app .premium-apply-page .job-hero-company { margin:0 0 24px!important; gap:14px!important; }
+#app .premium-apply-page .job-hero-company .company-mark { width:60px!important; height:60px!important; border-radius:14px!important; }
+#app .premium-apply-page .job-hero-company b { font-size:18px!important; }
+#app .premium-apply-page .job-hero-company small,#app .premium-apply-page .job-hero-company span { font-size:12px!important; }
+#app .premium-apply-page .premium-job-hero h1 { font-size:clamp(30px,4vw,48px)!important; line-height:1.15!important; margin:10px 0 16px!important; max-width:24ch; }
+#app .premium-apply-page .premium-job-hero>p { max-width:78ch!important; font-size:16px!important; line-height:1.7!important; color:#dcecf2!important; }
+#app .premium-apply-page .hero-job-meta { margin:22px 0 0!important; gap:10px!important; }
+#app .premium-apply-page .hero-job-meta span { font-size:13px!important; padding:8px 12px!important; background:#ffffff12!important; border:1px solid #ffffff25!important; border-radius:8px!important; }
+#app .premium-apply-page .premium-detail-grid { display:grid!important; grid-template-columns:minmax(0,1.2fr) minmax(340px,.85fr)!important; align-items:start!important; gap:28px!important; }
+#app .premium-apply-page .role-story { padding:32px!important; border:1px solid #dce5e8!important; border-radius:20px!important; background:#fff!important; box-shadow:none!important; }
+#app .premium-apply-page .role-story h2 { font-size:22px!important; line-height:1.3!important; margin:0 0 12px!important; }
+#app .premium-apply-page .role-story .detail-intro { padding:0 0 22px!important; margin:0 0 22px!important; }
+#app .premium-apply-page .role-story .detail-intro span { display:block; margin-bottom:12px!important; font-size:12px!important; }
+#app .premium-apply-page .role-story p { font-size:16px!important; line-height:1.8!important; color:#516975!important; margin:0!important; }
+#app .premium-apply-page .role-story>section { padding:24px 0!important; margin:24px 0 0!important; gap:16px!important; }
+#app .premium-apply-page .role-story>section>i { width:34px!important; height:34px!important; border-radius:9px!important; font-size:12px!important; background:#e8f3ef!important; color:#1c6b56!important; }
+#app .premium-apply-page .role-story .chips span { font-size:13px!important; padding:8px 10px!important; }
+#app .premium-apply-page .premium-application { position:sticky!important; top:24px!important; padding:28px!important; border:1px solid #c9ded7!important; border-top:4px solid #168474!important; border-radius:20px!important; background:#fff!important; box-shadow:0 12px 32px #193d3108!important; }
+#app .premium-apply-page .premium-application h2 { font-size:27px!important; line-height:1.25!important; margin:22px 0 12px!important; }
+#app .premium-apply-page .premium-application>p { font-size:15px!important; line-height:1.6!important; color:#59716a!important; margin-bottom:24px!important; }
+#app .premium-apply-page .premium-application>label { font-size:14px!important; margin:18px 0 8px!important; }
+#app .premium-apply-page .premium-application>input { min-height:50px!important; margin:0!important; font-size:16px!important; border-radius:10px!important; padding:12px 14px!important; }
+#app .premium-apply-page .premium-application>.primary { min-height:52px!important; font-size:15px!important; margin-top:20px!important; border-radius:11px!important; }
+#app .premium-apply-page .apply-assurance { margin-top:18px!important; padding:14px!important; }
+#app .premium-apply-page .apply-assurance span { font-size:12px!important; line-height:1.6!important; }
+#app .resume-upload { position:relative; margin-top:22px; }
+#app .resume-upload>input { position:absolute!important; width:1px!important; height:1px!important; min-height:0!important; padding:0!important; opacity:0; clip-path:inset(50%); }
+#app .resume-upload-zone { display:flex!important; flex-direction:column; align-items:center; gap:9px; padding:25px 14px!important; margin:0!important; border:1.5px dashed #91b8aa!important; border-radius:14px!important; background:#f4faf7!important; cursor:pointer; text-align:center; transition:background .15s,border-color .15s; }
+#app .resume-upload-zone:hover,#app .resume-upload.is-dragging .resume-upload-zone { background:#e7f5ee!important; border-color:#087e68!important; }
+#app .resume-upload:focus-within { outline:2px solid #168474; outline-offset:4px; border-radius:14px; }
+#app .resume-upload-zone svg { width:34px; height:34px; padding:10px; box-sizing:content-box; border-radius:13px; background:#e0f0e8; color:#187960; }
+#app .resume-upload-zone strong { font-size:16px!important; color:#174d3c!important; }
+#app .resume-upload-zone>span { font-size:13px!important; font-weight:400!important; color:#536c60!important; }
+#app .resume-upload-zone>span b { color:#08715b; text-decoration:underline; text-underline-offset:3px; }
+#app .resume-upload-zone small { font-size:12px!important; color:#64796d!important; }
+#app .resume-file-preview { display:flex; align-items:center; gap:12px; padding:18px; border:1px solid #96cbb4; border-radius:12px; background:#f0faf4; }
+#app .resume-file-preview>div { min-width:0; flex:1; }
+#app .resume-file-preview b { display:block; overflow-wrap:anywhere; font-size:14px; color:#174d3c; }
+#app .resume-file-preview small { display:block; font-size:12px; margin-top:4px; color:#587366; }
+#app .resume-file-preview button { flex:none; width:36px!important; min-height:36px!important; padding:4px!important; border:0; background:#deeee5; color:#245a43; border-radius:8px; font-size:22px; }
+#app #resume-upload-error { font-size:13px!important; color:#a12340!important; margin:10px 0!important; }
+@media(max-width:900px){
+ #app .premium-apply-page { padding:14px 16px 100px!important; }
+ #app .premium-apply-page .premium-detail-grid { grid-template-columns:1fr!important; gap:20px!important; }
+ #app .premium-apply-page .premium-application { position:static!important; }
+ #app .premium-apply-page .premium-job-hero { padding:26px!important; }
+ #app .premium-apply-page .role-story,#app .premium-apply-page .premium-application { padding:24px!important; }
+ #app .candidate-portal .candidate-nav { padding:10px!important; gap:10px!important; }
+ #app .candidate-portal .candidate-brand .brand-logo,#app .premium-apply-page .apply-nav>.brand-logo { width:122px!important; height:56px!important; padding:8px 12px!important; }
+ #app .candidate-portal .candidate-brand>span { display:none!important; }
+ #app .candidate-portal .premium-job-grid { grid-template-columns:1fr!important; }
+}
+@media(max-width:430px){
+ #app .candidate-portal .candidate-brand .brand-logo { width:104px!important; height:52px!important; padding:7px!important; }
+ #app .candidate-portal .candidate-nav-actions { gap:5px!important; }
+ #app .candidate-portal .candidate-nav-actions #signout { padding-inline:9px!important; }
+ #app .premium-apply-page .apply-nav .back { font-size:12px!important; padding:9px!important; }
+}
 #app .candidate-workspace-summary { display:flex; align-items:center; justify-content:space-between; gap:32px; padding:28px 32px; margin:24px 0; border:1px solid #cbded5; border-radius:18px; background:linear-gradient(110deg,#eef7f2,#fff); }
 #app .candidate-workspace-summary h1 { font-size:32px!important; line-height:1.2!important; margin:8px 0 10px!important; color:#123f32!important; }
 #app .candidate-workspace-summary p { font-size:16px!important; color:#536d61!important; margin:0!important; }
