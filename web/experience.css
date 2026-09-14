@@ -1043,6 +1043,45 @@ body>.notification-panel .notification-close { color: #fff !important; }
 #app .workspace .workspace-page .shortlist-scores .icd-score-ring>b { font-size:21px!important; }
 #app .workspace .workspace-page .screening-results .icd-score-ring>b { font-size:23px!important; }
 /* Candidate workspace: task-first summary and a private floating guide. */
+/* A calm recovery page with a contained, undistorted brand asset. */
+#app .not-found { min-height:100dvh; box-sizing:border-box; padding:32px; display:flex; align-items:center; background:radial-gradient(ellipse at 95% 0%,#dceeea,transparent 45%),#f4f7f8; text-align:left; }
+#app .not-found .error-layout { width:min(1120px,100%); margin:auto; }
+#app .not-found .error-brand { display:flex; align-items:center; gap:20px; margin-bottom:42px; }
+#app .not-found .error-brand>a { display:flex; align-items:center; justify-content:center; padding:14px 22px; border:1px solid #dbe5ec; border-radius:16px; background:#fff; box-shadow:0 5px 18px #17334006; }
+#app .not-found .error-brand .brand-logo { display:block!important; width:172px!important; height:auto!important; max-height:none!important; object-fit:contain!important; padding:0!important; margin:0!important; border:0!important; border-radius:0!important; box-shadow:none!important; }
+#app .not-found .error-brand>span { font-size:13px; color:#5b7180; }
+#app .not-found .error-content { display:grid; grid-template-columns:.9fr 1.1fr; width:100%; padding:0; border:1px solid #d9e5e7; border-radius:26px; background:#fff; box-shadow:0 18px 60px #183c4710; overflow:hidden; }
+#app .not-found .error-art { display:flex; min-height:440px; flex-direction:column; align-items:center; justify-content:center; gap:20px; background:linear-gradient(145deg,#08243b,#0d5360); }
+#app .not-found .error-art>span { font-size:clamp(100px,13vw,180px); font-weight:800; letter-spacing:-.07em; line-height:1; color:#80e0cf; }
+#app .not-found .error-art>i { color:#c4e0e5; letter-spacing:.2em; font-style:normal; font-size:12px; }
+#app .not-found .error-copy { padding:48px 42px; }
+#app .not-found .error-copy .kicker { color:#087968; font-size:11px; letter-spacing:.12em; }
+#app .not-found h1 { color:#092b40; font-size:clamp(28px,3.2vw,40px); line-height:1.17; letter-spacing:-.035em; margin:16px 0 20px; }
+#app .not-found .error-copy>p { color:#576d7b; font-size:16px; line-height:1.7; margin:0 0 26px; max-width:42ch; }
+#app .not-found .error-home { display:inline-flex; align-items:center; justify-content:center; gap:32px; min-height:50px; padding:12px 20px; box-sizing:border-box; background:#087c70; color:#fff; border-radius:11px; font-size:15px; font-weight:700; text-decoration:none; transition:background .15s,box-shadow .15s; }
+#app .not-found .error-home:hover { background:#09645c; box-shadow:0 5px 16px #087c7025; }
+#app .not-found .error-destinations { display:grid; gap:0; margin-top:30px; border-top:1px solid #e4ebed; }
+#app .not-found .error-destinations a { display:grid; gap:5px; padding:16px 0; border-bottom:1px solid #e4ebed; text-decoration:none; }
+#app .not-found .error-destinations span { font-size:12px; color:#627683; }
+#app .not-found .error-destinations b { display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:15px; color:#20495a; }
+#app .not-found .error-destinations i { font-style:normal; color:#07816f; }
+#app .not-found .error-destinations a:hover b { color:#087968; }
+#app .not-found a:focus-visible { outline:3px solid #20a994; outline-offset:5px; }
+#app .not-found .error-footer { display:flex; justify-content:space-between; gap:20px; padding:24px 4px 0; color:#637783; font-size:12px; }
+#app .not-found .error-footer a { color:#426375; text-underline-offset:3px; }
+@media(max-width:700px){
+ #app .not-found { padding:22px 18px; }
+ #app .not-found .error-brand { margin-bottom:24px; justify-content:center; }
+ #app .not-found .error-brand>span { display:none; }
+ #app .not-found .error-brand .brand-logo { width:144px!important; }
+ #app .not-found .error-content { grid-template-columns:1fr; border-radius:20px; }
+ #app .not-found .error-art { min-height:170px; gap:10px; padding:20px; box-sizing:border-box; }
+ #app .not-found .error-art>span { font-size:94px; }
+ #app .not-found .error-copy { padding:28px 24px; }
+ #app .not-found .error-copy>p { font-size:15px; }
+ #app .not-found .error-home { width:100%; }
+ #app .not-found .error-destinations { margin-top:22px; }
+}
 /* Candidate discovery and application share a framed brand and readable rhythm. */
 #app .candidate-portal .candidate-nav { padding:14px 20px!important; border:1px solid #d8e4e8!important; border-radius:18px!important; background:#fff!important; box-shadow:0 6px 22px #12394406!important; }
 #app .candidate-portal .candidate-brand .brand-logo,#app .premium-apply-page .apply-nav>.brand-logo { width:154px!important; height:66px!important; padding:10px 18px!important; border:1px solid #d5e2ec!important; border-radius:13px!important; background:#fff!important; object-fit:contain!important; box-sizing:border-box!important; }

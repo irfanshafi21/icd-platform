@@ -31,6 +31,7 @@ function fixtures() {
 const report = { phase, screenshots: [], layouts: [], checks: [], pageErrors: [], unexpectedApi: [], requests: [], blockedExternal: [] };
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
+  if(pathname==='/missing-page'){res.writeHead(404,{'Content-Type':'text/html'});return res.end(fs.readFileSync(path.join(repo,'web/index.html')))}
   let file = pathname === '/' || pathname === '/index.html' ? 'web/index.html' : pathname.startsWith('/static/') ? 'web/' + pathname.slice(8) : pathname.slice(1);
   const resolved = path.resolve(repo, file);
   if (!resolved.startsWith(repo + path.sep)) { res.writeHead(403); return res.end(); }
@@ -200,6 +201,13 @@ let origin;
   try {
     for (const width of process.env.QA_WIDTHS ? process.env.QA_WIDTHS.split(',').map(Number) : [1440, 768, 390]) {
       const { page, context, controls } = await setup(browser, width, 'recruiter');
+      await page.goto(origin+'/missing-page');await page.locator('.not-found').waitFor();
+      assert.equal(await page.locator('.error-destinations a').count(),2);
+      assert.equal(await page.locator('.error-brand img').evaluate(img=>img.complete&&img.naturalWidth>0),true);
+      assert.equal(await page.locator('.error-destinations a').first().getAttribute('href'),'/?candidate=1');
+      assert.equal(await page.locator('.error-destinations a').last().getAttribute('href'),'/?recruiter=1');
+      await snap(page,width,'not-found');await page.locator('#not-found-home').click();await page.locator('.landing').waitFor();
+      check(width,'404 logo loads and recovery link returns home',true);
       await page.goto(origin); await snap(page, width, 'landing');
       await page.locator('.landing-cta .recruiter-go').scrollIntoViewIfNeeded();
       await page.locator('.landing-cta .recruiter-go').click();
