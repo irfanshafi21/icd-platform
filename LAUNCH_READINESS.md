@@ -1,13 +1,13 @@
 # Launch readiness — 15 September 2026
 
-## Implemented locally, not deployed
+## Deployed in 62fde35
 - Help/FAQ and support contact at /help.
 - Cookies/device-storage explanation at /cookies and /help#device.
 - Offline banner; does not retry submissions or claim disconnected work is saved.
 - Screening outcome summary, with file rejection distinguished from a hiring decision.
 
 ## Must resolve before a complete compliance claim
-- Confirm legal operator, country, business/support address and paid-service model.
+- Operator and free service confirmed: Irfan, India. Business address and independent legal review remain outstanding.
 - Review TERMS_DRAFT.md with appropriate legal advice, including applicable consumer and employment rules.
 - Inventory all browser storage, especially persisted AI history, and implement optional-storage controls. Do not label every local-storage feature strictly necessary.
 - Generate third-party notices from the exact deployment environment, including transitive dependencies and bundled fonts/assets. requirements.txt is not a complete license inventory.

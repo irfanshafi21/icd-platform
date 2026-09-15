@@ -40,6 +40,7 @@ const server = http.createServer((req, res) => {
 });
 async function setup(browser, width, mode) {
   const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
+  await context.addInitScript(()=>localStorage.setItem('icd-device-preferences','deny'));
   let data = fixtures();
   if (mode === 'score-recovery') {
     const c = data.candidates[0];

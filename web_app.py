@@ -287,6 +287,19 @@ def _is_completed_screening(row: dict[str, Any]) -> bool:
 
 app = FastAPI(title="ICD Platform API", version="2.0")
 app.add_middleware(GZipMiddleware, minimum_size=700, compresslevel=6)
+
+
+@app.middleware("http")
+async def security_response_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 app.mount("/assets", StaticFiles(directory=ROOT / "assets"), name="assets")
 
@@ -746,7 +759,7 @@ def recruiter_login(payload: RecruiterLogin, response: Response):
     ).execute()
     rows = result.data or []
     if not rows:
-        raise HTTPException(401, "The organization or access code is incorrect")
+        raise HTTPException(401, "The organization or access code is incorrect, or the login attempt limit was reached. After repeated attempts, wait 15 minutes before trying again.")
     auth_row = rows[0]
     login = client.auth.sign_in_with_password(
         {"email": auth_row.get("auth_email"), "password": auth_row.get("auth_password")}
