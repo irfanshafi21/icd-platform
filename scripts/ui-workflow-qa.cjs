@@ -26,7 +26,7 @@ function fixtures() {
   candidates[2].decision_status = 'Interview Eligible';
   const applications = [{ id: 61, job_id: 1, applicant_name: 'Alex Morgan', applicant_email: 'alex@example.test', resume_filename: 'Alex-Morgan.pdf', status: 'Screening', applied_at: '2026-09-08T10:30:00Z', jobs: jobs[0] }];
   jobs.forEach((j, i) => j.published_to_portal = i > 0);
-  return { company, jobs, candidates, interviews, applications, integrations: { ai: true, email: true, google_candidate_login: true, resume_inbox: false, linkedin: false }, summary: { active_jobs: 3, candidates: 3, shortlisted: 1, selected: 1, scheduled_interviews: 1 } };
+  return { company, jobs, candidates, interviews, applications, integrations: { ai: true, email: true, google_candidate_login: true, google_calendar: false, resume_inbox: false, linkedin: false }, summary: { active_jobs: 3, candidates: 3, shortlisted: 1, selected: 1, scheduled_interviews: 1 } };
 }
 const report = { phase, screenshots: [], layouts: [], checks: [], pageErrors: [], unexpectedApi: [], requests: [], blockedExternal: [] };
 const server = http.createServer((req, res) => {
@@ -337,6 +337,27 @@ let origin;
         await openMenu(page, page.locator('.candidate-actions-menu').last()); await page.locator('.candidate-actions-menu').last().locator('[data-status="Rejected"]').click(); await page.locator('#toast').filter({ hasText: 'candidate data erased' }).waitFor(); assert.equal(await page.locator('.candidate-job-card').count(), 2); check(width, 'successful rejection email removes candidate from company view', true);
       }
       await goRecruiter(page,'interviews');
+      await page.locator('#interview-filter').selectOption('Cancelled');
+      assert.equal(await page.locator('.interview-group:visible').count(),0);
+      await page.getByText('No cancelled interviews.',{exact:true}).waitFor();
+      await page.locator('#interview-filter').selectOption('All');
+      assert.equal(await page.locator('.interview-filter-empty').isVisible(),false);
+      assert.equal(await page.locator('.interview-card:visible').count(),2);
+      check(width,'interview filtering hides unrelated groups and explains empty results',true);
+      await page.locator('#schedule-toggle').click();
+      assert.equal(await page.locator('#interview-mode').inputValue(),'Physical');
+      assert.equal(await page.locator('#interview-mode option').filter({hasText:'Online'}).isDisabled(),true);
+      assert.equal(await page.locator('#interview-location').isEnabled(),true);
+      await page.getByText('Online scheduling is unavailable until Google Calendar is connected.',{exact:false}).waitFor();
+      await page.locator('#schedule-toggle').click();
+      check(width,'disconnected Calendar offers physical scheduling with an accurate explanation',true);
+      await page.route('**/api/interview-actions/clear',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Test interview removal failure'})}));
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#clear-interviews').click();
+      await page.locator('#toast').filter({hasText:'Test interview removal failure'}).waitFor();
+      assert.equal(await page.locator('#clear-interviews').isEnabled(),true);
+      assert.equal(await page.locator('.interview-card').count(),2);
+      check(width,'failed interview clearing reports the error and restores the control',true);
       await page.evaluate(()=>{const b=document.createElement('button');b.id='empty-schedule';b.textContent='Schedule the first interview';document.querySelector('.interview-card-list').append(b)});
       await page.locator('#empty-schedule').click();assert.equal(await page.locator('#interview-form').isVisible(),true);
       check(width,'dynamically rebuilt empty schedule action opens form',true);
