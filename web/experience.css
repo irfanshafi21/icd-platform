@@ -1,3 +1,48 @@
+/* Screening: compact workflow rhythm without shrinking touch targets. */
+#app .page-screening .screening-intro { background:linear-gradient(115deg,#103c34,#1e5b4b); position:relative; overflow:hidden; }
+#app .page-screening .screening-intro h2 { max-width:680px; }
+#app .page-screening .screening-steps { margin-block:24px; }
+#app .page-screening .premium-upload { transition:border-color .18s,background .18s; }
+#app .page-screening .premium-upload:hover,#app .page-screening .premium-upload:focus-within { background:#eaf6f1; border-color:#087c69; outline:2px solid #087c69; outline-offset:3px; }
+@media(max-width:700px) {
+ #app .page-screening .screening-intro { padding:22px; }
+ #app .page-screening .screening-intro p { margin-bottom:0; }
+ #app .page-screening .criteria-card,#app .page-screening .upload-card { padding:22px; }
+ #app .page-screening #details { min-height:120px; height:120px; }
+ #app .page-screening .screening-layout { gap:18px; }
+ #app .page-screening .selected-role-preview { padding:13px; }
+ #app .page-screening .criteria-tip { margin-top:18px; }
+}
+@media(prefers-reduced-motion:reduce){#app .page-screening .premium-upload{transition:none}}
+/* Screening outcome: explicit counts, readable reasons, no transient-only feedback. */
+#app .screening-outcome { margin:0 0 28px; padding:28px; border:1px solid #c9ded8; border-radius:24px; background:#fff; box-shadow:0 12px 36px #183f3210; scroll-margin-top:90px; }
+#app .screening-outcome header { display:flex; justify-content:space-between; gap:20px; align-items:start; }
+#app .screening-outcome h2 { font-size:28px; margin:8px 0; letter-spacing:-.8px; }
+#app .screening-outcome p { color:#506760; font-size:14px; line-height:1.6; }
+#app .outcome-complete { flex-shrink:0; padding:9px 13px; border-radius:100px; background:#e8f5ef; color:#17604a; font-size:12px; font-weight:700; }
+#app .outcome-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:24px 0; }
+#app .outcome-metrics>div { display:flex; flex-direction:column; padding:20px; border:1px solid #e0e9e5; border-radius:16px; background:#f7faf8; gap:6px; }
+#app .outcome-metrics>div:first-child { background:#174e40; color:white; border-color:#174e40; }
+#app .outcome-metrics strong { font-size:36px; line-height:1.1; font-variant-numeric:tabular-nums; color:inherit; }
+#app .outcome-metrics span { font-size:14px; font-weight:700; }
+#app .outcome-metrics small { font-size:12px; line-height:1.5; }
+#app .screening-outcome summary { cursor:pointer; padding:14px 0; font-weight:700; }
+#app .screening-outcome ul { list-style:none; padding:0; margin:0; }
+#app .screening-outcome li { display:flex; align-items:start; gap:16px; justify-content:space-between; padding:17px 0; border-top:1px solid #e1e9e5; }
+#app .outcome-file { min-width:0; display:grid; gap:6px; overflow-wrap:anywhere; }
+#app .outcome-file small { color:#506760; font-size:13px; line-height:1.6; }
+#app .outcome-tag { white-space:nowrap; padding:6px 10px; border-radius:8px; font-size:11px; background:#edf1f7; color:#34516d; font-weight:700; }
+#app .outcome-tag.rejected { background:#fff0ec; color:#8e3924; }
+#app .outcome-tag.failed { background:#fff3da; color:#795211; }
+#app .screening-outcome .outcome-footnote { font-size:12px; padding-top:16px; border-top:1px solid #e1e9e5; margin-bottom:0; }
+@media(max-width:700px) {
+ #app .screening-outcome { padding:20px; border-radius:18px; }
+ #app .screening-outcome header { flex-direction:column; gap:6px; }
+ #app .screening-outcome h2 { font-size:24px; }
+ #app .outcome-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ #app .outcome-metrics>div { padding:15px; }
+ #app .screening-outcome li { flex-direction:column; gap:10px; }
+}
 /* ICD experience system. Scoped above the legacy cascade during its migration.
    Layout, controls and content hierarchy are shared; access pages retain their identities. */
 :root {

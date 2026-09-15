@@ -1791,6 +1791,17 @@ def linkedin_post_job(job_id: int, request: Request, session: RecruiterSession =
     return {"ok": True, "message": "Job posted to LinkedIn"}
 
 
+@app.get("/terms", response_class=HTMLResponse, include_in_schema=False)
+def terms_of_service():
+    return HTMLResponse((WEB / "terms.html").read_text(encoding="utf-8"))
+
+
+@app.get("/help", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/cookies", response_class=HTMLResponse, include_in_schema=False)
+def help_center():
+    return HTMLResponse((WEB / "help.html").read_text(encoding="utf-8"))
+
+
 @app.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
 @app.get("/privacy/", response_class=HTMLResponse, include_in_schema=False)
 def privacy_policy():
