@@ -206,6 +206,27 @@ class BackendWorkflowTests(unittest.TestCase):
                                                      "applicant_email": "asha@example.com", "status": "Screening"}]
         return row
 
+    def test_scheduling_defers_invitation_delivery_until_after_response(self):
+        self.seed_candidate()
+        tasks = web_app.BackgroundTasks()
+        payload = web_app.InterviewPayload(candidate_id=7, candidate_name="Asha", job_role="Engineer",
+                                           scheduled_at="2026-10-01T09:30", mode="Physical", location="Office")
+        with patch.object(web_app, "_send_company_email", return_value=(True, "Sent")) as send:
+            result = web_app.create_interview(payload, tasks, self.session)
+            self.assertEqual(result["status"], "Scheduled")
+            self.assertTrue(result["email_delivery"]["queued"])
+            self.assertFalse(result["email_delivery"]["sent"])
+            send.assert_not_called()
+            self.assertEqual(len(tasks.tasks), 1)
+            task = tasks.tasks[0]
+            task.func(*task.args, **task.kwargs)
+            send.assert_called_once()
+
+    def test_invitation_exception_does_not_break_saved_interview(self):
+        with patch.object(web_app, "_send_company_email", side_effect=RuntimeError("Mail unavailable")):
+            with self.assertLogs(web_app.logger, level="ERROR"):
+                web_app._deliver_interview_invitation({"id":"company"}, "asha@example.com", "Interview", "Body", "Interview invitation")
+
     def test_publish_apply_screen_schedule_score_and_offer_workflow(self):
         created = self.client.post("/api/jobs", json={"title": "Engineer", "required_skills": ["Python"]})
         self.assertEqual(created.status_code, 200, created.text)
@@ -229,7 +250,7 @@ class BackendWorkflowTests(unittest.TestCase):
             "candidate_name": "Asha", "job_role": "Engineer", "scheduled_at": "2026-10-01T09:30",
             "mode": "Physical", "location": "Office"})
         self.assertEqual(scheduled.status_code, 200, scheduled.text)
-        self.assertTrue(scheduled.json()["email_delivery"]["sent"])
+        self.assertTrue(scheduled.json()["email_delivery"]["queued"])
         saved = self.client.patch(f"/api/interviews/{scheduled.json()['id']}", json={"interview_score": 80})
         self.assertEqual(saved.status_code, 200, saved.text)
         self.assertEqual(saved.json()["decision_status"], "Selected")

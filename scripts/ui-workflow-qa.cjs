@@ -92,7 +92,7 @@ async function setup(browser, width, mode) {
       else if (payload.status === 'Rejected') { data.candidates = data.candidates.filter(c => c.id !== id); result = { deleted: true, email_delivery: { sent: true } }; }
       else { Object.assign(item, payload, payload.status ? { decision_status: payload.status } : {}); result = item; }
     }
-    else if (api === '/api/interviews' && method === 'POST') { const item = { ...payload, id: 39, status: 'Scheduled', interview_score: null }; data.interviews.push(item); result = { ...item, email_delivery: { sent: true } }; }
+    else if (api === '/api/interviews' && method === 'POST') { const item = { ...payload, id: 39, status: 'Scheduled', interview_score: null }; data.interviews.push(item); result = { ...item, email_delivery: { sent: false, queued: true } }; }
     else if (api === '/api/interview-questions') result = { questions: { Technical: [{ question: 'How would you validate the quality of a design system?', what_good_looks_like: 'Discuss adoption, accessibility, consistency, and delivery outcomes.' }] } };
     else if (api === '/api/insights') { if (heldInsight) { const held = heldInsight; heldInsight = null; await held.promise; } result = { answer: '## Your strongest matches\n\nAarav Shah leads with strong role evidence.\n\n- Review the portfolio\n- Prepare a focused interview\n\n' + Array.from({ length: 12 }, (_, i) => `### Finding ${i + 1}\nKeep decisions grounded in role evidence.\n`).join('\n') }; }
     else if (api === '/api/offers.zip' && method === 'POST') return route.fulfill({ contentType: 'application/zip', body: Buffer.from('504b0506000000000000000000000000000000000000', 'hex') });
@@ -375,6 +375,34 @@ let origin;
 const candidate = await setup(browser, width, 'candidate'); await candidate.page.goto(origin + '/?candidate=1'); await candidate.page.locator('.candidate-portal').waitFor(); await snap(candidate.page, width, 'candidate-portal'); await candidate.page.locator('#search').fill('TypeScript'); assert.equal(await candidate.page.locator('[data-job]').count(), 1); await candidate.page.locator('#search').fill(''); check(width, 'candidate portal search filters jobs by skill', true); await candidate.page.locator('[data-job="1"]').click(); await candidate.page.locator('#apply').waitFor(); await snap(candidate.page, width, 'candidate-application'); await candidate.page.locator('[name="resume"]').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('not a resume')}); await candidate.page.locator('#resume-upload-error').filter({hasText:'PDF or DOCX'}).waitFor(); assert.equal(await candidate.page.locator('[name="resume"]').evaluate(el=>el.files.length),0); await candidate.page.locator('[name="resume"]').setInputFiles({ name: 'QA-Resume.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 mock resume for isolated UI test') }); assert.equal(await candidate.page.locator('[data-resume-name]').innerText(),'QA-Resume.pdf'); assert.equal(await candidate.page.locator('.resume-upload-zone').isVisible(),false); await snap(candidate.page,width,'candidate-upload-preview'); await candidate.page.locator('[data-remove-resume]').click(); assert.equal(await candidate.page.locator('.resume-upload-zone').isVisible(),true); await candidate.page.locator('#resume-upload').evaluate(el=>{const dt=new DataTransfer();dt.items.add(new File(['%PDF-1.4 mock resume'],'Dropped-resume.pdf',{type:'application/pdf'}));el.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}))}); assert.equal(await candidate.page.locator('[data-resume-name]').innerText(),'Dropped-resume.pdf'); check(width,'resume picker validates type, previews, removes and accepts drag-and-drop',true); await candidate.page.locator('#apply button.primary').click(); await candidate.page.locator('.candidate-portal').waitFor(); assert.equal(await candidate.page.locator('[data-job="1"]').isDisabled(), true); await candidate.page.locator('[data-tab="apps"]').click(); await candidate.page.locator('.candidate-application-grid').filter({ hasText: 'Submitted' }).waitFor(); report.checks.push({ width, name: 'candidate apply records application and prevents duplicate apply', passed: true }); await candidate.context.close();
       const owner = await setup(browser, width, 'owner'); await owner.page.goto(origin + '/?owner=1'); await owner.page.locator('.owner-portal').waitFor(); await snap(owner.page, width, 'owner'); await owner.page.locator('[data-company-toggle]').first().click(); assert.equal(await owner.page.locator('.owner-company-card.expanded').count(), 1); check(width, 'owner company details expand', true); await owner.page.locator('#owner-company-search').fill('Arc'); check(width, 'owner company search filters cards', await owner.page.locator('.owner-company-card:visible').count() === 1); await owner.context.close();
     }
+    const scheduling = await setup(browser,1440,'scheduling');
+    await scheduling.page.goto(origin+'/?recruiter=1');
+    await scheduling.page.locator('[data-org]').first().click();
+    await scheduling.page.locator('#code').fill('123456');
+    await scheduling.page.locator('#login').click();
+    await scheduling.page.locator('.workspace').waitFor();
+    await goRecruiter(scheduling.page,'interviews');
+    const bootstrapBefore = report.requests.filter(r=>r.mode==='scheduling'&&r.api==='/api/bootstrap').length;
+    await scheduling.page.locator('#schedule-toggle').click();
+    await scheduling.page.locator('#interview-candidate').selectOption('13');
+    await scheduling.page.locator('#interview-date').fill('2026-12-01T10:00');
+    await scheduling.page.locator('#interview-location').fill('Test office');
+    await scheduling.page.locator('.scheduler-submit').click();
+    await scheduling.page.locator('#toast').filter({hasText:'Invitation is being sent'}).waitFor();
+    assert.equal(await scheduling.page.locator('[data-interview-status="39"]').count(),1);
+    assert.equal(report.requests.filter(r=>r.mode==='scheduling'&&r.api==='/api/bootstrap').length,bootstrapBefore);
+    check(1440,'scheduled interview appears immediately without reloading all workspace data',true);
+    const guidesBefore=report.requests.filter(r=>r.mode==='scheduling'&&r.api==='/api/interview-questions').length;
+    const pagesBefore=scheduling.context.pages().length;
+    const opened=scheduling.context.waitForEvent('page');
+    await scheduling.page.locator('.meet-link').first().click();
+    const meetingPage=await opened;
+    await meetingPage.waitForLoadState('domcontentloaded').catch(()=>{});
+    assert.equal(scheduling.context.pages().length,pagesBefore+1);
+    assert.equal(report.requests.filter(r=>r.mode==='scheduling'&&r.api==='/api/interview-questions').length,guidesBefore);
+    assert(report.blockedExternal.some(r=>r.mode==='scheduling'&&r.url.startsWith('https://meet.google.com/')));
+    check(1440,'Meet click opens only the meeting tab without a competing AI popup',true);
+    await scheduling.context.close();
     const recovery = await setup(browser, 1440, 'score-recovery'); await recovery.page.goto(origin + '/?recruiter=1'); await recovery.page.locator('[data-org]').first().click(); await recovery.page.locator('#code').fill('123456'); await recovery.page.locator('#login').click(); await recovery.page.locator('.workspace').waitFor(); await goRecruiter(recovery.page, 'interviews');
     const zeroCard = recovery.page.locator('.interview-card').filter({ has: recovery.page.locator('[data-interview-status="31"]') }); await zeroCard.locator('.interview-score button').filter({ hasText: 'Sync saved score' }).waitFor(); assert.equal(await zeroCard.locator('.interview-score input').inputValue(), '0'); assert.equal(await zeroCard.locator('.interview-score input').isDisabled(), true); await zeroCard.locator('.interview-score button').click(); await zeroCard.locator('.interview-score button').filter({ hasText: 'Score locked' }).waitFor(); assert.equal(await zeroCard.locator('.interview-score button').isDisabled(), true); const zeroRequest = report.requests.find(r => r.mode === 'score-recovery' && r.method === 'PATCH'); assert.equal(zeroRequest.payload.interview_score, 0); check(1440, 'zero score recovers application status using profile email fallback', true); await recovery.context.close();
     assert.equal(report.pageErrors.length, 0, 'No uncaught browser errors');

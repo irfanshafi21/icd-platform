@@ -28,7 +28,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from fastapi import Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import BackgroundTasks, Cookie, Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.gzip import GZipMiddleware
@@ -1245,8 +1245,16 @@ class InterviewPayload(BaseModel):
     notes: str = ""
 
 
+def _deliver_interview_invitation(company, email, subject, body, badge):
+    """Send after the scheduling response; delivery errors must not undo a saved interview."""
+    try:
+        _send_company_email(company, email, subject, body, badge)
+    except Exception:
+        logger.exception("Interview invitation delivery failed: company=%s", company.get("id"))
+
+
 @app.post("/api/interviews")
-def create_interview(payload: InterviewPayload, session: RecruiterSession = Depends(_session)):
+def create_interview(payload: InterviewPayload, background_tasks: BackgroundTasks, session: RecruiterSession = Depends(_session)):
     data = payload.model_dump()
     if payload.candidate_id is None:
         raise HTTPException(400, "Choose a screened candidate")
@@ -1275,7 +1283,7 @@ def create_interview(payload: InterviewPayload, session: RecruiterSession = Depe
     company_name = session.company.get("name") or "the hiring company"
     when = payload.scheduled_at.replace("T", " ")
     venue = data.get("meeting_link") if payload.mode.lower() == "online" else data.get("location")
-    delivered, delivery_message = _send_company_email(session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
+    background_tasks.add_task(_deliver_interview_invitation, session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
         f"Hello {payload.candidate_name},\n\nYour application has progressed to the interview stage for {payload.job_role or 'the position'} at {company_name}.\n\nInterview type: {payload.interview_type}\nDate and time: {when}\nDuration: {payload.duration_minutes} minutes\nMode: {payload.mode}\n{'Google Meet link' if payload.mode.lower() == 'online' else 'Location'}: {venue}\n\nPlease join a few minutes early and reply to this email if you need assistance. Your candidate portal status has also been updated.\n\nRegards,\n{company_name} Hiring Team", "Interview invitation")
     if email:
         query = session.client.table("public_applications").update({"status": "Interview Scheduled"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
@@ -1283,7 +1291,8 @@ def create_interview(payload: InterviewPayload, session: RecruiterSession = Depe
             query = query.eq("job_id", candidate["job_id"])
         query.execute()
     return {**rows[0], "meeting_link": data.get("meeting_link", ""),
-            "email_delivery": {"sent": delivered, "message": delivery_message}}
+            "email_delivery": {"sent": False, "queued": bool(email),
+                               "message": "Invitation queued" if email else "Candidate email was not captured"}}
 
 
 @app.patch("/api/interviews/{interview_id}")
