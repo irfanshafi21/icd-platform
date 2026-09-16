@@ -346,7 +346,7 @@ let origin;
       check(width,'interview filtering hides unrelated groups and explains empty results',true);
       await page.locator('#schedule-toggle').click();
       assert.equal(await page.locator('#interview-mode').inputValue(),'Physical');
-      assert.equal(await page.locator('#interview-mode option').filter({hasText:'Online'}).isDisabled(),true);
+      assert.equal(await page.locator('#interview-mode option').filter({hasText:'Online'}).evaluate(option => option.disabled),true);
       assert.equal(await page.locator('#interview-location').isEnabled(),true);
       await page.getByText('Online scheduling is unavailable until Google Calendar is connected.',{exact:false}).waitFor();
       await page.locator('#schedule-toggle').click();
