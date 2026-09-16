@@ -42,6 +42,9 @@ async function setup(browser, width, mode) {
   const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
   await context.addInitScript(()=>localStorage.setItem('icd-device-preferences','deny'));
   let data = fixtures();
+  if (mode === 'comparison') {
+    data.candidates.push(...[14,15].map((id,i)=>({...data.candidates[0],id,candidate_name:`Extra candidate ${i+1}`,score:70+i,decision_status:'Rejected',matched_skills:['Python','SQL']})));
+  }
   if (mode === 'score-recovery') {
     const c = data.candidates[0];
     Object.assign(c, { email: '', profile_json: JSON.stringify({ email: 'recovery@example.test' }), score: 40, overall_score: 40, interview_score: 0, decision_status: 'Interview Completed' });
@@ -405,6 +408,40 @@ const candidate = await setup(browser, width, 'candidate'); await candidate.page
     await scheduling.context.close();
     const recovery = await setup(browser, 1440, 'score-recovery'); await recovery.page.goto(origin + '/?recruiter=1'); await recovery.page.locator('[data-org]').first().click(); await recovery.page.locator('#code').fill('123456'); await recovery.page.locator('#login').click(); await recovery.page.locator('.workspace').waitFor(); await goRecruiter(recovery.page, 'interviews');
     const zeroCard = recovery.page.locator('.interview-card').filter({ has: recovery.page.locator('[data-interview-status="31"]') }); await zeroCard.locator('.interview-score button').filter({ hasText: 'Sync saved score' }).waitFor(); assert.equal(await zeroCard.locator('.interview-score input').inputValue(), '0'); assert.equal(await zeroCard.locator('.interview-score input').isDisabled(), true); await zeroCard.locator('.interview-score button').click(); await zeroCard.locator('.interview-score button').filter({ hasText: 'Score locked' }).waitFor(); assert.equal(await zeroCard.locator('.interview-score button').isDisabled(), true); const zeroRequest = report.requests.find(r => r.mode === 'score-recovery' && r.method === 'PATCH'); assert.equal(zeroRequest.payload.interview_score, 0); check(1440, 'zero score recovers application status using profile email fallback', true); await recovery.context.close();
+    for (const width of [390,1440]) {
+      const comparison = await setup(browser,width,'comparison'), page=comparison.page;
+      await page.goto(origin+'/?recruiter=1'); await page.locator('[data-org]').first().click(); await page.locator('#code').fill('123456'); await page.locator('#login').click(); await page.locator('.workspace').waitFor(); await goRecruiter(page,'candidates');
+      await page.locator('#select-shown').click();
+      assert.equal(await page.locator('[data-compare-candidate]:checked').count(),5);
+      await page.locator('#compare-selected').click();
+      assert.equal(await page.locator('.comparison-bar-row').count(),5);
+      assert.equal(await page.locator('.comparison-table thead th').count(),6);
+      await page.locator('#comparison-metric').selectOption('4');
+      assert.equal(await page.locator('.comparison-bar-row b').allTextContents().then(values=>values.filter(v=>v==='N/A').length),4);
+      await page.locator('#differences-only').check();
+      assert.equal(await page.locator('.comparison-table tbody tr:not(.comparison-difference):visible').count(),0);
+      assert(await page.locator('.comparison-table tbody tr:visible').count()>0);
+      await page.screenshot({path:path.join(output,`${width}-evidence-comparison.png`)});
+      assert(await page.locator('.evidence-comparison').evaluate(el=>el.getBoundingClientRect().right<=innerWidth));
+      await page.locator('#compare-close').click();
+      await page.locator('#select-shown').click();
+      assert.equal(await page.locator('[data-compare-candidate]:checked').count(),0);
+      await page.locator('#select-shown').click();
+      await page.locator('#talent-filter').selectOption('rejected');
+      assert.equal(await page.locator('[data-compare-candidate]:checked').count(),2);
+      await page.locator('#compare-selected').click();
+      assert.equal(await page.locator('.comparison-bar-row').count(),2);
+      await page.locator('#compare-close').click();
+      await page.locator('#bulk-reject').click();
+      await page.locator('#toast').filter({hasText:'failed'}).waitFor();
+      const rejected=report.requests.filter(r=>r.width===width&&r.mode==='comparison'&&r.method==='PATCH');
+      assert.deepEqual(rejected.map(r=>r.api).sort(),['/api/candidates/14','/api/candidates/15']);
+      await page.locator('#talent-search').fill('no-matching-candidate');
+      assert.equal(await page.locator('#select-shown').isDisabled(),true);
+      assert.equal(await page.locator('#bulk-reject').isDisabled(),true);
+      check(width,'all five candidates compare and filtered bulk actions exclude hidden candidates',true);
+      await comparison.context.close();
+    }
     assert.equal(report.pageErrors.length, 0, 'No uncaught browser errors');
     assert.equal(report.unexpectedApi.length, 0, 'Every tested API request is explicitly modeled');
     if (phase !== 'before') {
