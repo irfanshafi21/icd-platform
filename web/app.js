@@ -122,7 +122,7 @@ function applyHiringWorkflowRules(scope=document){
   if(mode&&place&&!mode.dataset.workflowBound){
     if(state.recruiter?.integrations?.google_calendar===false){
       mode.querySelector('option[value="Online"],option:first-child').disabled=true;mode.value='Physical';
-      const hint=scope.querySelector('.scheduler-heading>span');if(hint)hint.textContent='Online scheduling is unavailable until Google Calendar is connected. You can schedule a physical interview.';
+      const hint=scope.querySelector('.scheduler-heading>span');if(hint){hint.classList.add('calendar-unavailable');hint.textContent='Online scheduling is unavailable until Google Calendar is connected. You can schedule a physical interview.';}
     }
     const sync=()=>{const online=mode.value==='Online';place.disabled=online;if(online)place.value='';place.placeholder=online?'Google Meet link is created automatically':'Enter the interview location'};mode.dataset.workflowBound='true';mode.addEventListener('change',sync);sync()}
   scope.querySelectorAll('[data-interview-status]').forEach(select=>{const interview=state.recruiter?.interviews?.find(i=>String(i.id)===select.dataset.interviewStatus),box=select.closest('.interview-card')?.querySelector('.interview-score');if(interview?.interview_score!==null&&interview?.interview_score!==undefined&&box&&!box.dataset.locked){box.dataset.locked='true';box.querySelector('input').disabled=true;box.querySelector('button').disabled=true;box.querySelector('button').textContent='Score locked'}});

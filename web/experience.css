@@ -1285,3 +1285,6 @@ body>.notification-panel .notification-close { color: #fff !important; }
  #app .candidate-portal .candidate-tabs { width:100%; }
  #app .candidate-portal .candidate-tabs button { flex:1; padding:10px 8px!important; white-space:normal!important; }
 }
+
+/* Keep scheduling availability visible on compact screens. */
+#app .page-interviews .scheduler-heading>span.calendar-unavailable {display:block!important;max-width:100%;white-space:normal;text-align:left;}
