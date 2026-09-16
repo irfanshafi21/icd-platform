@@ -55,8 +55,8 @@ async function setup(browser, width, mode) {
   let candidateApplications = [];
   let rejectionAttempts = 0;
   let scoreSaveAttempts = 0;
-  let heldInsight, failInsight=false;
-  const controls = { failNextInsight() { failInsight=true; }, deferNextInsight() { let release; const promise = new Promise(resolve => release = resolve); heldInsight = { promise, release }; return release; } };
+  let heldInsight, failInsight=false, failOwnerAnalytics=false;
+  const controls = { failNextOwnerAnalytics() { failOwnerAnalytics=true; }, failNextInsight() { failInsight=true; }, deferNextInsight() { let release; const promise = new Promise(resolve => release = resolve); heldInsight = { promise, release }; return release; } };
   await context.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin !== origin) { report.blockedExternal.push({ width, mode, url: url.origin + url.pathname }); return route.abort(); }
@@ -76,6 +76,10 @@ async function setup(browser, width, mode) {
     else if (api === '/api/candidate/send-otp') result = { sent: true };
     else if (api === '/api/candidate/verify-otp') { candidateSignedIn = true; result = { ok: true }; }
     else if (api === '/api/owner/registrations') result = { owner_email: 'owner@example.test', companies: [company, { ...company, id: 'qa-two', name: 'Arc Studio', industry: 'Design' }, { ...company, id: 'qa-three', name: 'Vertex Labs' }], registrations: [{ id: 91, company_id: company.id, company_name: company.name, status: 'approved', industry: 'Technology', company_size: '51–200', contact_name: 'Taylor Rivers', business_email: 'team@example.test', website: 'https://example.com', reviewed_at: '2026-09-07T10:00:00Z' }, { id: 92, company_name: 'Helios Research', status: 'pending', industry: 'Research', company_size: '11–50', contact_name: 'Jordan Lee', business_email: 'jordan@example.test', website: 'https://example.com', message: 'We are growing a team of designers and engineers.' }] };
+    else if (api === '/api/owner/analytics') {
+      if(failOwnerAnalytics){failOwnerAnalytics=false;status=503;result={detail:'Activity unavailable'};}
+      else result={generated_at:new Date().toISOString(),companies:[company,{id:'qa-two',name:'Arc Studio'},{id:'qa-three',name:'Vertex Labs'}].map((c,i)=>({id:c.id,name:c.name,jobs:3-i,active_jobs:2,applications:12,screened:i?0:5,selected:i?0:1,strong:i?0:3,potential:i?0:2,low:0,unscored:0,average_score:i?null:85,interviews:2,scheduled:1,completed:1,cancelled:0,last_screened:null,trend:[{day:new Date().toISOString().slice(0,10),count:i?0:5}]}))};
+    }
     else if (api === '/api/linkedin/connection') result = { connected: false };
     else if (/^\/api\/interviews\/\d+$/.test(api) && method === 'PATCH') {
       const item = data.interviews.find(i => i.id === +api.split('/').pop()); Object.assign(item, payload);
@@ -119,7 +123,7 @@ async function snap(page, width, name) {
   await page.waitForTimeout(180);
   const layout = await page.evaluate(() => {
     const viewport = innerWidth;
-    const overflow = [...document.querySelectorAll('main *, .workspace *, .notification-panel')].filter(el => { const r = el.getBoundingClientRect(); return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && r.width && r.height && (r.left < -2 || r.right > viewport + 2) && !el.closest('.ticker-track, .marquee-track, .landing-marquee, .sidebar, nav, [hidden], details:not([open])>div'); }).slice(0, 18).map(el => ({ tag: el.tagName, cls: String(el.className).slice(0, 100), text: el.textContent.trim().slice(0, 45), x: Math.round(el.getBoundingClientRect().left), right: Math.round(el.getBoundingClientRect().right) }));
+    const overflow = [...document.querySelectorAll('main *, .workspace *, .notification-panel')].filter(el => { const r = el.getBoundingClientRect(); return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && r.width && r.height && (r.left < -2 || r.right > viewport + 2) && !el.closest('.ticker-track, .marquee-track, .landing-marquee, .sidebar, .owner-report-table, nav, [hidden], details:not([open])>div'); }).slice(0, 18).map(el => ({ tag: el.tagName, cls: String(el.className).slice(0, 100), text: el.textContent.trim().slice(0, 45), x: Math.round(el.getBoundingClientRect().left), right: Math.round(el.getBoundingClientRect().right) }));
     const popovers = [...document.querySelectorAll('.card-action-popover:popover-open')].map(el => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height }; });
     const measure = selector => { const el = document.querySelector(selector); if (!el) return null; const r = el.getBoundingClientRect(), s = getComputedStyle(el); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height, display: s.display, position: s.position, inset: s.inset, transform: s.transform, gap: s.gap, justifyContent: s.justifyContent, gridTemplateRows: s.gridTemplateRows }; };
     return { viewport, documentWidth: document.documentElement.scrollWidth, overflow, popovers, header: { title: measure('.workspace-head h1'), actions: measure('.header-actions'), notification: measure('.notification-button'), brand: measure('.company-sidebar-brand'), signout: measure('#signout') }, publicCard: measure('.premium-job-card') };
@@ -376,7 +380,24 @@ let origin;
       if (width === 1440) { await guest.page.locator('#email').fill('alex@example.test'); await guest.page.locator('#send').click(); await guest.page.locator('#token').fill('123456'); await guest.page.locator('#verify').click(); await guest.page.locator('.candidate-portal').waitFor(); report.checks.push({ width, name: 'candidate email code flow reaches portal with mocked transport', passed: true }); }
       await guest.context.close();
 const candidate = await setup(browser, width, 'candidate'); await candidate.page.goto(origin + '/?candidate=1'); await candidate.page.locator('.candidate-portal').waitFor(); await snap(candidate.page, width, 'candidate-portal'); await candidate.page.locator('#search').fill('TypeScript'); assert.equal(await candidate.page.locator('[data-job]').count(), 1); await candidate.page.locator('#search').fill(''); check(width, 'candidate portal search filters jobs by skill', true); await candidate.page.locator('[data-job="1"]').click(); await candidate.page.locator('#apply').waitFor(); await snap(candidate.page, width, 'candidate-application'); await candidate.page.locator('[name="resume"]').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('not a resume')}); await candidate.page.locator('#resume-upload-error').filter({hasText:'PDF or DOCX'}).waitFor(); assert.equal(await candidate.page.locator('[name="resume"]').evaluate(el=>el.files.length),0); await candidate.page.locator('[name="resume"]').setInputFiles({ name: 'QA-Resume.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 mock resume for isolated UI test') }); assert.equal(await candidate.page.locator('[data-resume-name]').innerText(),'QA-Resume.pdf'); assert.equal(await candidate.page.locator('.resume-upload-zone').isVisible(),false); await snap(candidate.page,width,'candidate-upload-preview'); await candidate.page.locator('[data-remove-resume]').click(); assert.equal(await candidate.page.locator('.resume-upload-zone').isVisible(),true); await candidate.page.locator('#resume-upload').evaluate(el=>{const dt=new DataTransfer();dt.items.add(new File(['%PDF-1.4 mock resume'],'Dropped-resume.pdf',{type:'application/pdf'}));el.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}))}); assert.equal(await candidate.page.locator('[data-resume-name]').innerText(),'Dropped-resume.pdf'); check(width,'resume picker validates type, previews, removes and accepts drag-and-drop',true); await candidate.page.locator('#apply button.primary').click(); await candidate.page.locator('.candidate-portal').waitFor(); assert.equal(await candidate.page.locator('[data-job="1"]').isDisabled(), true); await candidate.page.locator('[data-tab="apps"]').click(); await candidate.page.locator('.candidate-application-grid').filter({ hasText: 'Submitted' }).waitFor(); report.checks.push({ width, name: 'candidate apply records application and prevents duplicate apply', passed: true }); await candidate.context.close();
-      const owner = await setup(browser, width, 'owner'); await owner.page.goto(origin + '/?owner=1'); await owner.page.locator('.owner-portal').waitFor(); await snap(owner.page, width, 'owner'); await owner.page.locator('[data-company-toggle]').first().click(); assert.equal(await owner.page.locator('.owner-company-card.expanded').count(), 1); check(width, 'owner company details expand', true); await owner.page.locator('#owner-company-search').fill('Arc'); check(width, 'owner company search filters cards', await owner.page.locator('.owner-company-card:visible').count() === 1); await owner.context.close();
+      const owner = await setup(browser, width, 'owner'); await owner.page.goto(origin + '/?owner=1'); await owner.page.locator('.owner-portal').waitFor(); await owner.page.locator('.owner-kpis').waitFor(); await snap(owner.page, width, 'owner');
+      assert.equal(await owner.page.locator('.owner-kpis article').count(),6);
+      await owner.page.locator('#owner-report-company').selectOption('qa-two');
+      assert.equal(await owner.page.locator('.owner-report-table tbody tr').count(),1);
+      assert.equal(await owner.page.locator('.owner-kpis article').nth(2).locator('strong').innerText(),'0');
+      await owner.page.locator('#owner-report-company').selectOption('');
+      assert.equal(await owner.page.locator('.owner-report-table tbody tr').count(),3);
+      await owner.page.locator('.owner-trend-values summary').click();
+      assert.equal(await owner.page.locator('.owner-trend-values>div>span').count(),30);
+      await owner.page.locator('.owner-trend-values summary').click();
+      check(width,'owner charts show aggregate activity and filter by company',true);
+      owner.controls.failNextOwnerAnalytics();
+      await owner.page.locator('[data-refresh-companies]').click();
+      await owner.page.locator('[data-retry-owner-analytics]').waitFor();
+      assert.equal(await owner.page.locator('.owner-kpis').count(),0);
+      await owner.page.locator('[data-retry-owner-analytics]').click();
+      await owner.page.locator('.owner-kpis').waitFor();
+      check(width,'owner activity failures show unavailable state and recover on retry',true); await owner.page.locator('[data-company-toggle]').first().click(); assert.equal(await owner.page.locator('.owner-company-card.expanded').count(), 1); check(width, 'owner company details expand', true); await owner.page.locator('#owner-company-search').fill('Arc'); check(width, 'owner company search filters cards', await owner.page.locator('.owner-company-card:visible').count() === 1); await owner.context.close();
     }
     const scheduling = await setup(browser,1440,'scheduling');
     await scheduling.page.goto(origin+'/?recruiter=1');

@@ -553,6 +553,19 @@ def deactivate_company(company_id: str, session: CandidateSession = Depends(_own
     return {"ok": True}
 
 
+@app.get("/api/owner/analytics")
+def owner_analytics(session: CandidateSession = Depends(_owner_session)):
+    """Owner-only aggregate statistics; never returns resumes or candidate identity."""
+    try:
+        result = session.client.rpc("owner_platform_analytics", {}).execute().data
+        if not isinstance(result, dict) or not isinstance(result.get("companies"), list):
+            raise ValueError("Invalid analytics response")
+        return result
+    except Exception:
+        logger.exception("Owner analytics could not be loaded")
+        raise HTTPException(503, "Activity reports are unavailable. Please retry shortly.")
+
+
 @app.post("/api/owner/registrations/{registration_id}/decision")
 def decide_registration(registration_id: str, payload: OwnerDecision,
                         session: CandidateSession = Depends(_owner_session)):
