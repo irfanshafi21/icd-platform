@@ -206,6 +206,25 @@ class BackendWorkflowTests(unittest.TestCase):
                                                      "applicant_email": "asha@example.com", "status": "Screening"}]
         return row
 
+    def test_interview_guide_completes_single_question_response(self):
+        import ai_engine
+        with patch.object(ai_engine, "_call_json", return_value={"Technical Validation": [{"question":"Explain your Python testing approach.", "what_good_looks_like":"Specific test cases."}]}):
+            guide = ai_engine.generate_interview_questions({}, {"matched_skills":["Python"], "gaps":["Deployment evidence"]}, "Python engineer")
+        self.assertEqual(len(guide),4)
+        self.assertTrue(all(len(items)==3 for items in guide.values()))
+        questions=[item["question"] for items in guide.values() for item in items]
+        self.assertEqual(len(set(questions)),12)
+        self.assertIn("Explain your Python testing approach.",questions)
+        self.assertTrue(all(item["what_good_looks_like"] for items in guide.values() for item in items))
+
+    def test_interview_guide_handles_wrapped_duplicates_and_empty_entries(self):
+        import ai_engine
+        guide=ai_engine._complete_interview_guide({"questions":{"Technical Validation":[None,{},"A useful question?","A useful question?"]}}, {})
+        self.assertTrue(all(len(items)==3 for items in guide.values()))
+        questions=[item["question"] for items in guide.values() for item in items]
+        self.assertEqual(len(set(questions)),12)
+        self.assertTrue(any(item.get("source") for items in guide.values() for item in items))
+
     def test_scheduling_defers_invitation_delivery_until_after_response(self):
         self.seed_candidate()
         tasks = web_app.BackgroundTasks()

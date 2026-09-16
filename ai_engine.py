@@ -786,6 +786,62 @@ Return ONLY valid JSON with this exact schema:
     return _call_json(prompt)
 
 
+def _complete_interview_guide(result: dict, score_data: dict) -> dict:
+    """Keep grounded AI questions and complete short responses with transparent prompts."""
+    skills = score_data.get("matched_skills") or []
+    skill = next((s.strip() for s in skills if isinstance(s, str) and s.strip()), "a skill required by this role") if isinstance(skills, list) else "a skill required by this role"
+    gaps = score_data.get("gaps") or []
+    gap = next((g.strip() for g in gaps if isinstance(g, str) and g.strip()), "an area where your experience is still developing") if isinstance(gaps, list) else "an area where your experience is still developing"
+    defaults = {
+        "Technical Validation": [
+            (f"How would you apply {skill} to a realistic task in this role? Explain your approach step by step.", "A clear approach, relevant constraints, trade-offs and a way to verify the result."),
+            ("How would you diagnose a task that is producing an unexpected result in this role?", "A structured investigation, evidence to collect, possible causes and validation of the fix."),
+            ("How would you compare two possible solutions to an important requirement in the job description?", "Explicit criteria, practical trade-offs, risks and a reasoned choice.")],
+        "Experience Deep-Dive": [
+            ("Choose an experience from your background that best relates to this role. What did you personally contribute?", "A specific example, clear ownership, actions and outcomes; distinguish personal work from team work."),
+            ("Describe a difficult decision in work, study or a personal project. What alternatives did you consider?", "Relevant context, alternatives, reasoning and reflection without requiring a particular employment history."),
+            ("Tell me about feedback that changed your approach. What did you do differently afterward?", "Concrete feedback, the response to it and evidence of learning or improvement.")],
+        "Gap Probing": [
+            (f"The screening flagged this area for clarification: {gap}. What evidence or context would help us understand it?", "Treat the screening as a question, not a verified deficiency; listen for relevant evidence and context."),
+            ("Which requirement in this role would need the most learning from you, and how would you build that capability?", "An honest assessment, transferable skills, a practical learning plan and milestones."),
+            ("How would you handle an unfamiliar task while maintaining quality and knowing when to ask for help?", "Research, appropriate support, clear limits and checks before relying on the result.")],
+        "Culture & Motivation": [
+            ("Which responsibilities in this role interest you most, and why?", "An understanding of the work and specific, job-related motivation."),
+            ("How would you resolve a disagreement with a colleague about how to complete a task?", "Listening, respectful discussion, evidence and a shared path forward."),
+            ("How do you prioritize when several important tasks have competing deadlines?", "Impact, urgency, dependencies, communication and realistic commitments.")],
+    }
+    source = result.get("questions", result) if isinstance(result, dict) else {}
+    if not isinstance(source, dict):
+        source = {"Technical Validation": source} if isinstance(source, list) else {}
+    completed, seen = {}, set()
+    for section, fallback in defaults.items():
+        entries = source.get(section, [])
+        entries = entries if isinstance(entries, list) else []
+        output = []
+        for entry in entries:
+            item = {"question": entry} if isinstance(entry, str) else entry
+            if not isinstance(item, dict):
+                continue
+            question = str(item.get("question") or "").strip()
+            key = " ".join(question.casefold().split()).rstrip("?.!")
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            output.append({"question": question, "what_good_looks_like": item.get("what_good_looks_like") or item.get("rubric") or "A concrete example, clear reasoning and relevant evidence."})
+            if len(output) == 3:
+                break
+        for question, rubric in fallback:
+            if len(output) == 3:
+                break
+            key = " ".join(question.casefold().split()).rstrip("?.!")
+            if key in seen:
+                continue
+            seen.add(key)
+            output.append({"question": question, "what_good_looks_like": rubric, "source": "Supplementary discussion prompt"})
+        completed[section] = output
+    return completed
+
+
 def generate_interview_questions(profile: dict, score_data: dict, job_description: str) -> dict:
     """
     Generate role- and candidate-specific interview questions, grouped by
@@ -794,7 +850,7 @@ def generate_interview_questions(profile: dict, score_data: dict, job_descriptio
     against rather than just a bare question.
     """
     prompt = f"""You are preparing an interview guide for a recruiter. Based on the candidate's profile,
-their identified gaps, and the job description, generate targeted interview questions.
+their identified gaps, and the job description, generate exactly 12 distinct interview questions: exactly 3 in each of the four sections.
 
 For EACH question, also provide "what_good_looks_like": concrete, specific points a strong
 answer should cover, grounded in the job description and this candidate's actual background
@@ -818,7 +874,7 @@ IDENTIFIED GAPS:
 MATCHED SKILLS AND SCORE EVIDENCE:
 {json.dumps({"matched_skills": score_data.get('matched_skills', []), "breakdown": score_data.get('breakdown', {}), "summary": score_data.get('summary', '')})}
 
-Return ONLY valid JSON with this exact schema (3-4 items per section):
+Return ONLY valid JSON with this exact schema (exactly 3 items per section, 12 questions total; the single item shown is only an example):
 {{
   "Technical Validation": [
     {{"question": "...", "what_good_looks_like": "specific points a strong answer covers"}}
@@ -834,7 +890,7 @@ Return ONLY valid JSON with this exact schema (3-4 items per section):
   ]
 }}
 """
-    return _call_json(prompt)
+    return _complete_interview_guide(_call_json(prompt), score_data)
 
 
 APP_KNOWLEDGE = """
