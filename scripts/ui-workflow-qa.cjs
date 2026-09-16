@@ -55,8 +55,8 @@ async function setup(browser, width, mode) {
   let candidateApplications = [];
   let rejectionAttempts = 0;
   let scoreSaveAttempts = 0;
-  let heldInsight, failInsight=false, failOwnerAnalytics=false;
-  const controls = { failNextOwnerAnalytics() { failOwnerAnalytics=true; }, failNextInsight() { failInsight=true; }, deferNextInsight() { let release; const promise = new Promise(resolve => release = resolve); heldInsight = { promise, release }; return release; } };
+  let heldInsight, failInsight=false, failOwnerAnalytics=false, registrationStatus='pending';
+  const controls = { approveRegistration() {registrationStatus='approved';}, failNextOwnerAnalytics() { failOwnerAnalytics=true; }, failNextInsight() { failInsight=true; }, deferNextInsight() { let release; const promise = new Promise(resolve => release = resolve); heldInsight = { promise, release }; return release; } };
   await context.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url());
     if (url.origin !== origin) { report.blockedExternal.push({ width, mode, url: url.origin + url.pathname }); return route.abort(); }
@@ -80,6 +80,8 @@ async function setup(browser, width, mode) {
       if(failOwnerAnalytics){failOwnerAnalytics=false;status=503;result={detail:'Activity unavailable'};}
       else result={generated_at:new Date().toISOString(),companies:[company,{id:'qa-two',name:'Arc Studio'},{id:'qa-three',name:'Vertex Labs'}].map((c,i)=>({id:c.id,name:c.name,jobs:3-i,active_jobs:2,applications:12,screened:i?0:5,selected:i?0:1,strong:i?0:3,potential:i?0:2,low:0,unscored:0,average_score:i?null:85,interviews:2,scheduled:1,completed:1,cancelled:0,last_screened:null,trend:[{day:new Date().toISOString().slice(0,10),count:i?0:5}]}))};
     }
+    else if(api==='/api/company-registrations'&&method==='POST') result={ok:true,access_code:'0037'};
+    else if(api==='/api/company-registrations/track') result={company_name:'Fixture Organization',status:registrationStatus,company_id:registrationStatus==='approved'?'fixture-company':null};
     else if (api === '/api/linkedin/connection') result = { connected: false };
     else if (/^\/api\/interviews\/\d+$/.test(api) && method === 'PATCH') {
       const item = data.interviews.find(i => i.id === +api.split('/').pop()); Object.assign(item, payload);
@@ -462,6 +464,30 @@ const candidate = await setup(browser, width, 'candidate'); await candidate.page
       assert.equal(await page.locator('#bulk-reject').isDisabled(),true);
       check(width,'all five candidates compare and filtered bulk actions exclude hidden candidates',true);
       await comparison.context.close();
+    }
+    for(const width of [390,1440]){
+      const registration=await setup(browser,width,'registration'),page=registration.page;
+      await page.goto(origin+'/?recruiter=1');
+      await page.getByRole('button',{name:'Submit company for approval →',exact:true}).click();
+      await page.locator('#registration-form [name="company_name"]').fill('Fixture Organization');
+      await page.locator('#registration-form [name="contact_name"]').fill('Test Contact');
+      await page.locator('#registration-form [name="business_email"]').fill('fixture@example.test');
+      await page.getByRole('button',{name:'Submit registration request →',exact:true}).click();
+      await page.locator('.issued-code-card').waitFor();
+      assert.equal(await page.locator('.issued-code-digits').innerText().then(s=>s.replace(/\s/g,'')),'0037');
+      assert.equal(await page.locator('#tracking-form [name="access_code"]').getAttribute('type'),'hidden');
+      assert.notEqual(await page.locator('#tracking-form [name="business_email"]').getAttribute('readonly'),null);
+      await page.getByRole('button',{name:'Check approval status →',exact:true}).click();
+      await page.locator('#tracking-result').filter({hasText:'issued code stays fixed'}).waitFor();
+      assert.equal(await page.locator('#tracking-enter').count(),0);
+      await snap(page,width,'registration-code-receipt');
+      registration.controls.approveRegistration();
+      await page.getByRole('button',{name:'Check approval status →',exact:true}).click();
+      await page.locator('#tracking-enter').waitFor();
+      assert.equal(await page.locator('.issued-code-badge').innerText(),'Approved');
+      assert.equal(await page.locator('#tracking-form [name="access_code"]').getAttribute('type'),'hidden');
+      check(width,'issued access code stays fixed before approval and opens workspace after approval',true);
+      await registration.context.close();
     }
     assert.equal(report.pageErrors.length, 0, 'No uncaught browser errors');
     assert.equal(report.unexpectedApi.length, 0, 'Every tested API request is explicitly modeled');

@@ -164,6 +164,7 @@ _sessions: dict[str, RecruiterSession] = {}
 _candidate_sessions: dict[str, CandidateSession] = {}
 _linkedin_states: dict[str, tuple[str, float]] = {}
 _sessions_lock = threading.Lock()
+_registration_decision_lock = threading.Lock()
 SESSION_TTL = 60 * 60 * 12
 
 
@@ -542,7 +543,10 @@ def owner_registrations(session: CandidateSession = Depends(_owner_session)):
         "id,name,logo_base64,industry,website,company_size,created_at,"
         "verification_status,billing_plan,approved_at,approved_by,access_code"
     ).order("name").execute().data or [])
-    return {"owner_email": OWNER_EMAIL, "registrations": registrations, "companies": companies}
+    hidden_ids = {str(c["id"]) for c in companies if c.get("verification_status") == "suspended"}
+    visible = [c for c in companies if str(c["id"]) not in hidden_ids]
+    registrations = [r for r in registrations if str(r.get("company_id")) not in hidden_ids]
+    return {"owner_email": OWNER_EMAIL, "registrations": registrations, "companies": visible}
 
 
 @app.post("/api/owner/companies/{company_id}/deactivate")
@@ -569,38 +573,71 @@ def owner_analytics(session: CandidateSession = Depends(_owner_session)):
 @app.post("/api/owner/registrations/{registration_id}/decision")
 def decide_registration(registration_id: str, payload: OwnerDecision,
                         session: CandidateSession = Depends(_owner_session)):
+    with _registration_decision_lock:
+        return _decide_registration_locked(registration_id, payload, session)
+
+
+def _company_identity(company: dict[str, Any]) -> tuple[str, ...]:
+    return (" ".join(str(company.get("name") or company.get("company_name") or "").lower().split()),
+            str(company.get("website") or "").strip().lower().rstrip("/"),
+            str(company.get("logo_base64") or ""),
+            str(company.get("industry") or "").strip().lower(),
+            str(company.get("company_size") or "").strip().lower())
+
+
+def _decide_registration_locked(registration_id: str, payload: OwnerDecision, session: CandidateSession):
     decision = payload.decision.strip().lower()
     if decision not in {"approved", "rejected"}:
         raise HTTPException(400, "Decision must be approved or rejected")
     rows = (session.client.table("company_registrations").select("*").eq("id", registration_id)
             .limit(1).execute().data or [])
-    if not rows or rows[0].get("status") != "pending":
-        raise HTTPException(404, "Pending registration not found")
+    if not rows:
+        raise HTTPException(404, "Registration not found")
     registration = rows[0]
+    if registration.get("status") == decision:
+        return {"ok": True, "status": decision, "access_code": registration.get("access_code") if decision == "approved" else None}
+    if registration.get("status") != "pending":
+        raise HTTPException(409, "This request has already been reviewed")
     update = {"status": decision, "review_notes": payload.notes.strip(),
               "reviewed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     if decision == "approved":
-        internal_email = f"org-{secrets.token_hex(12)}@login.icd-platform.internal"
-        internal_password = secrets.token_urlsafe(36)
         access_code = registration.get("access_code") or f"{secrets.randbelow(10000):04d}"
-        company_client = _public_client()
-        auth_result = company_client.auth.sign_up({"email": internal_email, "password": internal_password})
-        if not auth_result.user or not auth_result.session:
-            raise HTTPException(500, "Could not provision the organization account")
-        company_row = {
-            "owner_user_id": str(auth_result.user.id), "name": registration["company_name"],
-            "logo_base64": _validated_logo(registration.get("logo_base64") or ""),
-            "website": registration.get("website") or "", "industry": registration.get("industry") or "",
-            "company_size": registration.get("company_size") or "", "access_code": access_code,
-            "internal_auth_email": internal_email, "internal_auth_password": internal_password,
-            "verification_status": "approved", "billing_plan": "starter_trial",
-            "approved_at": update["reviewed_at"], "approved_by": OWNER_EMAIL,
-        }
-        created = company_client.table("companies").insert(company_row).execute().data or []
-        if not created:
-            raise HTTPException(500, "Could not create the approved organization")
-        update.update({"company_id": created[0]["id"], "access_code": access_code})
-    session.client.table("company_registrations").update(update).eq("id", registration_id).execute()
+        # Recover an interrupted approval before creating another workspace.
+        profiles = session.client.table("owner_company_profiles").select("*").execute().data or []
+        identity = _company_identity(registration)
+        existing = next((c for c in profiles if _company_identity(c) == identity), None)
+        if existing:
+            if existing.get("access_code") != access_code or existing.get("approved_by") != OWNER_EMAIL:
+                raise HTTPException(409, "This organization already has a workspace. Review the existing company instead.")
+            update.update({"company_id": existing["id"], "access_code": access_code})
+        else:
+            internal_email = f"org-{secrets.token_hex(12)}@login.icd-platform.internal"
+            internal_password = secrets.token_urlsafe(36)
+            company_client = _public_client()
+            auth_result = company_client.auth.sign_up({"email": internal_email, "password": internal_password})
+            if not auth_result.user or not auth_result.session:
+                raise HTTPException(500, "Could not provision the organization account")
+            company_row = {
+                "owner_user_id": str(auth_result.user.id), "name": registration["company_name"],
+                "logo_base64": _validated_logo(registration.get("logo_base64") or ""),
+                "website": registration.get("website") or "", "industry": registration.get("industry") or "",
+                "company_size": registration.get("company_size") or "", "access_code": access_code,
+                "internal_auth_email": internal_email, "internal_auth_password": internal_password,
+                "verification_status": "approved", "billing_plan": "starter_trial",
+                "approved_at": update["reviewed_at"], "approved_by": OWNER_EMAIL,
+            }
+            try:
+                created = company_client.table("companies").insert(company_row).execute().data or []
+            except Exception as exc:
+                if "duplicate" in str(exc).lower():
+                    raise HTTPException(409, "This workspace was already created. Refresh and retry the approval to finish syncing.") from exc
+                raise
+            if not created:
+                raise HTTPException(500, "Could not create the approved organization")
+            update.update({"company_id": created[0]["id"], "access_code": access_code})
+    saved = session.client.table("company_registrations").update(update).eq("id", registration_id).execute().data
+    if not saved:
+        raise HTTPException(503, "The decision could not be saved. Retry to finish syncing the existing workspace.")
     return {"ok": True, "status": decision, "access_code": update.get("access_code")}
 
 

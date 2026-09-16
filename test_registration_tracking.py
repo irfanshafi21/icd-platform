@@ -5,6 +5,47 @@ import web_app
 
 
 class TrackingTests(unittest.TestCase):
+    def test_owner_directory_hides_deactivated_company_and_request(self):
+        client = MagicMock()
+        tables = {name: MagicMock() for name in ('company_registrations', 'owner_company_profiles')}
+        client.table.side_effect = tables.__getitem__
+        tables['company_registrations'].select.return_value.order.return_value.execute.return_value.data = [
+            {'id': 'hidden-request', 'company_id': 'inactive'},
+            {'id': 'pending-request', 'company_id': None},
+            {'id': 'active-request', 'company_id': 'active'}]
+        tables['owner_company_profiles'].select.return_value.order.return_value.execute.return_value.data = [
+            {'id': 'inactive', 'verification_status': 'suspended'},
+            {'id': 'active', 'verification_status': 'approved'}]
+        result = web_app.owner_registrations(SimpleNamespace(client=client))
+        self.assertEqual([c['id'] for c in result['companies']], ['active'])
+        self.assertEqual([r['id'] for r in result['registrations']], ['pending-request', 'active-request'])
+
+    def test_repeat_approval_does_not_provision_again(self):
+        owner = MagicMock()
+        owner.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [{'status':'approved','access_code':'0123'}]
+        with patch.object(web_app, '_public_client') as provision:
+            result = web_app.decide_registration('request', web_app.OwnerDecision(decision='approved'), SimpleNamespace(client=owner))
+        self.assertEqual(result['access_code'], '0123')
+        provision.assert_not_called()
+
+    def test_interrupted_approval_reuses_existing_workspace(self):
+        owner = MagicMock()
+        owner.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [{'status':'pending','company_name':'Example','website':'https://example.test/','access_code':'0123'}]
+        owner.table.return_value.select.return_value.execute.return_value.data = [{'id':'existing','name':'example','website':'https://example.test','access_code':'0123','approved_by':web_app.OWNER_EMAIL}]
+        with patch.object(web_app, '_public_client') as provision:
+            web_app.decide_registration('request', web_app.OwnerDecision(decision='approved'), SimpleNamespace(client=owner))
+        provision.assert_not_called()
+        self.assertEqual(owner.table.return_value.update.call_args.args[0]['company_id'], 'existing')
+
+    def test_existing_organization_does_not_issue_different_access(self):
+        owner = MagicMock()
+        owner.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value.data = [{'status':'pending','company_name':'Example','access_code':'0123'}]
+        owner.table.return_value.select.return_value.execute.return_value.data = [{'id':'existing','name':'Example','access_code':'9999','approved_by':web_app.OWNER_EMAIL}]
+        with patch.object(web_app, '_public_client') as provision, self.assertRaises(web_app.HTTPException) as caught:
+            web_app.decide_registration('request',web_app.OwnerDecision(decision='approved'),SimpleNamespace(client=owner))
+        self.assertEqual(caught.exception.status_code,409)
+        provision.assert_not_called()
+
     def test_pending_cannot_change_code(self):
         with self.assertRaises(web_app.HTTPException) as caught:
             web_app.change_access_code({'access_code':'1234'},SimpleNamespace(company={'verification_status':'pending'}))
