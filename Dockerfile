@@ -9,6 +9,7 @@ RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
 COPY . .
+RUN python scripts/build_dependency_notices.py
 
 RUN chmod +x render_start.sh
 
