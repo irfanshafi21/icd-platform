@@ -1295,12 +1295,41 @@ class InterviewPayload(BaseModel):
     notes: str = ""
 
 
-def _deliver_interview_invitation(company, email, subject, body, badge):
+def _deliver_interview_invitation(company, email, subject, body, badge, session=None, delivery_id=None):
     """Send after the scheduling response; delivery errors must not undo a saved interview."""
     try:
-        _send_company_email(company, email, subject, body, badge)
+        if session is not None:
+            claimed = session.client.table("interview_delivery_jobs").update({"status": "sending", "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}).eq("id", delivery_id).eq("company_id", company["id"]).eq("status", "queued").execute().data or []
+            if not claimed:
+                return
+        delivered, _ = _send_company_email(company, email, subject, body, badge)
+        if session is not None:
+            session.client.table("interview_delivery_jobs").update({"status": "sent" if delivered else "failed", "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}).eq("id", delivery_id).eq("company_id", company["id"]).execute()
     except Exception:
         logger.exception("Interview invitation delivery failed: company=%s", company.get("id"))
+        # A sending record remains uncertain if SMTP or the status write failed.
+        # Never automatically resend an invitation that may already have arrived.
+
+
+@app.get("/api/interview-deliveries")
+def interview_deliveries(session: RecruiterSession = Depends(_session)):
+    return session.client.table("interview_delivery_jobs").select("id,interview_id,status,updated_at").eq("company_id", session.company["id"]).order("created_at", desc=True).limit(500).execute().data or []
+
+
+@app.post("/api/interview-deliveries/{delivery_id}/retry")
+def retry_interview_delivery(delivery_id: str, background_tasks: BackgroundTasks, session: RecruiterSession = Depends(_session)):
+    rows = session.client.table("interview_delivery_jobs").select("*").eq("id", delivery_id).eq("company_id", session.company["id"]).limit(1).execute().data or []
+    if not rows:
+        raise HTTPException(404, "Invitation not found")
+    row = rows[0]
+    if row["status"] not in {"failed", "queued"}:
+        raise HTTPException(409, "This invitation was sent or delivery is uncertain. Check with the candidate before arranging another invitation.")
+    interviews = session.client.table("interviews").select("status").eq("id", row["interview_id"]).eq("company_id", session.company["id"]).limit(1).execute().data or []
+    if not interviews or interviews[0].get("status") != "Scheduled":
+        raise HTTPException(409, "Only scheduled interviews can send invitations")
+    session.client.table("interview_delivery_jobs").update({"status": "queued"}).eq("id", delivery_id).eq("company_id", session.company["id"]).eq("status", row["status"]).execute()
+    background_tasks.add_task(_deliver_interview_invitation, session.company, row["recipient"], row["subject"], row["body"], "Interview invitation", session, delivery_id)
+    return {"queued": True}
 
 
 @app.post("/api/interviews")
@@ -1333,16 +1362,30 @@ def create_interview(payload: InterviewPayload, background_tasks: BackgroundTask
     company_name = session.company.get("name") or "the hiring company"
     when = payload.scheduled_at.replace("T", " ")
     venue = data.get("meeting_link") if payload.mode.lower() == "online" else data.get("location")
-    background_tasks.add_task(_deliver_interview_invitation, session.company, email, f"Interview scheduled — {payload.job_role} at {company_name}",
+    invitation = ( f"Interview scheduled — {payload.job_role} at {company_name}",
         f"Hello {payload.candidate_name},\n\nYour application has progressed to the interview stage for {payload.job_role or 'the position'} at {company_name}.\n\nInterview type: {payload.interview_type}\nDate and time: {when}\nDuration: {payload.duration_minutes} minutes\nMode: {payload.mode}\n{'Google Meet link' if payload.mode.lower() == 'online' else 'Location'}: {venue}\n\nPlease join a few minutes early and reply to this email if you need assistance. Your candidate portal status has also been updated.\n\nRegards,\n{company_name} Hiring Team", "Interview invitation")
+    queued = False
+    if email:
+        try:
+            delivery = session.client.table("interview_delivery_jobs").insert({
+                "company_id": session.company["id"], "interview_id": rows[0]["id"],
+                "recipient": email, "subject": invitation[0], "body": invitation[1], "status": "queued"
+            }).execute().data or []
+            if delivery:
+                queued = True
+                background_tasks.add_task(_deliver_interview_invitation, session.company, email,
+                                          *invitation, session, delivery[0]["id"])
+        except Exception:
+            logger.exception("Interview saved but invitation could not be queued: company=%s", session.company["id"])
+
     if email:
         query = session.client.table("public_applications").update({"status": "Interview Scheduled"}).eq("company_id", session.company["id"]).eq("applicant_email", email)
         if candidate.get("job_id"):
             query = query.eq("job_id", candidate["job_id"])
         query.execute()
     return {**rows[0], "meeting_link": data.get("meeting_link", ""),
-            "email_delivery": {"sent": False, "queued": bool(email),
-                               "message": "Invitation queued" if email else "Candidate email was not captured"}}
+            "email_delivery": {"sent": False, "queued": queued,
+                               "message": "Invitation queued" if queued else "Interview saved; invitation was not queued. Contact the candidate directly."}}
 
 
 @app.patch("/api/interviews/{interview_id}")
@@ -1866,6 +1909,61 @@ def linkedin_post_job(job_id: int, request: Request, session: RecruiterSession =
 @app.get("/terms", response_class=HTMLResponse, include_in_schema=False)
 def terms_of_service():
     return HTMLResponse((WEB / "terms.html").read_text(encoding="utf-8"))
+
+
+class PrivacyRequestPayload(BaseModel):
+    kind: str = Field(pattern=r"^(access|correction|deletion)$")
+    details: str = Field(default="", max_length=2000)
+
+
+class PrivacyRequestReview(BaseModel):
+    status: str = Field(pattern=r"^(reviewing|completed|declined)$")
+    response: str = Field(default="", max_length=2000)
+
+
+@app.get("/privacy-center", response_class=HTMLResponse, include_in_schema=False)
+def privacy_center():
+    return HTMLResponse((WEB / "privacy-center.html").read_text(encoding="utf-8"))
+
+
+@app.get("/api/privacy-requests")
+def list_privacy_requests(session: CandidateSession = Depends(_candidate_session)):
+    query = session.client.table("privacy_requests").select("*")
+    owner = _is_owner_email(getattr(session.user, "email", ""))
+    if not owner:
+        query = query.eq("user_id", str(session.user.id))
+    rows = query.order("created_at", desc=True).limit(200).execute().data or []
+    return {"owner": owner, "requests": rows}
+
+
+@app.post("/api/privacy-requests")
+def submit_privacy_request(payload: PrivacyRequestPayload, session: CandidateSession = Depends(_candidate_session)):
+    row = {"user_id": str(session.user.id), "email": str(session.user.email).lower(),
+           "kind": payload.kind, "details": payload.details.strip()}
+    try:
+        rows = session.client.table("privacy_requests").insert(row).execute().data or []
+    except Exception as exc:
+        if "23505" in str(exc) or "duplicate" in str(exc).lower():
+            raise HTTPException(409, "You already have an open request of this type. Follow its status below.") from exc
+        logger.warning("Privacy request storage unavailable")
+        raise HTTPException(503, "Could not save your request. Try again or use the privacy contact email.") from exc
+    if not rows:
+        raise HTTPException(503, "Could not confirm your request was saved. Check the request list before retrying.")
+    return rows[0]
+
+
+@app.patch("/api/owner/privacy-requests/{request_id}")
+def review_privacy_request(request_id: str, payload: PrivacyRequestReview,
+                           session: CandidateSession = Depends(_owner_session)):
+    if payload.status in {"completed", "declined"} and not payload.response.strip():
+        raise HTTPException(400, "Explain the outcome before closing a request")
+    rows = session.client.table("privacy_requests").update({
+        "status": payload.status, "response": payload.response.strip(),
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    }).eq("id", request_id).execute().data or []
+    if not rows:
+        raise HTTPException(404, "Request not found")
+    return rows[0]
 
 
 @app.get("/help", response_class=HTMLResponse, include_in_schema=False)

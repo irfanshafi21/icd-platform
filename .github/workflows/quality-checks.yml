@@ -19,10 +19,10 @@ jobs:
         with:
           node-version: '22'
       - run: pip install -r requirements.txt httpx
-      - run: python -m unittest test_web_app test_backend_workflows test_registration_tracking -q
+      - run: python -m unittest test_web_app test_backend_workflows test_registration_tracking test_trust_workflows -q
       - run: node --check web/app.js && node --check web/service-status.js && node scripts/shortlist-test.cjs && node scripts/device-storage-test.cjs
       - run: npm install --no-save playwright@1.55.0 @electric-sql/pglite@0.5.8
-      - run: node scripts/owner-analytics-test.cjs && node scripts/company-recovery-test.cjs
+      - run: node scripts/owner-analytics-test.cjs && node scripts/company-recovery-test.cjs && node scripts/trust-database-test.cjs
       - run: npx playwright install --with-deps chromium
       - run: node scripts/ui-workflow-qa.cjs
         env:

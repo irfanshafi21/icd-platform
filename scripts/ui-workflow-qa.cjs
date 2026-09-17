@@ -32,7 +32,7 @@ const report = { phase, screenshots: [], layouts: [], checks: [], pageErrors: []
 const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   if(pathname==='/missing-page'){res.writeHead(404,{'Content-Type':'text/html'});return res.end(fs.readFileSync(path.join(repo,'web/index.html')))}
-  let file = pathname === '/' || pathname === '/index.html' ? 'web/index.html' : pathname.startsWith('/static/') ? 'web/' + pathname.slice(8) : pathname.slice(1);
+  let file = pathname === '/privacy-center' ? 'web/privacy-center.html' : pathname === '/' || pathname === '/index.html' ? 'web/index.html' : pathname.startsWith('/static/') ? 'web/' + pathname.slice(8) : pathname.slice(1);
   const resolved = path.resolve(repo, file);
   if (!resolved.startsWith(repo + path.sep)) { res.writeHead(403); return res.end(); }
   try { const body = fs.readFileSync(resolved); res.writeHead(200, { 'Content-Type': resolved.endsWith('.css') ? 'text/css' : resolved.endsWith('.js') ? 'text/javascript' : resolved.endsWith('.html') ? 'text/html' : 'image/png' }); res.end(body); }
@@ -53,6 +53,7 @@ async function setup(browser, width, mode) {
   }
   let candidateSignedIn = mode === 'candidate';
   let candidateApplications = [];
+  let privacyRequests = [];
   let rejectionAttempts = 0;
   let scoreSaveAttempts = 0;
   let heldInsight, failInsight=false, failOwnerAnalytics=false, registrationStatus='pending';
@@ -68,7 +69,10 @@ async function setup(browser, width, mode) {
     report.requests.push({ width, mode, api, method, ...(payload ? { payload } : {}) });
     let result = {};
     let status = 200;
-    if (api === '/api/organizations') result = [company, { id: 'qa-two', name: 'Arc Studio', industry: 'Design' }, { id: 'qa-three', name: 'Vertex Labs', industry: 'Technology' }, { id: 'qa-four', name: 'Meridian', industry: 'Consulting' }];
+    if (api === '/api/privacy-requests') {if(method==='POST')privacyRequests.push({id:'request-1',...payload,status:'received',created_at:new Date().toISOString()}); result=method==='POST'?privacyRequests.at(-1):{owner:mode==='privacy-owner',requests:privacyRequests};}
+    else if(api==='/api/owner/privacy-requests/request-1'){Object.assign(privacyRequests[0],payload);result=privacyRequests[0];}
+    else if (api === '/api/interview-deliveries') result = [];
+    else if (api === '/api/organizations') result = [company, { id: 'qa-two', name: 'Arc Studio', industry: 'Design' }, { id: 'qa-three', name: 'Vertex Labs', industry: 'Technology' }, { id: 'qa-four', name: 'Meridian', industry: 'Consulting' }];
     else if (api === '/api/session/recruiter' || api === '/api/session' || api === '/api/candidate/session') result = { ok: true };
     else if (api === '/api/bootstrap') result = data;
     else if (api === '/api/candidate/me') { if (!candidateSignedIn) { status = 401; result = { detail: 'Sign in required' }; } else result = { email: 'alex@example.test', profile: { full_name: 'Alex Morgan', phone: '5551234567' }, jobs: data.jobs, applications: candidateApplications }; }
@@ -488,6 +492,27 @@ const candidate = await setup(browser, width, 'candidate'); await candidate.page
       assert.equal(await page.locator('#tracking-form [name="access_code"]').getAttribute('type'),'hidden');
       check(width,'issued access code stays fixed before approval and opens workspace after approval',true);
       await registration.context.close();
+    }
+    for(const width of [390,1440]){
+      for(const mode of ['privacy-candidate','privacy-owner']){
+        const privacy=await setup(browser,width,mode),page=privacy.page;
+        await page.goto(origin+'/privacy-center');
+        await page.locator('#privacy-request-form').waitFor({state:'visible'});
+        await page.getByLabel('Request type').selectOption('deletion');
+        await page.locator('#request-details').fill('Please remove my old test application.');
+        await page.getByRole('button',{name:'Submit request',exact:true}).click();
+        await page.locator('.privacy-request').waitFor();
+        assert.equal(await page.locator('.privacy-request').count(),1);
+        if(mode==='privacy-owner'){
+          await page.getByLabel('Request status').selectOption('completed');
+          await page.getByLabel('Response visible to the requester').fill('Test request handled.');
+          await page.getByRole('button',{name:'Save review',exact:true}).click();
+          await page.locator('#privacy-status').filter({hasText:'Review saved.'}).waitFor();
+          assert((await page.locator('.privacy-response').innerText()).includes('Test request handled.'));
+        }else assert.equal(await page.locator('[data-review]').count(),0);
+        await snap(page,width,mode);
+        await privacy.context.close();
+      }
     }
     assert.equal(report.pageErrors.length, 0, 'No uncaught browser errors');
     assert.equal(report.unexpectedApi.length, 0, 'Every tested API request is explicitly modeled');
