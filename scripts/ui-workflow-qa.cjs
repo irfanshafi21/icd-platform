@@ -490,6 +490,14 @@ const candidate = await setup(browser, width, 'candidate'); await candidate.page
       await page.locator('#tracking-enter').waitFor();
       assert.equal(await page.locator('.issued-code-badge').innerText(),'Approved');
       assert.equal(await page.locator('#tracking-form [name="access_code"]').getAttribute('type'),'hidden');
+      await page.locator('#tracking-form .modal-close').focus();
+      await page.keyboard.press('Shift+Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.id),'tracking-enter');
+      await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(()=>document.activeElement.classList.contains('modal-close')),true);
+      await page.keyboard.press('Escape');
+      await page.locator('#tracking-modal').waitFor({state:'detached'});
+      assert((await page.evaluate(()=>document.activeElement.textContent)).includes('Submit company for approval'));
       check(width,'issued access code stays fixed before approval and opens workspace after approval',true);
       await registration.context.close();
     }

@@ -1,5 +1,7 @@
 // Add notices and accessible names without changing existing form submissions.
 let serial=0,scheduled=false;
+let lastOutsideFocus=document.activeElement;
+document.addEventListener('focusin',event=>{if(!event.target.closest('.modal-shell'))lastOutsideFocus=event.target});
 const activeDialogs=new Map();
 function notice(form,text){if(!form||form.querySelector('[data-trust-notice]'))return;const p=document.createElement('p');p.className='trust-notice';p.dataset.trustNotice='';p.innerHTML=text;form.append(p)}
 function enhance(){
@@ -10,7 +12,7 @@ function enhance(){
  const host=document.querySelector('.owner-nav')||document.querySelector('.candidate-portal header');
  if(host&&!host.querySelector('[data-privacy-center]')){const a=document.createElement('a');a.href='/privacy-center';a.className='privacy-link';a.dataset.privacyCenter='';a.textContent='Privacy requests';host.append(a)}
  const dialogs=[...document.querySelectorAll('.modal-shell')];
- for(const shell of dialogs){if(activeDialogs.has(shell))continue;const dialog=shell.querySelector('[role="dialog"],section,form');if(!dialog)continue;activeDialogs.set(shell,document.activeElement);dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');const h=dialog.querySelector('h1,h2,h3');if(h){h.id=h.id||`accessible-dialog-${++serial}`;dialog.setAttribute('aria-labelledby',h.id)}}
+ for(const shell of dialogs){if(activeDialogs.has(shell))continue;const dialog=shell.querySelector('[role="dialog"],section,form');if(!dialog)continue;activeDialogs.set(shell,lastOutsideFocus);dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');const h=dialog.querySelector('h1,h2,h3');if(h){h.id=h.id||`accessible-dialog-${++serial}`;dialog.setAttribute('aria-labelledby',h.id)}}
  for(const [shell,opener]of activeDialogs){if(shell.isConnected)continue;activeDialogs.delete(shell);if(!dialogs.length&&opener?.isConnected&&!opener.closest('.modal-shell'))opener.focus({preventScroll:true})}
 }
 document.addEventListener('keydown',event=>{const shell=[...document.querySelectorAll('.modal-shell')].filter(e=>!e.hidden&&e.getClientRects().length).at(-1);if(!shell)return;
