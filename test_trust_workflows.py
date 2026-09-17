@@ -6,6 +6,17 @@ import web_app
 
 
 class TrustWorkflowTests(BackendWorkflowTests):
+    def test_action_summary_requires_owner(self):
+        self.assertEqual(self.client.get('/api/owner/actions').status_code,403)
+
+    def test_action_failure_does_not_return_empty_totals(self):
+        from unittest.mock import MagicMock
+        client=MagicMock()
+        client.rpc.return_value.execute.side_effect=RuntimeError('Unavailable')
+        with self.assertRaises(web_app.HTTPException) as error:
+            web_app.owner_actions(SimpleNamespace(client=client))
+        self.assertEqual(error.exception.status_code,503)
+
     # Reuse the isolated fixture, not the inherited workflow test suite.
     def test_privacy_request_identity_is_server_owned(self):
         result = self.client.post('/api/privacy-requests', json={'kind':'deletion','details':'My old application','user_id':'other','email':'other@example.test'})

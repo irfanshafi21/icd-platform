@@ -1936,6 +1936,18 @@ def list_privacy_requests(session: CandidateSession = Depends(_candidate_session
     return {"owner": owner, "requests": rows}
 
 
+@app.get("/api/owner/actions")
+def owner_actions(session: CandidateSession = Depends(_owner_session)):
+    try:
+        result = session.client.rpc("owner_action_summary", {}).execute().data
+        if not isinstance(result, dict):
+            raise ValueError("Invalid action summary")
+        return result
+    except Exception as exc:
+        logger.warning("Owner action summary unavailable")
+        raise HTTPException(503, "Action summary is unavailable. Retry shortly; your records are unchanged.") from exc
+
+
 @app.post("/api/privacy-requests")
 def submit_privacy_request(payload: PrivacyRequestPayload, session: CandidateSession = Depends(_candidate_session)):
     row = {"user_id": str(session.user.id), "email": str(session.user.email).lower(),

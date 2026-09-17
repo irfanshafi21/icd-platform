@@ -28,5 +28,13 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal((await db.query(`update interview_delivery_jobs set status='sending' where status='queued' returning id`)).rows.length,0);
  await db.exec(`set test.uid='00000000-0000-0000-0000-000000000002';`);
  assert.equal((await db.query('select * from interview_delivery_jobs')).rows.length,0);
- console.log('Privacy RLS, duplicate requests, review audit and delivery claims passed.');
+ await db.exec(`reset role;alter table companies add column name text default 'Test Company';create table company_registrations(status text);insert into company_registrations values('pending');update interview_delivery_jobs set updated_at=now()-interval '20 minutes';`);
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20260917010000_owner_action_summary.sql'),'utf8'));
+ await db.exec(`set role authenticated;set test.email='candidate@example.test';`);
+ await assert.rejects(db.query('select owner_action_summary()'));
+ await db.exec(`set test.email='irfanshafi210608@gmail.com';`);
+ const summary=(await db.query('select owner_action_summary() as summary')).rows[0].summary;
+ assert.equal(summary.pending_approvals,1);assert.equal(summary.delivery_issues,1);assert.equal(summary.open_privacy_requests,0);
+ assert.equal(JSON.stringify(summary).includes('candidate@example.test'),false);
+ console.log('Privacy RLS, review audit, delivery claims and owner action authorization passed.');
  }finally{await db.close()}})().catch(e=>{console.error(e);process.exit(1)});

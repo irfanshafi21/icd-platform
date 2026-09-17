@@ -80,6 +80,7 @@ async function setup(browser, width, mode) {
     else if (api === '/api/candidate/send-otp') result = { sent: true };
     else if (api === '/api/candidate/verify-otp') { candidateSignedIn = true; result = { ok: true }; }
     else if (api === '/api/owner/registrations') result = { owner_email: 'owner@example.test', companies: [company, { ...company, id: 'qa-two', name: 'Arc Studio', industry: 'Design' }, { ...company, id: 'qa-three', name: 'Vertex Labs' }], registrations: [{ id: 91, company_id: company.id, company_name: company.name, status: 'approved', industry: 'Technology', company_size: '51–200', contact_name: 'Taylor Rivers', business_email: 'team@example.test', website: 'https://example.com', reviewed_at: '2026-09-07T10:00:00Z' }, { id: 92, company_name: 'Helios Research', status: 'pending', industry: 'Research', company_size: '11–50', contact_name: 'Jordan Lee', business_email: 'jordan@example.test', website: 'https://example.com', message: 'We are growing a team of designers and engineers.' }] };
+    else if(api === '/api/owner/actions') result={pending_approvals:1,open_privacy_requests:2,delivery_issues:1,deliveries:[{company_name:'Northstar',status:'failed',updated_at:'2026-09-16T12:00:00Z'}]};
     else if (api === '/api/owner/analytics') {
       if(failOwnerAnalytics){failOwnerAnalytics=false;status=503;result={detail:'Activity unavailable'};}
       else result={generated_at:new Date().toISOString(),companies:[company,{id:'qa-two',name:'Arc Studio'},{id:'qa-three',name:'Vertex Labs'}].map((c,i)=>({id:c.id,name:c.name,jobs:3-i,active_jobs:2,applications:12,screened:i?0:5,selected:i?0:1,strong:i?0:3,potential:i?0:2,low:0,unscored:0,average_score:i?null:85,interviews:2,scheduled:1,completed:1,cancelled:0,last_screened:null,trend:[{day:new Date().toISOString().slice(0,10),count:i?0:5}]}))};
@@ -127,6 +128,11 @@ async function setup(browser, width, mode) {
 }
 async function snap(page, width, name) {
   await page.waitForTimeout(180);
+  if(['owner-action-summary','privacy-candidate','privacy-owner'].includes(name)){
+    await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
+    const findings=await page.evaluate(async scope=>(await axe.run(document.querySelector(scope),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),name==='owner-action-summary'?'.owner-actions':'main');
+    assert.deepEqual(findings,[],`Accessibility issues in ${name}: ${JSON.stringify(findings)}`);
+  }
   const layout = await page.evaluate(() => {
     const viewport = innerWidth;
     const overflow = [...document.querySelectorAll('main *, .workspace *, .notification-panel')].filter(el => { const r = el.getBoundingClientRect(); return el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && r.width && r.height && (r.left < -2 || r.right > viewport + 2) && !el.closest('.ticker-track, .marquee-track, .landing-marquee, .sidebar, .owner-report-table, nav, [hidden], details:not([open])>div'); }).slice(0, 18).map(el => ({ tag: el.tagName, cls: String(el.className).slice(0, 100), text: el.textContent.trim().slice(0, 45), x: Math.round(el.getBoundingClientRect().left), right: Math.round(el.getBoundingClientRect().right) }));
@@ -397,6 +403,11 @@ const candidate = await setup(browser, width, 'candidate'); await candidate.page
       assert.equal(await owner.page.locator('.owner-trend-values>div>span').count(),30);
       await owner.page.locator('.owner-trend-values summary').click();
       check(width,'owner charts show aggregate activity and filter by company',true);
+      await owner.page.locator('.owner-action-card').first().waitFor();
+      assert.deepEqual(await owner.page.locator('.owner-action-card strong').allTextContents(),['1','2','1']);
+      await owner.page.locator('.owner-action-card[href="#owner-delivery-review"]').click();
+      assert.equal(await owner.page.locator('#owner-delivery-review').getAttribute('open'),'');
+      await snap(owner.page,width,'owner-action-summary');
       owner.controls.failNextOwnerAnalytics();
       await owner.page.locator('[data-refresh-companies]').click();
       await owner.page.locator('[data-retry-owner-analytics]').waitFor();
