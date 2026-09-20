@@ -71,7 +71,7 @@ async function setup(browser, width, mode) {
     let status = 200;
     if (api === '/api/privacy-requests') {if(method==='POST')privacyRequests.push({id:'request-1',...payload,status:'received',created_at:new Date().toISOString()}); result=method==='POST'?privacyRequests.at(-1):{owner:mode==='privacy-owner',requests:privacyRequests};}
     else if(api==='/api/owner/privacy-requests/request-1'){Object.assign(privacyRequests[0],payload);result=privacyRequests[0];}
-    else if (api === '/api/interview-deliveries') result = [];
+    else if (api === '/api/interview-deliveries') result = [{id: 1, interview_id: 32, status: 'sent', updated_at: '2026-09-18T12:00:00Z'}];
     else if (api === '/api/organizations') result = [company, { id: 'qa-two', name: 'Arc Studio', industry: 'Design' }, { id: 'qa-three', name: 'Vertex Labs', industry: 'Technology' }, { id: 'qa-four', name: 'Meridian', industry: 'Consulting' }];
     else if (api === '/api/session/recruiter' || api === '/api/session' || api === '/api/candidate/session') result = { ok: true };
     else if (api === '/api/bootstrap') result = data;
@@ -356,6 +356,14 @@ let origin;
         await openMenu(page, page.locator('.candidate-actions-menu').last()); await page.locator('.candidate-actions-menu').last().locator('[data-status="Rejected"]').click(); await page.locator('#toast').filter({ hasText: 'candidate data erased' }).waitFor(); assert.equal(await page.locator('.candidate-job-card').count(), 2); check(width, 'successful rejection email removes candidate from company view', true);
       }
       await goRecruiter(page,'interviews');
+      await page.locator('.delivery-state').waitFor();
+      const deliveryLayout = await page.locator('.delivery-state').evaluate(el => {
+        const card = el.closest('.interview-card'), style = getComputedStyle(card);
+        return {width: el.getBoundingClientRect().width, available: card.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight), height: el.getBoundingClientRect().height};
+      });
+      assert.ok(deliveryLayout.width >= deliveryLayout.available - 2, 'Delivery status must span the card at '+width+'px');
+      assert.ok(deliveryLayout.height < 160, 'Delivery status must not wrap letter by letter');
+      check(width,'interview email status spans the full card width',true);
       await page.locator('#interview-filter').selectOption('Cancelled');
       assert.equal(await page.locator('.interview-group:visible').count(),0);
       await page.getByText('No cancelled interviews.',{exact:true}).waitFor();
