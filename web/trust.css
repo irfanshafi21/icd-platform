@@ -4,5 +4,4 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 /* Delivery feedback occupies its own full-width row in every interview grid. */
-.page-interviews .interview-card > .delivery-state{grid-column:1 / -1;grid-row:auto;min-width:0;width:100%;box-sizing:border-box;justify-self:stretch;margin:0;white-space:normal;word-break:normal;overflow-wrap:break-word}
-
+#app .page-interviews .interview-card > .delivery-state{grid-column:1 / -1!important;grid-row:auto!important;min-width:0;width:100%;box-sizing:border-box;justify-self:stretch;margin:0;white-space:normal;word-break:normal;overflow-wrap:break-word}
