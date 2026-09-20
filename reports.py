@@ -232,217 +232,116 @@ def _make_faded_logo(path: str, opacity: float = 0.07):
 
 def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None = None,
                             logo_bytes: bytes | None = None) -> bytes:
-    """
-    A branded job offer letter PDF for one selected candidate — letterhead,
-    date, recipient block, offer paragraph, compensation, acceptance
-    deadline, a real handwritten-style signature, and footer contact strip.
-    Filled entirely from real data passed in via `offer` (company name/logo/
-    contact, job title, location, salary, start date, reporting manager, HR
-    signee + chosen signature style, acceptance deadline) — nothing here is
-    fabricated. `logo_path` or `logo_bytes` overrides the app's default logo
-    with a company's own logo — pass whichever you have; logo_bytes takes
-    priority if both are given (used for a company's logo stored in the
-    database rather than as a file on disk).
-    """
+    """Create a restrained, company-branded offer using the supplied terms."""
+    from datetime import datetime
+    from reportlab.platypus import KeepTogether
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=0.45*inch, bottomMargin=0.55*inch,
-                             leftMargin=0.75*inch, rightMargin=0.75*inch)
-
-    TEAL = colors.HexColor("#08766F")
-    DARK = colors.HexColor("#0B1C30")
-    GREY = colors.HexColor("#64748B")
-
-    # Normalize to raw bytes once, regardless of source, so every use site
-    # below (letterhead, footer, watermark) can just open a fresh BytesIO —
-    # avoids the "already-consumed stream" issue of reusing one BytesIO object.
-    _raw_logo_bytes = None
-    if logo_bytes:
-        _raw_logo_bytes = logo_bytes
-    elif logo_path and os.path.exists(logo_path):
-        with open(logo_path, "rb") as f:
-            _raw_logo_bytes = f.read()
-    elif os.path.exists(_LOGO_PATH):
-        with open(_LOGO_PATH, "rb") as f:
-            _raw_logo_bytes = f.read()
-
-    def _logo_stream():
-        return io.BytesIO(_raw_logo_bytes) if _raw_logo_bytes else None
-
-    active_logo = _logo_stream()  # used for the letterhead Image() below; footer/watermark get their own fresh streams
-    sig_font = SIGNATURE_STYLES.get(offer.get("signature_style", ""), None)
-    sig_font_registered = sig_font in pdfmetrics.getRegisteredFontNames() if sig_font else False
-
+    doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=40, bottomMargin=48,
+                            leftMargin=54, rightMargin=54, title="Offer of employment",
+                            author=str(offer.get("company_name") or ""))
+    width = doc.width
+    navy, muted, line = [colors.HexColor(c) for c in ("#172B45", "#586779", "#DDE4EB")]
     styles = getSampleStyleSheet()
-    company_style = ParagraphStyle("OLCompany", parent=styles["Normal"], fontSize=13, leading=17, textColor=DARK, fontName="Helvetica-Bold")
-    company_sub = ParagraphStyle("OLCompanySub", parent=styles["Normal"], fontSize=9, leading=13, textColor=GREY)
-    title_style = ParagraphStyle("OLTitle", parent=styles["Heading1"], fontSize=18, textColor=TEAL, alignment=2, fontName="Helvetica-Bold")
-    date_style = ParagraphStyle("OLDate", parent=styles["Normal"], fontSize=10, textColor=DARK, alignment=2)
-    label_bold = ParagraphStyle("OLLabelBold", parent=styles["Normal"], fontSize=10.5, leading=15, textColor=DARK, fontName="Helvetica-Bold")
-    body = ParagraphStyle("OLBody", parent=styles["Normal"], fontSize=9.5, leading=13.5, textColor=DARK, spaceAfter=6)
-    sign_script = ParagraphStyle("OLSignScript", parent=styles["Normal"], fontSize=28, leading=32,
-                                  textColor=TEAL, fontName=(sig_font if sig_font_registered else "Helvetica-BoldOblique"))
-    sign_name = ParagraphStyle("OLSignName", parent=styles["Normal"], fontSize=11, textColor=DARK, fontName="Helvetica-Bold")
-    sign_role = ParagraphStyle("OLSignRole", parent=styles["Normal"], fontSize=9.5, textColor=GREY)
-
-    summary_label = ParagraphStyle("OLSummaryLabel", parent=styles["Normal"], fontSize=9, textColor=GREY, fontName="Helvetica-Bold")
-    summary_value = ParagraphStyle("OLSummaryValue", parent=styles["Normal"], fontSize=10, textColor=DARK, fontName="Helvetica-Bold")
-
-    def _e(v):
-        return _xesc(str(v)) if v is not None else ""
-
-    # ---- Letterhead: logo + company name/tagline on the left, "JOB OFFER LETTER" on the right, a thin rule below ----
-    company_cell = [Paragraph(_e(offer.get("company_name", "Our Company")), company_style)]
+    def style(name, size=10, leading=15, **kw):
+        return ParagraphStyle(name, parent=styles["Normal"], fontName="Helvetica",
+                              fontSize=size, leading=leading, textColor=navy, **kw)
+    body = style("OfferBody", spaceAfter=9)
+    label = style("OfferLabel", 8, 11)
+    label.textColor = muted
+    value = style("OfferValue", 10, 14)
+    value.fontName = "Helvetica-Bold"
+    heading = style("OfferSection", 9, 13, spaceBefore=12, spaceAfter=6)
+    heading.fontName = "Helvetica-Bold"
+    def e(v):
+        return _xesc(str(v or ""))
+    def para(v, st=body):
+        return Paragraph(e(v), st)
+    def date(v):
+        try:
+            return datetime.strptime(str(v), "%Y-%m-%d").strftime("%d %B %Y")
+        except (ValueError, TypeError):
+            return str(v or "To be confirmed")
+    company = offer.get("company_name") or "Our Company"
+    name = candidate.get("name") or "Candidate"
+    raw = logo_bytes
+    if not raw and logo_path and os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            raw = f.read()
+    brand = [para(company, value)]
     if offer.get("company_tagline"):
-        company_cell.append(Paragraph(_e(offer["company_tagline"]), company_sub))
-    if active_logo:
-        logo = Image(active_logo, width=0.55*inch, height=0.55*inch, kind="proportional")
-        left_cell = Table([[logo, company_cell]], colWidths=[0.65*inch, 3.0*inch])
-        left_cell.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
-    else:
-        left_cell = Table([company_cell], colWidths=[3.65*inch])
-
-    header_table = Table([[left_cell, Paragraph("JOB OFFER LETTER", title_style)]], colWidths=[3.9*inch, 2.85*inch])
-    header_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (0, 0), 0), ("RIGHTPADDING", (1, 0), (1, 0), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-    ]))
-    rule = Table([[""]], colWidths=[6.75*inch], rowHeights=[1.1])
-    rule.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), TEAL)]))
-
-    content = [header_table, rule, Spacer(1, 10)]
-
-    # ---- Company contact (left) / date (right) — no address, just name + phone/email ----
-    company_contact_lines = [Paragraph(_e(offer.get("company_name", "Our Company")), label_bold)]
-    for line in filter(None, [offer.get("company_phone"), offer.get("company_email")]):
-        company_contact_lines.append(Paragraph(_e(line), ParagraphStyle("OLContact", parent=body, spaceAfter=2)))
-    info_row = Table(
-        [[company_contact_lines, Paragraph(_e(offer.get("date", "")), date_style)]],
-        colWidths=[4.0*inch, 2.75*inch],
-    )
-    info_row.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-    content.append(info_row)
-    content.append(Spacer(1, 10))
-
-    # ---- Recipient ----
-    content.append(Paragraph("To:", body))
-    content.append(Paragraph(_e(candidate.get("name", "Candidate")), label_bold))
-    if candidate.get("profile", {}).get("email"):
-        content.append(Paragraph(_e(candidate["profile"]["email"]), body))
-    content.append(Spacer(1, 6))
-
-    # ---- Opening ----
-    content.append(Paragraph(f"Dear {_e(candidate.get('name', 'Candidate').split(' ')[0])},", body))
-    content.append(Paragraph(
-        f"We are pleased to offer you the position of <b>{_e(offer.get('job_title', '—'))}</b> at "
-        f"<b>{_e(offer.get('company_name', 'our company'))}</b>, starting on <b>{_e(offer.get('start_date', '—'))}</b>."
-        + (f" In this role, you will report to <b>{_e(offer['reporting_manager'])}</b>" if offer.get("reporting_manager") else "")
-        + (f" and will be based at our <b>{_e(offer['location'])}</b> office." if offer.get("location") else "."),
-        body,
-    ))
-
-    # ---- Offer summary box — quick-reference terms, salary always stated on an annual basis ----
-    summary_rows = [
-        ("Position", offer.get("job_title", "—")),
-        ("Department", offer.get("department", "")),
-        ("Employment Type", offer.get("employment_type", "Full-time")),
-        ("Location", offer.get("location", "")),
-        ("Start Date", offer.get("start_date", "—")),
-        ("Reporting Manager", offer.get("reporting_manager", "")),
-        ("Annual Compensation (CTC)", offer.get("salary", "—")),
-    ]
-    summary_rows = [(k, v) for k, v in summary_rows if v]
-    summary_table_data = [
-        [Paragraph(_e(k), summary_label), Paragraph(_e(v), summary_value)]
-        for k, v in summary_rows
-    ]
-    summary_table = Table(summary_table_data, colWidths=[2.1*inch, 4.65*inch])
-    summary_table.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.9, TEAL),
-        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#E8F6F4")),
-        ("ROWBACKGROUNDS", (1, 0), (1, -1), [colors.white, colors.HexColor("#F7FAFC")]),
-        ("LINEBELOW", (0, 0), (-1, -2), 0.5, colors.HexColor("#D8DEE6")),
-        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-    ]))
-    content.append(Spacer(1, 4))
-    content.append(summary_table)
-    content.append(Spacer(1, 6))
-
-    # ---- Compensation & standard clauses — kept compact so a typical letter fits on one page ----
-    comp_line = f"Your annual compensation (CTC) will be <b>{_e(offer.get('salary', '—'))}</b>, paid per our standard payroll cycle"
+        brand.append(para(offer["company_tagline"], label))
+    if raw:
+        logo = Image(io.BytesIO(raw), width=34, height=34, kind="proportional")
+        brand = Table([[logo, brand]], colWidths=[44, width-180])
+        brand.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),("LEFTPADDING",(0,0),(-1,-1),0)]))
+    right = Paragraph("PEOPLE &amp; CULTURE<br/>" + e(offer.get("date") or "Offer of employment"),
+                      style("OfferMeta", 8, 12, alignment=2))
+    header = Table([[brand, right]], colWidths=[width-130,130])
+    header.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),("LEFTPADDING",(0,0),(-1,-1),0),
+                               ("RIGHTPADDING",(0,0),(-1,-1),0),("BOTTOMPADDING",(0,0),(-1,-1),16),
+                               ("LINEBELOW",(0,0),(-1,-1),1,navy)]))
+    title = style("OfferTitle", 28, 33, spaceBefore=19, spaceAfter=15)
+    title.fontName = "Helvetica-Bold"
+    content = [header, para("Your offer of employment", title), para("PREPARED FOR", label),
+               para(name, value)]
+    email = candidate.get("profile", {}).get("email")
+    if email:
+        content.append(para(email, label))
+    content += [Spacer(1,14), para(f"Dear {name.split()[0]},"),
+                Paragraph(f"We are pleased to offer you the position of <b>{e(offer.get('job_title') or 'Position')}</b> at <b>{e(company)}</b>. The following details summarize your offer.", body)]
+    rows = [("Position",offer.get("job_title")),("Employment type",offer.get("employment_type") or "Full-time"),
+            ("Department",offer.get("department")),("Location",offer.get("location")),
+            ("Start date",date(offer.get("start_date"))),("Reporting manager",offer.get("reporting_manager")),
+            ("Annual compensation (CTC)",offer.get("salary") or "To be confirmed")]
+    table = Table([[para(k,label),para(v,value)] for k,v in rows if v], colWidths=[170,width-170], hAlign="LEFT")
+    table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),colors.HexColor("#F5F7FA")),
+        ("LINEBELOW",(0,0),(-1,-2),.5,line),("VALIGN",(0,0),(-1,-1),"TOP"),
+        ("LEFTPADDING",(0,0),(-1,-1),12),("RIGHTPADDING",(0,0),(-1,-1),12),
+        ("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]))
+    content.append(table)
+    content.append(para("COMPENSATION & BENEFITS",heading))
+    content.append(para(f"Your annual compensation is {offer.get('salary') or 'to be confirmed'}, paid according to the company's standard payroll cycle."))
     if offer.get("benefits"):
-        comp_line += f", along with benefits including {_e(offer['benefits'])}."
-    else:
-        comp_line += "."
+        content.append(para(str(offer["benefits"]).rstrip(". ")+"."))
+    terms=[]
     if offer.get("probation_period"):
-        comp_line += f" This offer includes a probationary period of <b>{_e(offer['probation_period'])}</b> from your start date."
-    content.append(Paragraph(comp_line, body))
-
-    work_hours = offer.get("work_hours", "")
-    content.append(Paragraph(
-        f"Your standard working hours will be {_e(work_hours) if work_hours else 'as communicated by your reporting manager'}. "
-        f"This offer and any information shared during the hiring process is confidential and should not be disclosed "
-        f"to any third party without prior written consent.", body,
-    ))
-
-    closing = "We look forward to having you onboard and seeing your contributions come to life! "
-    if offer.get("accept_by"):
-        closing += f"Please confirm your acceptance by signing and returning this letter by <b>{_e(offer['accept_by'])}</b>, after which this offer may be withdrawn. "
-    closing += "If you have any questions, please reach out using the contact details below."
-    content.append(Paragraph(closing, body))
-    content.append(Spacer(1, 10))
-
-    # ---- Signature — right-aligned in the corner, the signer's name rendered in their chosen handwriting style ----
-    sig_block = [
-        Paragraph("Warm Regards,", ParagraphStyle("OLWarmRight", parent=body, alignment=2)),
-        Spacer(1, 4),
-        Paragraph(_e(offer.get("hr_name", "—")), ParagraphStyle("OLSignScriptRight", parent=sign_script, alignment=2)),
-        Spacer(1, 2),
-        Paragraph(_e(offer.get("hr_name", "—")), ParagraphStyle("OLSignNameRight", parent=sign_name, alignment=2)),
-        Paragraph(_e(offer.get("hr_title", "HR Manager")), ParagraphStyle("OLSignRoleRight", parent=sign_role, alignment=2)),
-        Paragraph(_e(offer.get("company_name", "")), ParagraphStyle("OLSignCoRight", parent=sign_role, alignment=2)),
-    ]
-    sig_table = Table([["", sig_block]], colWidths=[3.5*inch, 3.25*inch])
-    sig_table.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
-    content.append(sig_table)
-
-    watermark_buf = _make_faded_logo(_logo_stream()) if active_logo else None
-
-    def _footer(canvas_obj, doc_):
-        canvas_obj.saveState()
-        if watermark_buf:
-            try:
-                watermark_buf.seek(0)
-                wm_size = 3.6 * inch
-                canvas_obj.drawImage(
-                    ImageReader(watermark_buf),
-                    (letter[0] - wm_size) / 2, (letter[1] - wm_size) / 2,
-                    width=wm_size, height=wm_size, mask="auto", preserveAspectRatio=True,
-                )
-            except Exception:
-                pass
-        canvas_obj.setStrokeColor(colors.HexColor("#D8DEE6"))
-        canvas_obj.setLineWidth(0.75)
-        canvas_obj.line(0.75*inch, 0.55*inch, letter[0] - 0.75*inch, 0.55*inch)
-        canvas_obj.setFillColor(GREY)
-        canvas_obj.setFont("Helvetica", 9)
-        footer_bits = list(filter(None, [offer.get("company_phone"), offer.get("company_email")]))
-        canvas_obj.drawString(0.75*inch, 0.35*inch, "   ·   ".join(footer_bits))
-        if active_logo:
-            try:
-                canvas_obj.drawImage(
-                    ImageReader(_logo_stream()), letter[0] - 0.75*inch - 0.32*inch, 0.26*inch,
-                    width=0.32*inch, height=0.32*inch, preserveAspectRatio=True,
-                    mask="auto", anchor="c",
-                )
-            except Exception:
-                pass
-        canvas_obj.restoreState()
-
-    doc.build(content, onFirstPage=_footer, onLaterPages=_footer)
+        terms.append("Probation: "+str(offer["probation_period"]).rstrip(". ")+".")
+    schedule=offer.get("work_schedule") or offer.get("work_hours")
+    if schedule:
+        terms.append("Work schedule: "+str(schedule).rstrip(". ")+".")
+    if terms:
+        content.append(para("WORKING ARRANGEMENTS",heading))
+        content.append(para(" ".join(terms)))
+    content.append(para("This offer and information shared during the hiring process are confidential and should not be disclosed to third parties without prior written consent."))
+    deadline=offer.get("acceptance_deadline") or offer.get("accept_by")
+    closing="We look forward to welcoming you to the team."
+    if deadline:
+        closing+=" Please confirm your acceptance by signing and returning this letter by "+date(deadline)+"."
+    content.append(para(closing))
+    signer=offer.get("hr_name") or offer.get("reporting_manager") or "Hiring Manager"
+    signature=[Spacer(1,8),para("Warm regards,",label),Spacer(1,7)]
+    sig_font=SIGNATURE_STYLES.get(offer.get("signature_style"))
+    if sig_font and sig_font in pdfmetrics.getRegisteredFontNames():
+        sigstyle=style("OfferSignature",24,30)
+        sigstyle.fontName=sig_font
+        signature.append(para(signer,sigstyle))
+    signature += [para(signer,value),para(offer.get("hr_title") or "Hiring Manager",label),para(company,label)]
+    content.append(KeepTogether(signature))
+    def footer(canvas, document):
+        canvas.saveState()
+        canvas.setStrokeColor(line)
+        canvas.line(54,36,letter[0]-54,36)
+        canvas.setFont("Helvetica",8)
+        canvas.setFillColor(muted)
+        contact=" | ".join(str(v) for v in [company,offer.get("company_email")] if v)
+        while pdfmetrics.stringWidth(contact,"Helvetica",8)>width-55:
+            contact=contact[:-4]+"..."
+        canvas.drawString(54,23,contact)
+        canvas.drawRightString(letter[0]-54,23,f"{document.page}")
+        canvas.restoreState()
+    doc.build(content,onFirstPage=footer,onLaterPages=footer)
     return buf.getvalue()
+
 def build_shortlist_report_pdf(candidates: list[dict], job_role: str, weights: dict | None = None,
                                 job_details: str = None, key_skills: list | None = None) -> bytes:
     buf = io.BytesIO()
