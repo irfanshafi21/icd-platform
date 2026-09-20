@@ -1,0 +1,15 @@
+/* Shared ICD logo treatment. Company logos and document artwork are untouched. */
+@layer icd-brand {
+ img.brand-logo {
+  display:inline-block!important;width:154px!important;height:66px!important;
+  min-width:0!important;max-width:100%!important;max-height:none!important;
+  padding:10px 18px!important;box-sizing:border-box!important;
+  border:1px solid #d5e2ec!important;border-radius:13px!important;
+  background:#fff!important;object-fit:contain!important;object-position:center!important;
+  box-shadow:none!important;flex:0 0 auto!important;vertical-align:middle!important;
+ }
+ @media(max-width:700px){img.brand-logo{width:122px!important;height:56px!important;padding:8px 12px!important}}
+ @media(max-width:400px){img.brand-logo{width:104px!important;height:52px!important;padding:7px!important}}
+}
+.policy-brand{display:inline-flex;align-items:center;margin-bottom:20px}
+.policy-brand:focus-visible{outline:3px solid #087d69;outline-offset:4px;border-radius:13px}
