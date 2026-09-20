@@ -237,7 +237,7 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
     from reportlab.platypus import KeepTogether
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter, topMargin=40, bottomMargin=48,
-                            leftMargin=54, rightMargin=54, title="Offer of employment",
+                            leftMargin=54, rightMargin=54, title="Welcome to the Team",
                             author=str(offer.get("company_name") or ""))
     width = doc.width
     navy, muted, line = [colors.HexColor(c) for c in ("#172B45", "#586779", "#DDE4EB")]
@@ -274,7 +274,7 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
         logo = Image(io.BytesIO(raw), width=34, height=34, kind="proportional")
         brand = Table([[logo, brand]], colWidths=[44, width-180])
         brand.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),("LEFTPADDING",(0,0),(-1,-1),0)]))
-    right = Paragraph("PEOPLE &amp; CULTURE<br/>" + e(offer.get("date") or "Offer of employment"),
+    right = Paragraph("PEOPLE &amp; CULTURE<br/>" + e(offer.get("date") or "Offer letter"),
                       style("OfferMeta", 8, 12, alignment=2))
     header = Table([[brand, right]], colWidths=[width-130,130])
     header.setStyle(TableStyle([("VALIGN",(0,0),(-1,-1),"MIDDLE"),("LEFTPADDING",(0,0),(-1,-1),0),
@@ -282,7 +282,7 @@ def build_offer_letter_pdf(candidate: dict, offer: dict, logo_path: str | None =
                                ("LINEBELOW",(0,0),(-1,-1),1,navy)]))
     title = style("OfferTitle", 28, 33, spaceBefore=19, spaceAfter=15)
     title.fontName = "Helvetica-Bold"
-    content = [header, para("Your offer of employment", title), para("PREPARED FOR", label),
+    content = [header, para("Welcome to the Team", title), para("PREPARED FOR", label),
                para(name, value)]
     email = candidate.get("profile", {}).get("email")
     if email:
