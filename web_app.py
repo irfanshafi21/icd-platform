@@ -1994,6 +1994,7 @@ def privacy_policy():
 @app.get("/{path:path}")
 def index(path: str = ""):
     version = str(CONFIG.get("RENDER_GIT_COMMIT") or CONFIG.get("ASSET_VERSION") or int(time.time()))[:12]
-    html = (WEB / "index.html").read_text(encoding="utf-8").replace("__ASSET_VERSION__", version)
     status_code = 200 if path in {"", "index.html"} else 404
+    page = "index.html" if status_code == 200 else "404.html"
+    html = (WEB / page).read_text(encoding="utf-8").replace("__ASSET_VERSION__", version)
     return HTMLResponse(html, status_code=status_code, headers={"Cache-Control": "no-store, max-age=0"})
