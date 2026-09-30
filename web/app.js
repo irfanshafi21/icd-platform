@@ -1,4 +1,4 @@
-import {landingMarkup} from './landing.js';
+import {landingMarkup,bindLandingRoles} from './landing.js';
 const root=document.querySelector('#app'),toast=document.querySelector('#toast');
 function renderScreeningOutcome(){
  const result=state.screeningOutcome,form=document.querySelector('#screen-form');if(!result||!form)return;
@@ -200,7 +200,7 @@ function initMotion(){if(revealObserver)revealObserver.disconnect();if(motionCle
 function mark(c){return c?.logo_base64?`<img src="data:image/png;base64,${c.logo_base64}" alt="${esc(c.name)}">`:`<span>${esc((c?.name||'I')[0])}</span>`}
 function notFound(){show(`<main class="not-found"><div class="error-layout"><header class="error-brand"><a href="/" aria-label="ICD Platform home">${logo}</a><span>Intelligent Candidate Discovery</span></header><section class="error-content" aria-labelledby="error-title"><div class="error-art" aria-hidden="true"><span>404</span><i>PAGE NOT FOUND</i></div><div class="error-copy"><div class="kicker">Let’s get you back on track</div><h1 id="error-title">This page isn’t here.<br>Your next step is.</h1><p>The link may be outdated, or the page may have moved. Choose where you’d like to go next.</p><a class="error-home" id="not-found-home" href="/">Back to home <span aria-hidden="true">→</span></a><nav class="error-destinations" aria-label="Other destinations"><a href="/?candidate=1"><span>Looking for your next role?</span><b>Candidate portal <i aria-hidden="true">↗</i></b></a><a href="/?recruiter=1"><span>Hiring for your team?</span><b>Recruiter workspace <i aria-hidden="true">↗</i></b></a></nav></div></section><footer class="error-footer"><span>ICD Platform</span><a href="/privacy">Privacy policy</a></footer></div></main>`)}
 
-function welcome(){show(landingMarkup(logo));document.querySelectorAll('.candidate-go').forEach(b=>b.onclick=candidateEntry);document.querySelectorAll('.recruiter-go').forEach(b=>b.onclick=recruiterGate)}
+function welcome(){show(landingMarkup(logo));bindLandingRoles();document.querySelectorAll('.candidate-go').forEach(b=>b.onclick=candidateEntry);document.querySelectorAll('.recruiter-go').forEach(b=>b.onclick=recruiterGate)}
 
 async function recruiterGate(){let orgs=[];try{orgs=await api('/api/organizations')}catch(e){show(`<section class="panel service-unavailable" style="max-width:560px;margin:80px auto;padding:32px"><div class="kicker">Connection interrupted</div><h1>We couldn't load your companies.</h1><p>${esc(e.message)}</p><button class="primary" id="retry-companies">Try again</button> <button class="secondary" id="return-home">Back to home</button></section>`);document.querySelector('#retry-companies').onclick=recruiterGate;document.querySelector('#return-home').onclick=welcome;return}show(`<main class="auth-layout recruiter-access"><section class="career-scene recruiter-scene" aria-labelledby="recruiter-scene-title">
 <div class="recruiter-scene-brand">${logo}<span>RECRUITER WORKSPACE</span></div>
