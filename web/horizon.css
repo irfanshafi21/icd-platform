@@ -143,3 +143,6 @@ body{color:var(--ui-ink)!important}
 #app .landing-v2 .hiring-canvas .canvas-flow article.active{background:#f4fafa!important}
 #app .landing-v2 .canvas-role>span{color:#12695d!important}
 #app .landing-v2 .hero-actions .primary{background:#12695d!important;background-image:none!important;border-color:#12695d!important}
+
+#app .notification-button>span,#app .candidate-bell-count{background:#087f86!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:2px solid #fff!important;font-size:11px!important;font-weight:700!important;min-width:21px;min-height:21px;display:grid;place-items:center;border-radius:50%}
+.notification-panel .notification-summary b{color:#087f86!important}

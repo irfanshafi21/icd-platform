@@ -1,12 +1,13 @@
 // Optional preferences stay in memory unless the user opts into device storage.
 (() => {
  const choiceKey='icd-device-preferences', memory=new Map();
+ const sessionRead=k=>{try{return sessionStorage.getItem(k)}catch{return null}};
  const read=k=>{try{return localStorage.getItem(k)}catch{return null}};
  let allowed=read(choiceKey)==='allow';
  window.icdStorage={
-  getItem:k=>allowed?read(k):(memory.get(k)??null),
-  setItem:(k,v)=>{memory.set(k,String(v));if(allowed){try{localStorage.setItem(k,String(v))}catch{}}},
-  removeItem:k=>{memory.delete(k);try{localStorage.removeItem(k)}catch{}}
+  getItem:k=>allowed?read(k):(memory.get(k)??sessionRead(k)),
+  setItem:(k,v)=>{memory.set(k,String(v));try{sessionStorage.setItem(k,String(v))}catch{};if(allowed){try{localStorage.setItem(k,String(v))}catch{}}},
+  removeItem:k=>{memory.delete(k);try{sessionStorage.removeItem(k)}catch{};try{localStorage.removeItem(k)}catch{}}
  };
  // Historical AI conversations are intentionally no longer retained.
  try{localStorage.removeItem('icd-ai-history')}catch{}
@@ -24,7 +25,8 @@
      localStorage.setItem(choiceKey,allowed?'allow':'deny');
      if(!allowed)for(const key of Object.keys(localStorage)){if(key.startsWith('icd-')&&key!==choiceKey)localStorage.removeItem(key)}
     }catch{}
-    if(choice==='clear')memory.clear();
+    if(choice==='clear'){memory.clear();try{for(const key of Object.keys(sessionStorage)){if(key.startsWith('icd-'))sessionStorage.removeItem(key)}}catch{}}
+    if(allowed){try{for(const [key,value] of memory)localStorage.setItem(key,value)}catch{}}
     box.remove();
    };
   });

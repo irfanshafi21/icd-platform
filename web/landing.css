@@ -37,3 +37,26 @@
 @media(max-width:700px){#app .icd-home .ih-nav,#app .icd-home .ih-footer{width:calc(100% - 40px)}#app .icd-home .ih-hero{padding-top:36px}#app .icd-home .ih-hero h1{font-size:42px!important}#app .icd-home .ih-universe{height:460px;margin-top:30px}#app .icd-home .ih-core{width:175px;height:175px}#app .icd-home .ih-core>span{font-size:70px}#app .icd-home .ih-section{padding:48px 20px}#app .icd-home .ih-path{padding:26px}#app .icd-home .ih-section-heading h2{font-size:32px!important}}
 
 #app .icd-home .ih-orbit{rotate:0deg!important}
+
+/* Split hero and product workflow preview. */
+#app .icd-home .ih-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center;max-width:1200px;padding:64px 24px 72px;background:#fff;text-align:left}
+#app .icd-home .ih-hero-copy{min-width:0}
+#app .icd-home .ih-hero h1{font-size:clamp(42px,4.5vw,64px)!important;line-height:1.08!important;margin:24px 0!important}
+#app .icd-home .ih-hero-copy>p{font-size:16px;line-height:1.8;color:#526f73}
+#app .icd-home .ih-hero .ih-actions{justify-content:flex-start;flex-wrap:wrap}
+#app .icd-home .ih-work-preview{padding:26px;border:1px solid #cce5e7;border-radius:20px;background:#f0fafa;box-shadow:0 24px 60px #087f8612;min-width:0}
+#app .icd-home .ih-work-preview header{display:flex;justify-content:space-between;gap:12px;font-size:10px;color:#52787b}
+#app .icd-home .ih-work-preview header b{letter-spacing:.1em;color:#087f86}
+#app .icd-home .ih-work-preview h2{font-size:34px!important;line-height:1.15!important;letter-spacing:-.03em;margin:30px 0 16px!important}
+#app .icd-home .ih-work-preview>p{font-size:10px;letter-spacing:.12em;color:#08666d;margin-bottom:22px}
+#app .icd-home .ih-work-preview article{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #d6e9ea;border-radius:12px;padding:18px 14px;margin-top:10px;transition:transform .2s}
+#app .icd-home .ih-work-preview article:hover{transform:translateX(4px)}
+#app .icd-home .ih-work-preview i{font-style:normal;font-size:11px;color:#087f86;background:#eaf8f8;border-radius:8px;padding:10px}
+#app .icd-home .ih-work-preview strong{display:block;font-size:13px}
+#app .icd-home .ih-work-preview small{display:block;font-size:11px;color:#526f73;margin-top:4px}
+#app .icd-home .ih-work-preview footer{padding-top:22px;font-size:11px;color:#52787b}
+#app .icd-home .ih-path{border-radius:14px}
+#app .icd-home .ih-method{display:grid;grid-template-columns:1fr 1.7fr;gap:48px}
+#app .icd-home .ih-steps{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:0}
+@media(max-width:900px){#app .icd-home .ih-hero{grid-template-columns:1fr;gap:32px;padding:38px 24px}#app .icd-home .ih-method{grid-template-columns:1fr;gap:30px}#app .icd-home .ih-hero h1{font-size:46px!important}}
+@media(max-width:450px){#app .icd-home .ih-hero{padding:32px 20px}#app .icd-home .ih-hero h1{font-size:40px!important}#app .icd-home .ih-work-preview{padding:18px}}
