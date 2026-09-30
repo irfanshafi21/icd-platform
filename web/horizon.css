@@ -129,3 +129,17 @@ body{color:var(--ui-ink)!important}
 @media(min-width:1024px) and (max-width:1279px){#app .workspace .job-admin-cards,#app .workspace .talent-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:900px){#app .landing-v2 .landing-hero{grid-template-columns:minmax(0,1fr)!important;gap:30px!important;padding:40px 0!important}#app .landing-v2 .hiring-canvas{max-width:650px!important;margin-inline:auto!important}#app .landing-v2 .capability-grid{grid-template-columns:minmax(0,1fr)!important}#app .landing-v2 .landing-cta{grid-template-columns:minmax(0,1fr)!important}}
 @media(max-width:600px){#app .landing-v2 .hero-copy h1{font-size:42px!important}#app .landing-v2 .path-grid,#app .landing-v2 .landing-outcomes{grid-template-columns:minmax(0,1fr)!important}#app .landing-v2 .hiring-canvas{padding:14px!important}#app .landing-v2 .canvas-insight{grid-template-columns:18px minmax(0,1fr)!important}#app .landing-v2 .canvas-insight button{grid-column:2!important;justify-self:start!important}#app .landing-v2 .canvas-flow article{padding:10px!important}#app .workspace .workspace-head{padding:18px!important}}
+/* Readable shared surfaces: legacy dark-card text must not survive light cards. */
+#app .landing-v2 .section-intro{max-width:none!important;text-align:left!important;margin-inline:0!important}
+#app .landing-v2 .section-intro h2{margin-left:0!important;margin-right:0!important}
+#app .landing-v2 :is(.candidate-path,.recruiter-path) :is(.path-heading,.path-heading span,.path-heading i){color:#23634f!important;-webkit-text-fill-color:#23634f!important}
+#app .landing-v2 .path-card>p{color:#536b60!important;-webkit-text-fill-color:#536b60!important}
+#app .landing-v2 .recruiter-visual{background:#fff!important;border-color:#d6e3db!important}
+#app .landing-v2 .recruiter-visual :is(b,small,i){color:#29483d!important;-webkit-text-fill-color:#29483d!important}
+#app .landing-v2 .mini-pipeline>span{background:#edf4ef!important;border-color:#d6e3db!important}
+#app .landing-v2 .mini-talent{background:#f7faf8!important;border-color:#d6e3db!important}
+#app .landing-v2 .hiring-canvas :is(.canvas-role,.canvas-flow article,.canvas-insight,.canvas-team){box-shadow:none!important;border:1px solid #dce6e1!important}
+#app .landing-v2 .hiring-canvas .canvas-flow article{background:#f6f9f7!important}
+#app .landing-v2 .hiring-canvas .canvas-flow article.active{background:#eaf4ed!important}
+#app .landing-v2 .canvas-role>span{color:#12695d!important}
+#app .landing-v2 .hero-actions .primary{background:#12695d!important;background-image:none!important;border-color:#12695d!important}
