@@ -165,3 +165,4 @@ body>.notification-panel,body .candidate-notification-dialog,body #device-prefer
 body .notification-item.unread{background:#edf9f9!important;border-color:#8fc7ca!important}
 body .notification-item i{background:#d1eeee!important;color:#075e65!important}
 body :is(.notification-button>span,.candidate-bell-count){background:#087f86!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
+#app .owner-portal .owner-hero h1{color:#fff!important;-webkit-text-fill-color:#fff!important}
