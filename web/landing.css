@@ -35,3 +35,5 @@
 #app .icd-home .ih-end .ih-primary{background:#fff!important;color:#075e65!important}
 #app .icd-home .ih-footer{padding-inline:0}
 @media(max-width:700px){#app .icd-home .ih-nav,#app .icd-home .ih-footer{width:calc(100% - 40px)}#app .icd-home .ih-hero{padding-top:36px}#app .icd-home .ih-hero h1{font-size:42px!important}#app .icd-home .ih-universe{height:460px;margin-top:30px}#app .icd-home .ih-core{width:175px;height:175px}#app .icd-home .ih-core>span{font-size:70px}#app .icd-home .ih-section{padding:48px 20px}#app .icd-home .ih-path{padding:26px}#app .icd-home .ih-section-heading h2{font-size:32px!important}}
+
+#app .icd-home .ih-orbit{rotate:0deg!important}
