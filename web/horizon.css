@@ -88,3 +88,9 @@ body{color:var(--ui-ink)!important}
 #app .landing-v2 .hero-copy h1 em{color:#3158d5!important;-webkit-text-fill-color:#3158d5!important}
 #app .hero-assurance span{color:#536078!important;border-color:#dce2ec!important;background:#fff!important}
 #app .hiring-canvas{color:#17243c!important}
+#app .landing-v2 .hiring-canvas{background:#fff!important;box-shadow:12px 16px 0 #e4e9f6,0 25px 55px #182e521a!important}
+#app .landing-v2 .hiring-canvas :is(.canvas-flow b,.canvas-flow strong,.canvas-insight b){color:#17243c!important;-webkit-text-fill-color:#17243c!important}
+#app .landing-v2 .hiring-canvas :is(.canvas-flow small,.canvas-insight span){color:#52627c!important;-webkit-text-fill-color:#52627c!important}
+#app .landing-v2 .hero-actions .primary{background:#3158d5!important;border-color:#3158d5!important}
+#app .landing-v2 .landing-hero:after{display:none!important}
+#app .landing-v2 .canvas-flow article>i{color:#3158d5!important;background:#dce5ff!important}
