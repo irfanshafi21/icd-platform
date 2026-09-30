@@ -1,105 +1,105 @@
 /* ICD Horizon: shared design tokens and a motion-led public experience. */
-:root{--ui-ink:#184445;--ui-muted:#349293;--ui-accent:#12695d;--ui-accent-dark:#0c5147;--ui-border:#d4edee;--ui-canvas:#f4fafa;--ui-shadow:0 8px 28px #1d315509;--horizon-navy:#173d37;--horizon-ivory:#f5fbfb}
+:root{--ui-ink:#075e65;--ui-muted:#087f86;--ui-accent:#075e65;--ui-accent-dark:#075e65;--ui-border:#d1eeee;--ui-canvas:#edf9f9;--ui-shadow:0 8px 28px #075e6509;--horizon-navy:#075e65;--horizon-ivory:#ffffff}
 body{color:var(--ui-ink)!important}
 #app :is(button,a.button-link){transition:background .2s,border-color .2s,box-shadow .2s,translate .2s!important}
 #app :is(.primary,.secondary,.nav-recruiter,.nav-candidate){border-radius:12px!important;min-height:46px!important;font-weight:650!important}
-#app :is(.primary,.nav-recruiter){background:#12695d!important;color:#fff!important;border-color:#12695d!important;box-shadow:0 5px 12px #12695d19!important}
-#app :is(.primary,.nav-recruiter):hover:not(:disabled){background:#0c5147!important;translate:0 -2px;box-shadow:0 8px 20px #12695d30!important}
-#app :is(.secondary,.nav-candidate):hover:not(:disabled){background:#f4fafa!important;border-color:#72cccd!important;translate:0 -2px}
-#app :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-color:#c0e5e5!important;border-radius:10px!important;color:#1d5354!important}
-#app :is(input,select,textarea):focus{outline:3px solid #12695d26!important;border-color:#12695d!important}
+#app :is(.primary,.nav-recruiter){background:#075e65!important;color:#ffffff!important;border-color:#075e65!important;box-shadow:0 5px 12px #075e6519!important}
+#app :is(.primary,.nav-recruiter):hover:not(:disabled){background:#075e65!important;translate:0 -2px;box-shadow:0 8px 20px #075e6530!important}
+#app :is(.secondary,.nav-candidate):hover:not(:disabled){background:#edf9f9!important;border-color:#328b91!important;translate:0 -2px}
+#app :is(input:not([type=checkbox]):not([type=radio]),select,textarea){border-color:#d1eeee!important;border-radius:10px!important;color:#075e65!important}
+#app :is(input,select,textarea):focus{outline:3px solid #075e6526!important;border-color:#075e65!important}
 #app :is(.workspace,.candidate-portal,.owner-portal){background:var(--ui-canvas)!important}
-#app :is(.panel,.talent-card,.job-admin-card,.owner-company-card,.premium-job-card){border-color:#d4edee!important;border-radius:18px!important;box-shadow:var(--ui-shadow)!important}
-#app :is(.workspace-head,.candidate-banner){background:linear-gradient(115deg,#fff,#f4fafa)!important;border:1px solid #d4edee!important;border-radius:22px!important}
-#app .workspace-head h1{color:#184445!important;letter-spacing:-.045em!important}
-#app .workspace>aside{background:#173d37!important;border-right:0!important;color:#fff!important}
-#app .workspace>aside :is(small,b,.sidebar-caption){color:#f4fafa!important}
-#app .workspace>aside nav button{color:#b9e2e2!important;border-radius:10px!important}
-#app .workspace>aside nav button.active{color:#fff!important;background:#12695d!important;box-shadow:0 6px 20px #070f2020!important}
-#app .workspace>aside nav button:hover{background:#205b5c!important;color:white!important}
-#app .workspace>aside nav button.active:hover{background:#12695d!important}
+#app :is(.panel,.talent-card,.job-admin-card,.owner-company-card,.premium-job-card){border-color:#d1eeee!important;border-radius:18px!important;box-shadow:var(--ui-shadow)!important}
+#app :is(.workspace-head,.candidate-banner){background:linear-gradient(115deg,#ffffff,#edf9f9)!important;border:1px solid #d1eeee!important;border-radius:22px!important}
+#app .workspace-head h1{color:#075e65!important;letter-spacing:-.045em!important}
+#app .workspace>aside{background:#075e65!important;border-right:0!important;color:#ffffff!important}
+#app .workspace>aside :is(small,b,.sidebar-caption){color:#edf9f9!important}
+#app .workspace>aside nav button{color:#d1eeee!important;border-radius:10px!important}
+#app .workspace>aside nav button.active{color:#ffffff!important;background:#075e65!important;box-shadow:0 6px 20px #123e4320!important}
+#app .workspace>aside nav button:hover{background:#075e65!important;color:white!important}
+#app .workspace>aside nav button.active:hover{background:#075e65!important}
 #app :is(.org-card,.owner-company-card,.talent-card,.premium-job-card){transition:border-color .2s,box-shadow .2s,translate .2s!important}
-#app :is(.org-card,.owner-company-card,.talent-card,.premium-job-card):hover{border-color:#7ed0d2!important;box-shadow:0 12px 32px #263e6410!important}
+#app :is(.org-card,.owner-company-card,.talent-card,.premium-job-card):hover{border-color:#8fc7ca!important;box-shadow:0 12px 32px #075e6510!important}
 #app .landing-v2{background:var(--horizon-ivory)!important;max-width:none!important;padding:20px max(24px,calc((100vw - 1240px)/2)) 32px!important;overflow:hidden}
-#app .landing-nav{background:#fff!important;border:1px solid #e2e4e9!important;border-radius:18px!important;padding:12px 20px!important;box-shadow:0 8px 35px #173d3706!important;position:relative;z-index:5}
+#app .landing-nav{background:#ffffff!important;border:1px solid #d1eeee!important;border-radius:18px!important;padding:12px 20px!important;box-shadow:0 8px 35px #075e6506!important;position:relative;z-index:5}
 #app .landing-hero{position:relative;display:grid!important;grid-template-columns:1.1fr 1fr!important;gap:56px!important;padding:100px 0 76px!important;align-items:center!important}
-#app .landing-hero:before{content:"";position:absolute;z-index:0;width:600px;height:600px;right:-190px;top:-60px;border-radius:50%;background:radial-gradient(circle,#f4fafa 0,transparent 69%);pointer-events:none}
+#app .landing-hero:before{content:"";position:absolute;z-index:0;width:600px;height:600px;right:-190px;top:-60px;border-radius:50%;background:radial-gradient(circle,#edf9f9 0,transparent 69%);pointer-events:none}
 #app .hero-copy{position:relative;z-index:1}
-#app .hero-label{display:inline-flex!important;background:#f4fafa!important;color:#236263!important;border:1px solid #cdeaea!important;border-radius:100px!important;padding:9px 13px!important;letter-spacing:.09em!important;font-size:10px!important}
-#app .hero-label i{background:#12695d!important}
-#app .hero-copy h1{font-size:clamp(44px,5.6vw,76px)!important;line-height:1.02!important;letter-spacing:-.065em!important;color:#173d37!important;margin:24px 0!important;font-weight:750!important}
-#app .hero-copy h1 em{color:#12695d!important;font-style:normal!important;background:none!important;-webkit-text-fill-color:#12695d!important}
-#app .hero-copy>p{font-size:17px!important;line-height:1.8!important;color:#349293!important;max-width:470px}
+#app .hero-label{display:inline-flex!important;background:#edf9f9!important;color:#075e65!important;border:1px solid #d1eeee!important;border-radius:100px!important;padding:9px 13px!important;letter-spacing:.09em!important;font-size:10px!important}
+#app .hero-label i{background:#075e65!important}
+#app .hero-copy h1{font-size:clamp(44px,5.6vw,76px)!important;line-height:1.02!important;letter-spacing:-.065em!important;color:#075e65!important;margin:24px 0!important;font-weight:750!important}
+#app .hero-copy h1 em{color:#075e65!important;font-style:normal!important;background:none!important;-webkit-text-fill-color:#075e65!important}
+#app .hero-copy>p{font-size:17px!important;line-height:1.8!important;color:#087f86!important;max-width:470px}
 #app .hero-actions{gap:12px!important;margin-top:28px!important}
 #app .hero-actions button{padding:15px 22px!important;font-size:14px!important}
-#app .hero-assurance{display:flex!important;flex-wrap:wrap!important;gap:9px 16px!important;margin-top:22px!important;color:#556278!important;font-size:10px!important}
-#app .hiring-canvas{position:relative;background:#fff!important;border:1px solid #cdeaea!important;border-radius:22px!important;box-shadow:16px 20px 0 #f4fafa,0 35px 65px #182e521a!important;rotate:-2deg;transition:rotate .5s!important;overflow:hidden!important}
+#app .hero-assurance{display:flex!important;flex-wrap:wrap!important;gap:9px 16px!important;margin-top:22px!important;color:#087f86!important;font-size:10px!important}
+#app .hiring-canvas{position:relative;background:#ffffff!important;border:1px solid #d1eeee!important;border-radius:22px!important;box-shadow:16px 20px 0 #edf9f9,0 35px 65px #075e651a!important;rotate:-2deg;transition:rotate .5s!important;overflow:hidden!important}
 #app .hiring-canvas:hover{rotate:0deg}
-#app .canvas-top{background:#173d37!important;color:#eef3ff!important;padding:18px 22px!important}
-#app .canvas-top :is(span,em){color:#eef3ff!important}
-#app .canvas-top em{background:#246667!important;border-color:#36999b!important}
-#app .canvas-role h3{color:#173d37!important;font-size:26px!important;letter-spacing:-.035em!important}
-#app .canvas-flow article{border:1px solid #e0e5ef!important;background:#f6f8fc!important;border-radius:12px!important;transition:translate .25s,box-shadow .25s!important}
-#app .canvas-flow article.active{background:#f4fafa!important;border-color:#abdcdd!important}
-#app .canvas-flow article:hover{translate:4px 0;box-shadow:-4px 0 #12695d!important}
-#app .canvas-insight{background:#f4fafa!important;color:#236364!important;border-color:#cceaea!important}
-#app .canvas-insight button{background:#12695d!important;color:white!important}
-#app .landing-outcomes{border-block:1px solid #dddfe5!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:26px 0!important;margin-bottom:50px!important}
-#app .landing-outcomes article i{background:#f4fafa!important;color:#12695d!important;border-radius:10px!important}
+#app .canvas-top{background:#075e65!important;color:#edf9f9!important;padding:18px 22px!important}
+#app .canvas-top :is(span,em){color:#edf9f9!important}
+#app .canvas-top em{background:#075e65!important;border-color:#087f86!important}
+#app .canvas-role h3{color:#075e65!important;font-size:26px!important;letter-spacing:-.035em!important}
+#app .canvas-flow article{border:1px solid #edf9f9!important;background:#ffffff!important;border-radius:12px!important;transition:translate .25s,box-shadow .25s!important}
+#app .canvas-flow article.active{background:#edf9f9!important;border-color:#8fc7ca!important}
+#app .canvas-flow article:hover{translate:4px 0;box-shadow:-4px 0 #075e65!important}
+#app .canvas-insight{background:#edf9f9!important;color:#075e65!important;border-color:#d1eeee!important}
+#app .canvas-insight button{background:#075e65!important;color:white!important}
+#app .landing-outcomes{border-block:1px solid #d1eeee!important;background:transparent!important;box-shadow:none!important;border-radius:0!important;padding:26px 0!important;margin-bottom:50px!important}
+#app .landing-outcomes article i{background:#edf9f9!important;color:#075e65!important;border-radius:10px!important}
 #app .landing-trust{display:none!important}
-#app .landing-marquee{background:#173d37!important;color:#f4f6ff!important;border-radius:12px!important;border:0!important;padding-block:19px!important}
-#app .marquee-track span{color:#f4fafa!important;font-size:11px!important;letter-spacing:.14em!important}
-#app .marquee-track i{background:#9ed6d7!important}
+#app .landing-marquee{background:#075e65!important;color:#ffffff!important;border-radius:12px!important;border:0!important;padding-block:19px!important}
+#app .marquee-track span{color:#edf9f9!important;font-size:11px!important;letter-spacing:.14em!important}
+#app .marquee-track i{background:#8fc7ca!important}
 #app :is(.landing-paths,.landing-capabilities){padding-block:82px!important}
-#app .section-intro h2{font-size:clamp(32px,4vw,50px)!important;letter-spacing:-.055em!important;line-height:1.15!important;color:#184445!important;max-width:700px;margin-inline:auto!important}
-#app .section-intro p{color:#349293!important;font-size:16px!important}
+#app .section-intro h2{font-size:clamp(32px,4vw,50px)!important;letter-spacing:-.055em!important;line-height:1.15!important;color:#075e65!important;max-width:700px;margin-inline:auto!important}
+#app .section-intro p{color:#087f86!important;font-size:16px!important}
 #app .path-grid{gap:24px!important;margin-top:38px!important}
-#app .path-card{padding:34px!important;border:1px solid #d4edee!important;border-radius:24px!important;box-shadow:none!important;background:#fff!important;transition:translate .35s,box-shadow .35s!important}
-#app .path-card:hover{translate:0 -7px;box-shadow:0 24px 45px #263d5510!important}
-#app .path-card h3{font-size:30px!important;letter-spacing:-.045em!important;color:#173d37!important}
-#app .candidate-path{background:#f4fafa!important}
-#app .recruiter-path{background:#f1f0ea!important}
-#app .path-heading{color:#2b7879!important}
-#app .path-card>button{background:#173d37!important;color:white!important;border-color:#173d37!important;border-radius:12px!important;min-height:48px!important}
-#app .landing-workflow{background:#173d37!important;border-radius:28px!important;padding:48px!important;box-shadow:none!important}
-#app .landing-workflow :is(h2,h3){color:#fff!important}
-#app .landing-workflow :is(p,.kicker,footer span,footer b){color:#cceaea!important}
+#app .path-card{padding:34px!important;border:1px solid #d1eeee!important;border-radius:24px!important;box-shadow:none!important;background:#ffffff!important;transition:translate .35s,box-shadow .35s!important}
+#app .path-card:hover{translate:0 -7px;box-shadow:0 24px 45px #075e6510!important}
+#app .path-card h3{font-size:30px!important;letter-spacing:-.045em!important;color:#075e65!important}
+#app .candidate-path{background:#edf9f9!important}
+#app .recruiter-path{background:#edf9f9!important}
+#app .path-heading{color:#087f86!important}
+#app .path-card>button{background:#075e65!important;color:white!important;border-color:#075e65!important;border-radius:12px!important;min-height:48px!important}
+#app .landing-workflow{background:#075e65!important;border-radius:28px!important;padding:48px!important;box-shadow:none!important}
+#app .landing-workflow :is(h2,h3){color:#ffffff!important}
+#app .landing-workflow :is(p,.kicker,footer span,footer b){color:#d1eeee!important}
 #app .workflow-copy h2{font-size:44px!important;letter-spacing:-.05em!important}
-#app .workflow-track>article{background:#1e5354!important;border:1px solid #2f8587!important;border-radius:16px!important;transition:translate .3s,background .3s!important}
-#app .workflow-track>article:hover{translate:0 -6px;background:#25696a!important}
-#app .workflow-track>article em{color:#afdedf!important}
-#app .capability-card{border:1px solid #dde3ee!important;border-radius:20px!important;background:#fff!important;padding:30px!important;transition:translate .3s,box-shadow .3s!important}
-#app .capability-card:hover{translate:0 -6px;box-shadow:0 20px 40px #263d5510!important}
-#app .capability-card h3{color:#173d37!important;font-size:24px!important;line-height:1.3!important}
-#app .capability-card>i{color:#12695d!important;background:#f4fafa!important;border-radius:14px!important}
-#app .capability-card>b{color:#12695d!important}
-#app .landing-cta{position:relative;background:#f4fafa!important;border:1px solid #c5e7e8!important;border-radius:28px!important;padding:48px!important;margin-bottom:60px!important}
-#app .landing-cta h2{color:#173d37!important;font-size:40px!important;letter-spacing:-.045em!important}
-#app .landing-cta :is(p,span){color:#2c7d7f!important}
-#app .landing-v2>footer.site-footer{border-radius:20px!important;border-color:#dde3ed!important}
+#app .workflow-track>article{background:#075e65!important;border:1px solid #087f86!important;border-radius:16px!important;transition:translate .3s,background .3s!important}
+#app .workflow-track>article:hover{translate:0 -6px;background:#075e65!important}
+#app .workflow-track>article em{color:#8fc7ca!important}
+#app .capability-card{border:1px solid #edf9f9!important;border-radius:20px!important;background:#ffffff!important;padding:30px!important;transition:translate .3s,box-shadow .3s!important}
+#app .capability-card:hover{translate:0 -6px;box-shadow:0 20px 40px #075e6510!important}
+#app .capability-card h3{color:#075e65!important;font-size:24px!important;line-height:1.3!important}
+#app .capability-card>i{color:#075e65!important;background:#edf9f9!important;border-radius:14px!important}
+#app .capability-card>b{color:#075e65!important}
+#app .landing-cta{position:relative;background:#edf9f9!important;border:1px solid #d1eeee!important;border-radius:28px!important;padding:48px!important;margin-bottom:60px!important}
+#app .landing-cta h2{color:#075e65!important;font-size:40px!important;letter-spacing:-.045em!important}
+#app .landing-cta :is(p,span){color:#087f86!important}
+#app .landing-v2>footer.site-footer{border-radius:20px!important;border-color:#d1eeee!important}
 #app .landing-reveal{transition:opacity .65s ease,transform .65s cubic-bezier(.2,.7,.2,1)!important}
 @media(min-width:901px) and (prefers-reduced-motion:no-preference){#app .hiring-canvas{animation:horizon-arrive .9s both}@keyframes horizon-arrive{from{opacity:0;translate:35px 20px;rotate:3deg}to{opacity:1;translate:0 0;rotate:-2deg}}}
 @media(max-width:900px){#app .landing-hero{grid-template-columns:1fr!important;padding:55px 0!important;gap:40px!important}#app .hero-copy{max-width:660px}#app .hiring-canvas{width:100%!important;max-width:620px!important;margin:0 auto!important;rotate:0deg}#app .landing-workflow{padding:30px!important}#app .hero-copy h1{font-size:58px!important}}
-@media(max-width:600px){#app .landing-v2{padding:12px 18px 24px!important}#app .landing-hero{padding:42px 0 48px!important}#app .hero-copy h1{font-size:43px!important;letter-spacing:-.055em!important}#app .hero-copy>p{font-size:15px!important}#app .hero-actions{display:grid!important;grid-template-columns:1fr!important}#app .hero-actions button{width:100%!important}#app .hero-assurance{font-size:10px!important}#app .hiring-canvas{box-shadow:6px 9px 0 #f4fafa!important}#app .landing-outcomes{margin-top:12px!important;gap:18px!important}#app :is(.landing-paths,.landing-capabilities){padding-block:48px!important}#app .path-card{padding:24px!important}#app .path-card h3{font-size:26px!important}#app .landing-workflow{padding:25px!important;border-radius:20px!important}#app .workflow-copy h2{font-size:33px!important}#app .landing-cta{padding:28px!important;border-radius:20px!important;margin-bottom:35px!important}#app .landing-cta h2{font-size:31px!important}#app .capability-card{padding:25px!important}}
+@media(max-width:600px){#app .landing-v2{padding:12px 18px 24px!important}#app .landing-hero{padding:42px 0 48px!important}#app .hero-copy h1{font-size:43px!important;letter-spacing:-.055em!important}#app .hero-copy>p{font-size:15px!important}#app .hero-actions{display:grid!important;grid-template-columns:1fr!important}#app .hero-actions button{width:100%!important}#app .hero-assurance{font-size:10px!important}#app .hiring-canvas{box-shadow:6px 9px 0 #edf9f9!important}#app .landing-outcomes{margin-top:12px!important;gap:18px!important}#app :is(.landing-paths,.landing-capabilities){padding-block:48px!important}#app .path-card{padding:24px!important}#app .path-card h3{font-size:26px!important}#app .landing-workflow{padding:25px!important;border-radius:20px!important}#app .workflow-copy h2{font-size:33px!important}#app .landing-cta{padding:28px!important;border-radius:20px!important;margin-bottom:35px!important}#app .landing-cta h2{font-size:31px!important}#app .capability-card{padding:25px!important}}
 @media(prefers-reduced-motion:reduce){#app *,#app *:before,#app *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}#app .hiring-canvas{rotate:0deg}#app :is(button,.path-card,.capability-card,.workflow-track>article):hover{translate:none!important}}
 /* Remove legacy hero surfaces so Horizon colors remain readable. */
-#app .landing-v2 .landing-hero{background:transparent!important;color:#184445!important;box-shadow:none!important;border:0!important;min-height:0!important;overflow:visible!important}
-#app .landing-v2 .hero-copy h1{color:#173d37!important;-webkit-text-fill-color:#173d37!important}
-#app .landing-v2 .hero-copy h1 em{color:#12695d!important;-webkit-text-fill-color:#12695d!important}
-#app .hero-assurance span{color:#318b8d!important;border-color:#d4edee!important;background:#fff!important}
-#app .hiring-canvas{color:#184445!important}
-#app .landing-v2 .hiring-canvas{background:#fff!important;box-shadow:12px 16px 0 #f4fafa,0 25px 55px #182e521a!important}
-#app .landing-v2 .hiring-canvas :is(.canvas-flow b,.canvas-flow strong,.canvas-insight b){color:#184445!important;-webkit-text-fill-color:#184445!important}
-#app .landing-v2 .hiring-canvas :is(.canvas-flow small,.canvas-insight span){color:#318b8d!important;-webkit-text-fill-color:#318b8d!important}
-#app .landing-v2 .hero-actions .primary{background:#12695d!important;border-color:#12695d!important}
+#app .landing-v2 .landing-hero{background:transparent!important;color:#075e65!important;box-shadow:none!important;border:0!important;min-height:0!important;overflow:visible!important}
+#app .landing-v2 .hero-copy h1{color:#075e65!important;-webkit-text-fill-color:#075e65!important}
+#app .landing-v2 .hero-copy h1 em{color:#075e65!important;-webkit-text-fill-color:#075e65!important}
+#app .hero-assurance span{color:#087f86!important;border-color:#d1eeee!important;background:#ffffff!important}
+#app .hiring-canvas{color:#075e65!important}
+#app .landing-v2 .hiring-canvas{background:#ffffff!important;box-shadow:12px 16px 0 #edf9f9,0 25px 55px #075e651a!important}
+#app .landing-v2 .hiring-canvas :is(.canvas-flow b,.canvas-flow strong,.canvas-insight b){color:#075e65!important;-webkit-text-fill-color:#075e65!important}
+#app .landing-v2 .hiring-canvas :is(.canvas-flow small,.canvas-insight span){color:#087f86!important;-webkit-text-fill-color:#087f86!important}
+#app .landing-v2 .hero-actions .primary{background:#075e65!important;border-color:#075e65!important}
 #app .landing-v2 .landing-hero:after{display:none!important}
-#app .landing-v2 .canvas-flow article>i{color:#12695d!important;background:#f4fafa!important}
+#app .landing-v2 .canvas-flow article>i{color:#075e65!important;background:#edf9f9!important}
 
 /* One desktop geometry, with explicit tablet/mobile transitions. */
 #app .landing-v2 .landing-hero{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)!important;gap:48px!important;padding:64px 0!important;margin:0!important;align-items:center!important}
 #app .landing-v2 .hero-copy h1{font-size:clamp(42px,4.8vw,66px)!important;line-height:1.08!important;letter-spacing:-.05em!important}
 #app .landing-v2 .hero-copy>p{max-width:500px!important;font-size:16px!important;line-height:1.75!important}
-#app .landing-v2 .hiring-canvas{rotate:0deg!important;animation:none!important;transform:none!important;width:100%!important;min-width:0!important;min-height:0!important;padding:22px!important;margin:0!important;box-shadow:0 16px 45px #193d3710!important}
+#app .landing-v2 .hiring-canvas{rotate:0deg!important;animation:none!important;transform:none!important;width:100%!important;min-width:0!important;min-height:0!important;padding:22px!important;margin:0!important;box-shadow:0 16px 45px #075e6510!important}
 #app .landing-v2 .hiring-canvas .canvas-role{margin:16px 0!important;padding:18px!important;gap:12px!important;min-width:0!important}
 #app .landing-v2 .hiring-canvas .canvas-flow{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
 #app .landing-v2 .hiring-canvas .canvas-flow>span{display:none!important}
@@ -124,25 +124,44 @@ body{color:var(--ui-ink)!important}
 #app .workspace .job-admin-cards>article>h3{min-height:2.7em!important;line-height:1.35!important}
 #app .workspace .job-admin-cards>article>p{min-height:3.3em!important;line-height:1.65!important}
 #app .workspace .job-admin-cards>article>.job-card-actions{margin-top:auto!important}
-#app .workspace>aside nav button.active{background:#287475!important;color:#fff!important}
-#app .workspace>aside{background:#173d37!important}
+#app .workspace>aside nav button.active{background:#087f86!important;color:#ffffff!important}
+#app .workspace>aside{background:#075e65!important}
 @media(min-width:1024px) and (max-width:1279px){#app .workspace .job-admin-cards,#app .workspace .talent-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:900px){#app .landing-v2 .landing-hero{grid-template-columns:minmax(0,1fr)!important;gap:30px!important;padding:40px 0!important}#app .landing-v2 .hiring-canvas{max-width:650px!important;margin-inline:auto!important}#app .landing-v2 .capability-grid{grid-template-columns:minmax(0,1fr)!important}#app .landing-v2 .landing-cta{grid-template-columns:minmax(0,1fr)!important}}
 @media(max-width:600px){#app .landing-v2 .hero-copy h1{font-size:42px!important}#app .landing-v2 .path-grid,#app .landing-v2 .landing-outcomes{grid-template-columns:minmax(0,1fr)!important}#app .landing-v2 .hiring-canvas{padding:14px!important}#app .landing-v2 .canvas-insight{grid-template-columns:18px minmax(0,1fr)!important}#app .landing-v2 .canvas-insight button{grid-column:2!important;justify-self:start!important}#app .landing-v2 .canvas-flow article{padding:10px!important}#app .workspace .workspace-head{padding:18px!important}}
 /* Readable shared surfaces: legacy dark-card text must not survive light cards. */
 #app .landing-v2 .section-intro{max-width:none!important;text-align:left!important;margin-inline:0!important}
 #app .landing-v2 .section-intro h2{margin-left:0!important;margin-right:0!important}
-#app .landing-v2 :is(.candidate-path,.recruiter-path) :is(.path-heading,.path-heading span,.path-heading i){color:#236263!important;-webkit-text-fill-color:#236263!important}
-#app .landing-v2 .path-card>p{color:#318b8d!important;-webkit-text-fill-color:#318b8d!important}
-#app .landing-v2 .recruiter-visual{background:#fff!important;border-color:#ceebeb!important}
-#app .landing-v2 .recruiter-visual :is(b,small,i){color:#1d5354!important;-webkit-text-fill-color:#1d5354!important}
-#app .landing-v2 .mini-pipeline>span{background:#f4fafa!important;border-color:#ceebeb!important}
-#app .landing-v2 .mini-talent{background:#f6fbfb!important;border-color:#ceebeb!important}
-#app .landing-v2 .hiring-canvas :is(.canvas-role,.canvas-flow article,.canvas-insight,.canvas-team){box-shadow:none!important;border:1px solid #d4edee!important}
-#app .landing-v2 .hiring-canvas .canvas-flow article{background:#f4fafb!important}
-#app .landing-v2 .hiring-canvas .canvas-flow article.active{background:#f4fafa!important}
-#app .landing-v2 .canvas-role>span{color:#12695d!important}
-#app .landing-v2 .hero-actions .primary{background:#12695d!important;background-image:none!important;border-color:#12695d!important}
+#app .landing-v2 :is(.candidate-path,.recruiter-path) :is(.path-heading,.path-heading span,.path-heading i){color:#075e65!important;-webkit-text-fill-color:#075e65!important}
+#app .landing-v2 .path-card>p{color:#087f86!important;-webkit-text-fill-color:#087f86!important}
+#app .landing-v2 .recruiter-visual{background:#ffffff!important;border-color:#d1eeee!important}
+#app .landing-v2 .recruiter-visual :is(b,small,i){color:#075e65!important;-webkit-text-fill-color:#075e65!important}
+#app .landing-v2 .mini-pipeline>span{background:#edf9f9!important;border-color:#d1eeee!important}
+#app .landing-v2 .mini-talent{background:#ffffff!important;border-color:#d1eeee!important}
+#app .landing-v2 .hiring-canvas :is(.canvas-role,.canvas-flow article,.canvas-insight,.canvas-team){box-shadow:none!important;border:1px solid #d1eeee!important}
+#app .landing-v2 .hiring-canvas .canvas-flow article{background:#ffffff!important}
+#app .landing-v2 .hiring-canvas .canvas-flow article.active{background:#edf9f9!important}
+#app .landing-v2 .canvas-role>span{color:#075e65!important}
+#app .landing-v2 .hero-actions .primary{background:#075e65!important;background-image:none!important;border-color:#075e65!important}
 
-#app .notification-button>span,#app .candidate-bell-count{background:#087f86!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border:2px solid #fff!important;font-size:11px!important;font-weight:700!important;min-width:21px;min-height:21px;display:grid;place-items:center;border-radius:50%}
-.notification-panel .notification-summary b{color:#087f86!important}
+#app .notification-button>span,#app .candidate-bell-count{background:#075e65!important;color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;border:2px solid #ffffff!important;font-size:11px!important;font-weight:700!important;min-width:21px;min-height:21px;display:grid;place-items:center;border-radius:50%}
+.notification-panel .notification-summary b{color:#075e65!important}
+
+/* Shared Hireflow-derived ICD visual system. */
+:root{--ui-ink:#123e43;--ui-muted:#526f73;--ui-accent:#087f86;--ui-accent-dark:#075e65;--ui-border:#d1eeee;--ui-canvas:#f7fbfb;--ui-shadow:0 12px 32px #123e430a}
+body{background:#fff!important;font-family:Arial,sans-serif!important}
+#app :is(.workspace,.candidate-portal,.owner-portal){font-family:Arial,sans-serif!important}
+#app :is(.workspace-head,.candidate-banner){background:#fff!important;border-radius:14px!important;box-shadow:none!important}
+#app :is(.panel,.talent-card,.job-admin-card,.owner-company-card,.premium-job-card,.org-card){background:#fff!important;border-radius:14px!important;border-color:#d1eeee!important;box-shadow:0 10px 26px #123e4308!important}
+#app :is(.primary,.secondary,.nav-recruiter,.nav-candidate){border-radius:8px!important}
+#app :is(.primary,.nav-recruiter){background:#087f86!important;border-color:#087f86!important;color:#fff!important;box-shadow:none!important}
+#app :is(.secondary,.nav-candidate){background:#fff!important;border-color:#b8d7d9!important;color:#075e65!important;box-shadow:none!important}
+#app :is(.primary,.nav-recruiter):hover:not(:disabled){background:#075e65!important}
+#app :is(.secondary,.nav-candidate):hover:not(:disabled){background:#edf9f9!important}
+#app .workspace>aside{background:#075e65!important}
+#app .workspace>aside nav button.active{background:#087f86!important;color:#fff!important}
+#app :is(.workspace,.candidate-portal,.owner-portal) h1{letter-spacing:-.04em!important;font-weight:600!important;color:#123e43!important}
+body>.notification-panel,body .candidate-notification-dialog,body #device-preferences{background:white!important;color:#123e43!important;border-color:#d1eeee!important;border-radius:14px!important}
+body .notification-item.unread{background:#edf9f9!important;border-color:#8fc7ca!important}
+body .notification-item i{background:#d1eeee!important;color:#075e65!important}
+body :is(.notification-button>span,.candidate-bell-count){background:#087f86!important;color:#fff!important;-webkit-text-fill-color:#fff!important}

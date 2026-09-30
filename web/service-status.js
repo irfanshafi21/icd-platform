@@ -3,7 +3,7 @@ const banner=document.createElement('aside');
 banner.setAttribute('role','status');
 banner.setAttribute('aria-live','polite');
 banner.id='connection-status';
-banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10000;background:#fff2d7;color:#4f3814;padding:12px 20px;text-align:center;font:14px/1.5 system-ui;box-shadow:0 2px 12px #0002';
+banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10000;background:#edf9f9;color:#075e65;padding:12px 20px;text-align:center;font:14px/1.5 system-ui;box-shadow:0 2px 12px #00000022';
 document.body.prepend(banner);
 function updateConnection(){
  banner.hidden=navigator.onLine;
