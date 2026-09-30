@@ -333,10 +333,13 @@ def health():
 
 @app.get("/api/organizations")
 def organizations(search: str = ""):
-    query = _public_client().table("companies_public").select("*").order("name")
-    if search.strip():
-        query = query.ilike("name", f"%{search.strip()}%")
-    return query.limit(50).execute().data or []
+    try:
+        query = _public_client().table("companies_public").select("*").order("name")
+        if search.strip():
+            query = query.ilike("name", f"%{search.strip()}%")
+        return query.limit(50).execute().data or []
+    except Exception as exc:
+        raise HTTPException(503, "Company records cannot be loaded right now. Please retry shortly; this is not an empty directory.") from exc
 
 
 def _validated_logo(value: str) -> str:
