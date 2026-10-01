@@ -166,3 +166,4 @@ body .notification-item.unread{background:#edf9f9!important;border-color:#8fc7ca
 body .notification-item i{background:#d1eeee!important;color:#075e65!important}
 body :is(.notification-button>span,.candidate-bell-count){background:#087f86!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
 #app .owner-portal .owner-hero h1{color:#fff!important;-webkit-text-fill-color:#fff!important}
+#app .google-login,#app .google-login b,#app .google-login span:not(.google-mark){color:#075e65!important;-webkit-text-fill-color:#075e65!important}#app .google-login{background:#fff!important;border:1px solid #b8d7d9!important}
