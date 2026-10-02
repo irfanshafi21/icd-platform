@@ -781,8 +781,10 @@ async def candidate_apply(job_id: int = Form(...), full_name: str = Form(...), p
         extracted = extract_text_from_bytes(filename, content)
     except Exception as exc:
         raise HTTPException(400, "The uploaded resume could not be read") from exc
-    if not extracted.strip() or not heuristic_resume_check(extracted).get("looks_like_resume"):
-        raise HTTPException(400, "Upload a candidate resume rather than a report or unrelated document")
+    if not extracted.strip():
+        raise HTTPException(400, "No readable text was found in this resume. For a scanned or image-only PDF, export a text-based PDF or upload the original DOCX file.")
+    if not heuristic_resume_check(extracted).get("looks_like_resume"):
+        raise HTTPException(400, "We could not recognize this file as a resume. Include readable skills, education or experience sections, then upload a PDF or DOCX.")
     user_id = str(session.user.id)
     existing = (session.client.table("public_applications").select("id").eq("candidate_user_id", user_id)
                 .eq("job_id", job_id).limit(1).execute().data or [])
