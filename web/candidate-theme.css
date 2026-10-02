@@ -38,3 +38,19 @@
 #app .candidate-portal .candidate-nav a{color:#075e65!important;font-size:12px;text-underline-offset:3px}
 @media(max-width:800px){#app .candidate-portal header.candidate-nav{padding:16px!important;align-items:flex-start!important}#app .candidate-portal .candidate-nav-actions{flex-basis:100%!important;justify-content:flex-start!important}#app .candidate-portal .candidate-nav-actions .candidate-home{font-size:12px!important;flex:1 1 auto!important}#app .candidate-portal .candidate-nav-actions .candidate-home:before{display:none!important}#app .candidate-portal .candidate-brand{width:100%;gap:12px}}
 #app .candidate-access .career-scene .career-scene-heading :is(p,.career-eyebrow){color:#526c70!important;-webkit-text-fill-color:#526c70!important;opacity:1!important}
+
+/* Compact candidate top bar. Account actions stay in one disclosure. */
+#app .candidate-portal header.candidate-nav.candidate-topbar{min-height:76px!important;padding:12px 20px!important;display:flex!important;flex-flow:row nowrap!important;justify-content:space-between!important;gap:16px!important;border-radius:14px!important}
+#app .candidate-topbar .candidate-brand{width:auto!important;min-width:0;gap:16px!important;text-decoration:none}
+#app .candidate-topbar .candidate-brand .brand-logo{width:110px!important;height:46px!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+#app .candidate-topbar .candidate-brand>span{font-size:12px!important;letter-spacing:0!important;text-transform:none!important;font-weight:500!important;white-space:nowrap}
+#app .candidate-portal .candidate-topbar .candidate-nav-actions{flex:0 0 auto!important;width:auto!important;gap:12px!important;flex-wrap:nowrap!important;justify-content:flex-end!important;margin-left:auto!important}
+#app .candidate-topbar .candidate-account{position:relative;z-index:25}
+#app .candidate-topbar .candidate-account summary{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;padding:4px 8px 4px 4px;min-height:44px;border-radius:10px;color:#075e65;font-size:13px;background:#f5fbfb;border:1px solid #d1eeee}
+#app .candidate-account summary::-webkit-details-marker{display:none}#app .candidate-account summary:focus-visible{outline:3px solid #087f86;outline-offset:3px}
+#app .candidate-account-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#d1eeee;color:#075e65;font-weight:700}
+#app .candidate-account-panel{position:absolute;top:calc(100% + 12px);right:0;width:260px;max-width:calc(100vw - 48px);padding:10px;background:#fff;border:1px solid #b8d7d9;border-radius:14px;box-shadow:0 16px 40px #123e4326}
+#app .candidate-account-info{display:grid;gap:5px;padding:12px;margin-bottom:6px;border-bottom:1px solid #d1eeee;color:#123e43}#app .candidate-account-info small{font-size:12px;color:#526c70;overflow-wrap:anywhere}
+#app .candidate-portal .candidate-topbar .candidate-account-panel :is(button,a){display:block!important;width:100%!important;height:auto!important;min-height:44px!important;padding:12px!important;margin:0!important;background:transparent!important;color:#075e65!important;border:0!important;border-radius:7px!important;box-shadow:none!important;font-size:13px!important;text-align:left;text-decoration:none;line-height:20px}
+#app .candidate-topbar .candidate-account-panel :is(button,a):hover{background:#edf9f9!important}
+@media(max-width:800px){#app .candidate-portal header.candidate-nav.candidate-topbar{padding:10px 12px!important;min-height:66px!important;gap:10px!important}#app .candidate-topbar .candidate-brand>span{display:none!important}#app .candidate-topbar .candidate-brand .brand-logo{width:94px!important;height:42px!important}#app .candidate-topbar .candidate-account-label{display:none}#app .candidate-portal .candidate-topbar .candidate-nav-actions{gap:8px!important}}
