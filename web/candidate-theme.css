@@ -54,3 +54,15 @@
 #app .candidate-portal .candidate-topbar .candidate-account-panel :is(button,a){display:block!important;width:100%!important;height:auto!important;min-height:44px!important;padding:12px!important;margin:0!important;background:transparent!important;color:#075e65!important;border:0!important;border-radius:7px!important;box-shadow:none!important;font-size:13px!important;text-align:left;text-decoration:none;line-height:20px}
 #app .candidate-topbar .candidate-account-panel :is(button,a):hover{background:#edf9f9!important}
 @media(max-width:800px){#app .candidate-portal header.candidate-nav.candidate-topbar{padding:10px 12px!important;min-height:66px!important;gap:10px!important}#app .candidate-topbar .candidate-brand>span{display:none!important}#app .candidate-topbar .candidate-brand .brand-logo{width:94px!important;height:42px!important}#app .candidate-topbar .candidate-account-label{display:none}#app .candidate-portal .candidate-topbar .candidate-nav-actions{gap:8px!important}}
+
+/* Initial-based account trigger and fully opaque, readable dropdown. */
+#app .candidate-portal .candidate-topbar .candidate-account summary{background:#edf9f9!important;border:1px solid #8fc7ca!important;padding:4px 8px 4px 4px!important;gap:8px!important}
+#app .candidate-topbar .candidate-account-avatar{width:36px;height:36px;background:#075e65!important;color:#fff!important;-webkit-text-fill-color:#fff!important;font-size:16px;border-radius:9px}
+#app .candidate-portal .candidate-topbar{position:relative;z-index:40;overflow:visible!important}
+#app .candidate-topbar .candidate-account[open]{z-index:50}
+#app .candidate-portal .candidate-topbar .candidate-account-panel{background:#fff!important;opacity:1!important;backdrop-filter:none!important;color:#123e43!important;border:1px solid #8fc7ca!important;box-shadow:0 16px 40px #123e4333!important;width:280px;padding:12px;z-index:60}
+#app .candidate-topbar .candidate-account-info{padding:12px 12px 18px;margin-bottom:8px;background:#fff!important}
+#app .candidate-topbar .candidate-account-info b{font-size:16px!important;color:#123e43!important;-webkit-text-fill-color:#123e43!important;line-height:1.4}
+#app .candidate-topbar .candidate-account-info small{font-size:13px!important;color:#526c70!important;-webkit-text-fill-color:#526c70!important;line-height:1.5}
+#app .candidate-portal .candidate-topbar .candidate-account-panel :is(button,a){font-size:14px!important;min-height:48px!important;color:#123e43!important;-webkit-text-fill-color:#123e43!important;line-height:24px!important}
+#app .candidate-topbar .candidate-account-panel #signout{border-top:1px solid #d1eeee!important;border-radius:0!important;margin-top:6px!important;font-weight:700}
