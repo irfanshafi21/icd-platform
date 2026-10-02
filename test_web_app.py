@@ -13,6 +13,17 @@ class WebAppTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
+    @patch("web_app.requests.get")
+    def test_google_login_always_requests_account_chooser(self, get):
+        from urllib.parse import urlparse, parse_qs
+        get.return_value.json.return_value = {"external": {"google": True}}
+        response = self.client.get("/api/candidate/google", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        params = parse_qs(urlparse(response.headers["location"]).query)
+        self.assertEqual(params["prompt"], ["select_account"])
+        self.assertEqual(params["provider"], ["google"])
+        self.assertEqual(params["code_challenge_method"], ["s256"])
+
     def test_health_and_spa_shell(self):
         self.assertEqual(self.client.get("/api/health").json()["service"], "icd-web")
         response = self.client.get("/")

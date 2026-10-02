@@ -493,7 +493,7 @@ def candidate_google(request: Request, owner: bool = False):
     origin = str(request.base_url).rstrip("/")
     callback = f"{origin}/api/candidate/oauth/callback"
     authorize = f"{SUPABASE_URL.rstrip('/')}/auth/v1/authorize?" + urlencode({
-        "provider": "google", "redirect_to": callback,
+        "provider": "google", "redirect_to": callback, "prompt": "select_account",
         "code_challenge": challenge, "code_challenge_method": "s256",
     })
     response = RedirectResponse(authorize, status_code=302)
