@@ -1,4 +1,6 @@
-import {landingMarkup,bindLandingRoles} from './landing.js';
+const landingModuleUrl=new URL('./landing.js',import.meta.url);
+landingModuleUrl.search=new URL(import.meta.url).search;
+const {landingMarkup,bindLandingRoles}=await import(landingModuleUrl.href);
 const root=document.querySelector('#app'),toast=document.querySelector('#toast');
 function renderScreeningOutcome(){
  const result=state.screeningOutcome,form=document.querySelector('#screen-form');if(!result||!form)return;
