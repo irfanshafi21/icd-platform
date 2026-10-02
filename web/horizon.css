@@ -167,3 +167,6 @@ body .notification-item i{background:#d1eeee!important;color:#075e65!important}
 body :is(.notification-button>span,.candidate-bell-count){background:#087f86!important;color:#fff!important;-webkit-text-fill-color:#fff!important}
 #app .owner-portal .owner-hero h1{color:#fff!important;-webkit-text-fill-color:#fff!important}
 #app .google-login,#app .google-login b,#app .google-login span:not(.google-mark){color:#075e65!important;-webkit-text-fill-color:#075e65!important}#app .google-login{background:#fff!important;border:1px solid #b8d7d9!important}
+
+/* Screening evidence uses the shared teal surface. */
+.screening-weight-details{margin:16px 0;padding:18px 20px;background:#edf9f9;border:1px solid #d1eeee;border-radius:16px;color:#123e43;overflow-wrap:anywhere}.screening-weight-details h3{margin:0 0 8px;font-size:16px}.screening-weight-details p{margin:6px 0;line-height:1.6;font-size:14px}

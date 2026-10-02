@@ -1695,7 +1695,7 @@ def _weighted_score(score: dict[str, Any], weights: dict[str, float]) -> dict[st
     breakdown = score.get("breakdown") or {}
     total = sum(max(0, value) for value in weights.values()) or 100
     overall = sum(_numeric_score(breakdown.get(key)) * max(0, value) for key, value in weights.items()) / total
-    score["ai_overall_score"] = score.get("overall_score")
+    score["ai_overall_score"] = score.get("ai_overall_score", score.get("overall_score"))
     score["overall_score"] = round(overall)
     score["priority_weights"] = {key.replace("_match", "").replace("_fit", ""): round(value / total * 100) for key, value in weights.items()}
     return score
@@ -1742,14 +1742,15 @@ def _screen_payloads_locked(payloads: list[tuple[str, bytes]], job_role: str, jo
     if not extracted:
         return results, skipped
     seen = set()
+    existing = {}
     offset = 0
     while True:
-        query = session.client.table("screening_history").select("id,raw_text,job_id,job_role").eq("company_id", session.company["id"])
+        query = session.client.table("screening_history").select("*").eq("company_id", session.company["id"])
         query = query.eq("job_id", int(job_id)) if job_id.isdigit() else query.eq("job_role", job_role)
         rows = query.order("id").range(offset, offset + 499).execute().data or []
         for row in rows:
             if row.get("raw_text") and (job_id.isdigit() or not row.get("job_id")):
-                seen.add(_resume_identity(row["raw_text"]))
+                existing[_resume_identity(row["raw_text"])] = row
         if len(rows) < 500:
             break
         offset += 500
@@ -1757,9 +1758,23 @@ def _screen_payloads_locked(payloads: list[tuple[str, bytes]], job_role: str, jo
     for name, raw_text in extracted:
         identity = _resume_identity(raw_text)
         if identity in seen:
-            skipped.append({"filename": name, "reason": "Already screened for this job. The original score is unchanged. Choose a different job to screen again."})
+            skipped.append({"filename": name, "reason": "Already screened in this upload. Duplicate file skipped."})
+            continue
+        seen.add(identity)
+        previous = existing.get(identity)
+        old_score = _json_field(previous.get("score_json"), {}) if previous else {}
+        if previous and previous.get("job_details", "") == job_details and old_score.get("breakdown"):
+            old_total = previous.get("overall_score")
+            score = _weighted_score(old_score, weights)
+            score["previous_overall_score"] = old_total
+            score["rescreen_note"] = ("Priorities applied. The rounded total is unchanged; equal category scores or rounding can produce the same result."
+                                     if old_total == score["overall_score"] else "Score recalculated from saved evidence using the new priorities.")
+            updates = {"overall_score": score["overall_score"], "score_json": json.dumps(score)}
+            saved = session.client.table("screening_history").update(updates).eq("id", previous["id"]).eq("company_id", session.company["id"]).execute().data or []
+            if not saved:
+                raise HTTPException(503, "Could not save the recalculated score. Please retry.")
+            results.append(_candidate(saved[0]))
         else:
-            seen.add(identity)
             unique.append((name, raw_text))
     extracted = unique
     if not extracted:
@@ -1793,10 +1808,18 @@ def _screen_payloads_locked(payloads: list[tuple[str, bytes]], job_role: str, jo
                 if application_source:
                     row.update(application_id=application_source["id"], email=application_source["applicant_email"],
                                filename=application_source["resume_filename"], candidate_name=application_source["applicant_name"])
-                saved = session.client.table("screening_history").insert(row).execute().data or []
+                previous = existing.get(_resume_identity(raw_text))
+                if previous:
+                    # Re-evaluate changed criteria without duplicating the candidate or overwriting hiring decisions.
+                    for field in ("status", "decision_status", "application_id"):
+                        row.pop(field, None)
+                    saved = session.client.table("screening_history").update(row).eq("id", previous["id"]).eq("company_id", session.company["id"]).execute().data or []
+                else:
+                    saved = session.client.table("screening_history").insert(row).execute().data or []
                 if not saved:
                     raise RuntimeError("The screened candidate could not be saved. Please retry this resume")
-                _publish_candidate_update(saved[0], session, status=saved[0].get("decision_status"))
+                if not previous:
+                    _publish_candidate_update(saved[0], session, status=saved[0].get("decision_status"))
                 results.append(_candidate(saved[0]))
             except ValueError as exc:
                 skipped.append({"filename": name, "reason": str(exc)[:300]})

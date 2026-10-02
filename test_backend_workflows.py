@@ -373,7 +373,7 @@ class BackendWorkflowTests(unittest.TestCase):
         self.assertEqual(candidate["overall_score"], 34)
         self.ai.assert_not_called()
 
-    def test_duplicate_content_same_job_skipped_but_different_job_allowed(self):
+    def test_duplicate_content_same_job_reweighted_but_different_job_allowed(self):
         self.ai.side_effect = lambda *_: ({"name": "Asha"}, {"overall_score": 34,
             "breakdown": {"skills_match": 34, "experience_fit": 34, "education_fit": 34}})
         def screen(job, filename="asha.pdf"):
@@ -382,8 +382,9 @@ class BackendWorkflowTests(unittest.TestCase):
         self.assertEqual(screen("1").json()["processed"], 1)
         duplicate = screen("1", "renamed.pdf")
         self.assertEqual(duplicate.status_code, 200)
-        self.assertEqual(duplicate.json()["processed"], 0)
-        self.assertIn("Already screened", duplicate.json()["skipped"][0]["reason"])
+        self.assertEqual(duplicate.json()["processed"], 1)
+        self.assertEqual(duplicate.json()["skipped"], [])
+        self.assertEqual(len(self.database.rows["screening_history"]), 1)
         self.assertEqual(self.ai.call_count, 1)
         self.assertEqual(self.database.rows["screening_history"][0]["overall_score"], 34)
         self.assertEqual(screen("2").json()["processed"], 1)

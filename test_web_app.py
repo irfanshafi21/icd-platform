@@ -153,6 +153,37 @@ class WebAppTests(unittest.TestCase):
 
     @patch("web_app.check_api_key", return_value=True)
     @patch("web_app.heuristic_resume_check", return_value={"looks_like_resume": True})
+    @patch("web_app.extract_text_from_bytes", return_value="resume")
+    @patch("web_app.parse_and_score")
+    def test_rescreen_updates_existing_record_with_new_priorities(self, parse, *_mocks):
+        old = {"id": 7, "raw_text": "resume", "job_id": 3, "job_details": "Python",
+               "overall_score": 70, "decision_status": "Selected", "score_json": json.dumps({
+                   "overall_score": 70, "ai_overall_score": 75,
+                   "breakdown": {"skills_match": 100, "experience_fit": 50, "education_fit": 50}})}
+        table = MagicMock()
+        for method in ("select", "eq", "order", "range", "update"):
+            getattr(table, method).return_value = table
+        table.execute.side_effect = lambda: SimpleNamespace(data=[{**old, **(table.update.call_args.args[0] if table.update.called else {})}])
+        client = MagicMock()
+        client.table.return_value = table
+        results, skipped = _screen_payloads([("a.pdf", b"resume"), ("copy.pdf", b"resume")],
+            "Engineer", "Python", "3", {"skills_match": 80, "experience_fit": 10, "education_fit": 10},
+            SimpleNamespace(client=client, company={"id": "company"}), "Web Upload")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["score"], 90)
+        self.assertEqual(results[0]["decision_status"], "Selected")
+        updated = table.update.call_args.args[0]
+        self.assertEqual(json.loads(updated["score_json"])["ai_overall_score"], 75)
+        self.assertEqual(json.loads(updated["score_json"])["priority_weights"]["skills"], 80)
+        self.assertNotIn("decision_status", updated)
+        table.eq.assert_any_call("company_id", "company")
+        table.eq.assert_any_call("id", 7)
+        table.insert.assert_not_called()
+        parse.assert_not_called()
+        self.assertEqual(len(skipped), 1)
+
+    @patch("web_app.check_api_key", return_value=True)
+    @patch("web_app.heuristic_resume_check", return_value={"looks_like_resume": True})
     @patch("web_app.extract_text_from_bytes", side_effect=lambda _name, data: data.decode())
     @patch("web_app.parse_and_score")
     def test_screening_returns_partial_ai_failures(self, parse, *_mocks):
