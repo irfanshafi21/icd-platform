@@ -1,0 +1,17 @@
+name: Availability check
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check public health without user data
+        run: |
+          curl --fail --silent --show-error --max-time 60 --retry 2 --retry-delay 10 https://icd-platform.onrender.com/api/health | python3 -c 'import json,sys; assert json.load(sys.stdin).get("ok") is True'
+# Schedules run only after this file exists on the repository default branch.
+# Failed-run notifications depend on the repository owner's GitHub notification settings.

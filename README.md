@@ -128,6 +128,16 @@ node --check web/app.js
 python -m unittest discover -q
 ```
 
+The backend suite covers publication, applications, screening, interview-score locking and retry recovery, ATS reruns, report files, and offer generation with isolated database and delivery fixtures.
+
+For responsive browser checks, install Google Chrome and Playwright in your development environment (or set `PLAYWRIGHT_MODULE` to its module path) and run:
+
+```bash
+node scripts/ui-workflow-qa.cjs review
+```
+
+The harness uses local source and in-memory API fixtures, blocks external requests, and writes screenshots and a JSON report to the ignored `scripts/qa-output/review/` directory. It exercises recruiter, candidate, and owner views at 1440px, 768px, and 390px. These checks do not validate real Google authentication, AI provider responses, meeting access, or inbox delivery.
+
 ## Deploy
 
 The included `Dockerfile`, `render.yaml`, and `render_start.sh` support Render deployment. Configure secrets in Render, connect the repository, and deploy the Docker service. Production exposes `/api/health` for monitoring.
