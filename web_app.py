@@ -9,6 +9,7 @@ tokens are never shared between recruiters.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 import base64
 import hashlib
 import io
@@ -802,6 +803,8 @@ class CandidateProfile(BaseModel):
 
 @app.put("/api/candidate/profile")
 def candidate_profile(payload: CandidateProfile, session: CandidateSession = Depends(_candidate_session)):
+    if not payload.full_name.strip() or len(payload.full_name.strip()) > 120 or len(payload.phone) > 40:
+        raise HTTPException(400, "Enter a name of 1–120 characters and a phone number of up to 40 characters")
     row = {"user_id": str(session.user.id), "full_name": payload.full_name.strip(),
            "email": getattr(session.user, "email", ""), "phone": payload.phone.strip()}
     saved = session.client.table("candidate_profiles").upsert(row, on_conflict="user_id").execute().data or []
@@ -820,8 +823,12 @@ async def candidate_apply(job_id: int = Form(...), full_name: str = Form(...), p
         raise HTTPException(400, "Only PDF and DOCX resumes are supported")
     try:
         extracted = extract_text_from_bytes(filename, content)
+    except ValueError as exc:
+        if "Could not extract text" in str(exc):
+            raise HTTPException(400, "No readable text was found. For a scanned or image-only PDF, export a text-based PDF or upload the original DOCX file.") from exc
+        raise HTTPException(400, "The uploaded resume could not be read. Re-export the file as PDF or DOCX and retry.") from exc
     except Exception as exc:
-        raise HTTPException(400, "The uploaded resume could not be read") from exc
+        raise HTTPException(400, "The uploaded resume could not be read. Re-export the file as PDF or DOCX and retry.") from exc
     if not extracted.strip():
         raise HTTPException(400, "No readable text was found in this resume. For a scanned or image-only PDF, export a text-based PDF or upload the original DOCX file.")
     if not heuristic_resume_check(extracted).get("looks_like_resume"):
@@ -1810,6 +1817,7 @@ def _screen_payloads_locked(payloads: list[tuple[str, bytes]], job_role: str, jo
             old_total = previous.get("overall_score")
             previous_weights = old_score.get("priority_weights")
             score = _weighted_score(old_score, weights)
+            score["screening_events"] = (old_score.get("screening_events", []) + [{"at": datetime.now(timezone.utc).isoformat(), "before": old_total, "after": score["overall_score"], "weights": weights}])[-20:]
             score["previous_priority_weights"] = previous_weights
             score["previous_overall_score"] = old_total
             score["rescreen_note"] = ("Priorities applied. The rounded total is unchanged; equal category scores or rounding can produce the same result."

@@ -139,6 +139,33 @@ class BackendWorkflowTests(unittest.TestCase):
                 {"overall_score": 80, "breakdown": {"skills_match": 80, "experience_fit": 80, "education_fit": 80},
                  "matched_skills": ["Python"], "gaps": []})
 
+    def test_real_resume_formats_and_image_only_pdf(self):
+        from resume_parser import extract_text_from_bytes, heuristic_resume_check
+        from reportlab.pdfgen import canvas
+        from docx import Document
+        from pypdf import PdfWriter
+        lines = ["Asha Kumar", "asha@example.com", "Summary: Python developer with five years of experience building reliable services.",
+                 "Skills: Python SQL FastAPI testing and data analysis", "Experience: Software Engineer, Acme, 2020 to 2025",
+                 "Built APIs, automated tests, and database services for customer applications.",
+                 "Education: Bachelor of Computer Science, Example University", "Projects: Built an application tracking platform with Python and SQL."]
+        pdf = io.BytesIO(); page = canvas.Canvas(pdf)
+        for i, line in enumerate(lines):
+            page.drawString(40, 780-i*25, line)
+        page.save()
+        doc = Document()
+        for line in lines:
+            doc.add_paragraph(line)
+        word = io.BytesIO(); doc.save(word)
+        blank = io.BytesIO(); writer = PdfWriter(); writer.add_blank_page(width=612, height=792); writer.write(blank)
+        with patch.object(web_app, "public_job", return_value={"id": 1, "company_id": "company"}), patch.object(web_app, "extract_text_from_bytes", side_effect=extract_text_from_bytes), patch.object(web_app, "heuristic_resume_check", side_effect=heuristic_resume_check):
+            for name, content, status in [("resume.pdf", pdf.getvalue(), 200), ("resume.docx", word.getvalue(), 200), ("scan.pdf", blank.getvalue(), 400), ("broken.pdf", b"bad data", 400)]:
+                with self.subTest(name=name):
+                    self.database.rows["public_applications"] = []
+                    result = self.client.post("/api/candidate/applications", data={"job_id":1,"full_name":"Asha"}, files={"resume":(name,content)})
+                    self.assertEqual(result.status_code,status,result.text)
+                    if name == "scan.pdf":
+                        self.assertIn("image-only", result.json()["detail"])
+
     def test_owner_analytics_requires_owner_and_returns_aggregates(self):
         response = self.client.get('/api/owner/analytics')
         self.assertEqual(response.status_code, 403)
@@ -387,6 +414,10 @@ class BackendWorkflowTests(unittest.TestCase):
         self.assertEqual(len(self.database.rows["screening_history"]), 1)
         self.assertEqual(self.ai.call_count, 1)
         self.assertEqual(self.database.rows["screening_history"][0]["overall_score"], 34)
+        events = json.loads(self.database.rows["screening_history"][0]["score_json"])["screening_events"]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["after"], 34)
+        self.assertIn("at", events[0])
         self.assertEqual(screen("2").json()["processed"], 1)
         self.assertEqual(self.ai.call_count, 2)
 
