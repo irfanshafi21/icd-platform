@@ -13,6 +13,20 @@ class WebAppTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
+    def test_notification_preferences_require_the_matching_session(self):
+        for role in ("candidate", "recruiter"):
+            self.assertEqual(self.client.get("/api/notifications/" + role).status_code, 401)
+            self.assertEqual(self.client.put("/api/notifications/" + role, json={"items": []}).status_code, 401)
+
+    def test_notification_reads_merge_in_authenticated_user_metadata(self):
+        from web_app import _notification_reads
+        client = MagicMock()
+        client.auth.get_user.return_value.user = SimpleNamespace(user_metadata={"icd_notification_reads_candidate": ["old"]})
+        self.assertEqual(_notification_reads(client, "candidate", ["old", "new"]), {"items": ["old", "new"]})
+        client.auth.update_user.assert_called_once_with({"data": {"icd_notification_reads_candidate": ["old", "new"]}})
+        with self.assertRaises(HTTPException):
+            _notification_reads(client, "candidate", ["x" * 501])
+
     @patch("web_app.requests.get")
     def test_google_login_always_requests_account_chooser(self, get):
         from urllib.parse import urlparse, parse_qs

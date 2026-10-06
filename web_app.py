@@ -644,6 +644,47 @@ def _decide_registration_locked(registration_id: str, payload: OwnerDecision, se
     return {"ok": True, "status": decision, "access_code": update.get("access_code")}
 
 
+class NotificationReads(BaseModel):
+    items: list[str]
+
+
+def _notification_reads(client, role: str, items=None):
+    user = client.auth.get_user().user
+    if not user:
+        raise HTTPException(401, "Sign in again to sync notifications")
+    field = "icd_notification_reads_" + role
+    metadata = user.user_metadata or {}
+    existing = metadata.get(field, [])
+    existing = [item for item in existing if isinstance(item, str) and len(item) <= 40] if isinstance(existing, list) else []
+    if items is not None:
+        if len(items) > 1000 or any(len(item) > 40 for item in items):
+            raise HTTPException(400, "Too many notification records")
+        merged = list(dict.fromkeys([*existing, *items]))[-100:]
+        client.auth.update_user({"data": {field: merged}})
+        return {"items": merged}
+    return {"items": existing[-100:]}
+
+
+@app.get("/api/notifications/recruiter")
+def recruiter_reads(session: RecruiterSession = Depends(_session)):
+    return _notification_reads(session.client, "recruiter")
+
+
+@app.put("/api/notifications/recruiter")
+def save_recruiter_reads(payload: NotificationReads, session: RecruiterSession = Depends(_session)):
+    return _notification_reads(session.client, "recruiter", payload.items)
+
+
+@app.get("/api/notifications/candidate")
+def candidate_reads(session: CandidateSession = Depends(_candidate_session)):
+    return _notification_reads(session.client, "candidate")
+
+
+@app.put("/api/notifications/candidate")
+def save_candidate_reads(payload: NotificationReads, session: CandidateSession = Depends(_candidate_session)):
+    return _notification_reads(session.client, "candidate", payload.items)
+
+
 @app.delete("/api/candidate/session")
 def candidate_logout(response: Response, icd_candidate_session: str | None = Cookie(default=None)):
     if icd_candidate_session:
@@ -1767,7 +1808,9 @@ def _screen_payloads_locked(payloads: list[tuple[str, bytes]], job_role: str, jo
         old_score = _json_field(previous.get("score_json"), {}) if previous else {}
         if previous and previous.get("job_details", "") == job_details and old_score.get("breakdown"):
             old_total = previous.get("overall_score")
+            previous_weights = old_score.get("priority_weights")
             score = _weighted_score(old_score, weights)
+            score["previous_priority_weights"] = previous_weights
             score["previous_overall_score"] = old_total
             score["rescreen_note"] = ("Priorities applied. The rounded total is unchanged; equal category scores or rounding can produce the same result."
                                      if old_total == score["overall_score"] else "Score recalculated from saved evidence using the new priorities.")
