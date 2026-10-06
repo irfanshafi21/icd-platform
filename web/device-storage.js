@@ -15,7 +15,7 @@
   if(document.querySelector('#device-preferences'))return;
   const box=document.createElement('section');box.id='device-preferences';
   box.setAttribute('aria-label','Device storage preferences');
-  box.innerHTML='<strong>Your device, your choice</strong><p>Remember bookmarks and notification read status on this browser? Sign-in works either way. AI conversations are not saved to this device.</p><div><button type="button" data-choice="deny">Use this session only</button><button type="button" data-choice="allow">Remember preferences</button><button type="button" data-choice="clear">Clear saved preferences</button></div><a href="/cookies">Storage details</a>';
+  box.innerHTML='<strong>Your device, your choice</strong><p>Remember bookmarks and local preferences on this browser? Notification read status also syncs with your signed-in account. Sign-in works either way. AI conversations are not saved to this device.</p><div><button type="button" data-choice="deny">Use this session only</button><button type="button" data-choice="allow">Remember preferences</button><button type="button" data-choice="clear">Clear saved preferences</button></div><a href="/cookies">Storage details</a>';
   box.style.cssText='position:fixed;bottom:16px;left:16px;z-index:10001;max-width:440px;width:calc(100% - 32px);box-sizing:border-box;padding:22px;background:white;color:#075e65;border:1px solid #8fc7ca;border-radius:18px;box-shadow:0 8px 32px #00000033;font:14px/1.6 system-ui';
   box.querySelectorAll('button').forEach(button=>{
    button.style.cssText='padding:10px;margin:4px 4px 4px 0;border:1px solid #087f86;border-radius:8px;background:#edf9f9;color:#075e65;cursor:pointer;min-height:44px';
