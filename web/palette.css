@@ -1,7 +1,7 @@
-/* Shared three-color palette: teal actions, white surfaces, blue information. */
-:root{--icd-primary:#075e65;--icd-surface:#fff;--icd-accent:#385d91;--icd-accent-soft:#eef3fb;--icd-accent-border:#c6d5eb}
+/* Shared four-color palette: teal actions, white surfaces, plum secondary controls, amber highlights. */
+:root{--icd-primary:#075e65;--icd-surface:#fff;--icd-accent:#704369;--icd-accent-soft:#f5edf4;--icd-accent-border:#dec7da}
 html body #app :is(.secondary,.candidate-save-job,.save-job-button),html body.policy-page .policy-nav a:not([aria-current=page]){background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;-webkit-text-fill-color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
-html body #app :is(.secondary,.candidate-save-job,.save-job-button):hover,html body.policy-page .policy-nav a:not([aria-current=page]):hover{background:#e1eaf8!important;border-color:var(--icd-accent)!important}
+html body #app :is(.secondary,.candidate-save-job,.save-job-button):hover,html body.policy-page .policy-nav a:not([aria-current=page]):hover{background:#ebdfea!important;border-color:var(--icd-accent)!important}
 html body #app :is(.secondary,.candidate-save-job,.save-job-button) :is(span,i,svg){color:inherit!important;-webkit-text-fill-color:inherit!important}
 html body #app :is(.candidate-monogram,.candidate-avatar,.company-mark),html body #app .chips span{background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;-webkit-text-fill-color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
 html body #app .command-hero .secondary.light,html body #app .workspace>aside #logout{background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;-webkit-text-fill-color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
@@ -10,3 +10,24 @@ html body.policy-page .policy-contents{background:var(--icd-accent-soft)!importa
 html body.policy-page .policy-contents :is(summary,a){color:var(--icd-accent)!important}
 html body :is(button,a,input,select,textarea):focus-visible{outline-color:var(--icd-accent)!important}
 @media print{html body.policy-page .policy-contents{background:white!important}}
+
+:root{--icd-warm:#805414;--icd-warm-soft:#fff4df;--icd-warm-border:#ead4ac}
+/* Override older dark hero backgrounds as well as their inherited text fills. */
+html body #app .workspace .screening-intro,html body #app .workspace .insight-hero,html body #app .workspace .offer-hero{background:#edf8f8!important;background-image:none!important;color:#173b40!important;display:flex;align-items:center;justify-content:space-between;gap:24px}
+html body #app .workspace .screening-intro :is(h2,h3,b){color:#173b40!important;-webkit-text-fill-color:#173b40!important}
+html body #app .workspace .screening-intro :is(p,.kicker){color:#45636a!important;-webkit-text-fill-color:#45636a!important}
+html body #app .workspace .screening-badges{display:grid!important;gap:10px!important;flex:0 0 auto}
+html body #app .workspace .screening-badges span{background:var(--icd-warm-soft)!important;border:1px solid var(--icd-warm-border)!important;color:var(--icd-warm)!important;-webkit-text-fill-color:var(--icd-warm)!important;padding:10px 14px!important;border-radius:10px!important}
+html body #app :is(.step-badge,.criteria-tip,.selected-role-preview,.candidate-decision-line){background:var(--icd-warm-soft)!important;border-color:var(--icd-warm-border)!important;color:var(--icd-warm)!important}
+html body #app :is(.criteria-tip,.selected-role-preview,.candidate-decision-line) :is(b,span,i,small){color:var(--icd-warm)!important;-webkit-text-fill-color:var(--icd-warm)!important}
+html body #app :is(.executive-kpis,.owner-kpis)>:nth-child(4n+2){background:var(--icd-accent-soft)!important;border-color:var(--icd-accent-border)!important}
+html body #app :is(.executive-kpis,.owner-kpis)>:nth-child(4n+3){background:var(--icd-warm-soft)!important;border-color:var(--icd-warm-border)!important}
+html body #app :is(.executive-kpis,.owner-kpis)>:nth-child(4n+4){background:#edf8f8!important}
+html body :is(.hf-evidence-note,.hf-pill){background:var(--icd-warm-soft)!important;color:var(--icd-warm)!important;border-color:var(--icd-warm-border)!important}
+html body .hf-workflow>:nth-child(2){background:var(--icd-accent-soft)!important}html body .hf-workflow>:nth-child(3){background:var(--icd-warm-soft)!important}
+html body.policy-page .policy-nav a:nth-child(3n):not([aria-current=page]){background:var(--icd-warm-soft)!important;color:var(--icd-warm)!important;-webkit-text-fill-color:var(--icd-warm)!important;border-color:var(--icd-warm-border)!important}
+html body #app .workspace-head{align-items:center!important;gap:24px!important}html body #app .header-actions{align-items:center!important;gap:12px!important}html body #app .screening-layout>.panel{min-width:0!important}html body #app .screening-layout .panel-heading{align-items:center!important;gap:12px!important}
+@media(max-width:700px){html body #app .workspace .screening-intro{flex-direction:column;align-items:stretch!important}html body #app .workspace .screening-badges{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))!important}html body #app .workspace-head{align-items:flex-start!important;gap:16px!important}}
+
+html body #app .screening-layout>.panel:first-child .panel-heading{border-bottom:2px solid var(--icd-accent-border)!important}html body #app .screening-layout>.panel:first-child .panel-heading .kicker{color:var(--icd-accent)!important}html body .hf-workflow>.hf-step:nth-child(4){background:#edf8f8!important}
+@media(min-width:901px){html body #app .screening-layout>.panel>.panel-heading{min-height:104px!important;box-sizing:border-box!important;margin-bottom:20px!important}}
