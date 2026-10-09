@@ -1,0 +1,12 @@
+/* Shared three-color palette: teal actions, white surfaces, blue information. */
+:root{--icd-primary:#075e65;--icd-surface:#fff;--icd-accent:#385d91;--icd-accent-soft:#eef3fb;--icd-accent-border:#c6d5eb}
+html body #app :is(.secondary,.candidate-save-job,.save-job-button),html body.policy-page .policy-nav a:not([aria-current=page]){background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;-webkit-text-fill-color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
+html body #app :is(.secondary,.candidate-save-job,.save-job-button):hover,html body.policy-page .policy-nav a:not([aria-current=page]):hover{background:#e1eaf8!important;border-color:var(--icd-accent)!important}
+html body #app :is(.secondary,.candidate-save-job,.save-job-button) :is(span,i,svg){color:inherit!important;-webkit-text-fill-color:inherit!important}
+html body #app :is(.candidate-monogram,.candidate-avatar,.company-mark),html body #app .chips span{background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;-webkit-text-fill-color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
+html body #app .command-hero .secondary.light,html body #app .workspace>aside #logout{background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;-webkit-text-fill-color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
+html body :is(.hf-ghost,.hf-header-candidate,.hf-step-number){background:var(--icd-accent-soft)!important;color:var(--icd-accent)!important;border-color:var(--icd-accent-border)!important}
+html body.policy-page .policy-contents{background:var(--icd-accent-soft)!important;border-color:var(--icd-accent-border)!important}
+html body.policy-page .policy-contents :is(summary,a){color:var(--icd-accent)!important}
+html body :is(button,a,input,select,textarea):focus-visible{outline-color:var(--icd-accent)!important}
+@media print{html body.policy-page .policy-contents{background:white!important}}
