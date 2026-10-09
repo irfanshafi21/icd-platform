@@ -139,6 +139,17 @@ class BackendWorkflowTests(unittest.TestCase):
                 {"overall_score": 80, "breakdown": {"skills_match": 80, "experience_fit": 80, "education_fit": 80},
                  "matched_skills": ["Python"], "gaps": []})
 
+    def test_withdrawal_checks_owner_and_processing_status(self):
+        self.database.rows["public_applications"] = [{"id": 1, "candidate_user_id": "other", "status": "Submitted"}, {"id": 2, "candidate_user_id": "user", "status": "Screening"}, {"id": 3, "candidate_user_id": "user", "status": "Submitted"}]
+        self.assertEqual(self.client.post('/api/candidate/applications/1/withdraw').status_code, 404)
+        self.assertEqual(self.client.post('/api/candidate/applications/2/withdraw').status_code, 409)
+        with patch.object(self.database, 'rpc', create=True) as rpc:
+            rpc.return_value.execute.return_value = SimpleNamespace(data={"ok": True})
+            self.assertEqual(self.client.post('/api/candidate/applications/3/withdraw').status_code, 200)
+            rpc.assert_called_once_with('withdraw_candidate_application', {'p_application_id': 3})
+        web_app.app.dependency_overrides.pop(web_app._candidate_session)
+        self.assertEqual(self.client.post('/api/candidate/applications/3/withdraw').status_code, 401)
+
     def test_real_resume_formats_and_image_only_pdf(self):
         from resume_parser import extract_text_from_bytes, heuristic_resume_check
         from reportlab.pdfgen import canvas

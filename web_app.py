@@ -718,7 +718,11 @@ def candidate_me(session: CandidateSession = Depends(_candidate_session)):
         if update.get("offer_sent_at"):
             application["offer_url"] = f"/api/candidate/applications/{application['id']}/offer.pdf"
     jobs = public_jobs()
-    return {"email": getattr(session.user, "email", ""), "profile": profiles[0] if profiles else None,
+    try:
+        withdrawal_available = session.client.rpc("candidate_withdrawal_available", {}).execute().data is True
+    except Exception:
+        withdrawal_available = False
+    return {"withdrawal_available": withdrawal_available, "email": getattr(session.user, "email", ""), "profile": profiles[0] if profiles else None,
             "applications": applications, "jobs": jobs}
 
 
@@ -809,6 +813,20 @@ def candidate_profile(payload: CandidateProfile, session: CandidateSession = Dep
            "email": getattr(session.user, "email", ""), "phone": payload.phone.strip()}
     saved = session.client.table("candidate_profiles").upsert(row, on_conflict="user_id").execute().data or []
     return saved[0] if saved else row
+
+
+@app.post("/api/candidate/applications/{application_id}/withdraw")
+def withdraw_candidate_application(application_id: int, session: CandidateSession = Depends(_candidate_session)):
+    rows = session.client.table("public_applications").select("id,status").eq("id", application_id).eq("candidate_user_id", str(session.user.id)).limit(1).execute().data or []
+    if not rows:
+        raise HTTPException(404, "Application not found")
+    if rows[0].get("status") not in {"Submitted", "Withdrawn"}:
+        raise HTTPException(409, "Screening has started. Contact the hiring team to withdraw.")
+    try:
+        return session.client.rpc("withdraw_candidate_application", {"p_application_id": application_id}).execute().data
+    except Exception as exc:
+        logger.warning("Candidate withdrawal failed for application %s", application_id)
+        raise HTTPException(503, "Withdrawal could not be completed. Refresh application status and try again; contact the hiring team if it continues.") from exc
 
 
 @app.post("/api/candidate/applications")
@@ -1123,6 +1141,8 @@ def update_application(application_id: int, payload: dict[str, Any], session: Re
     if status not in {"Screening", "Rejected"}:
         raise HTTPException(400, "Unsupported application status")
     application = _application_row(application_id, session)
+    if application.get("status") == "Withdrawn":
+        raise HTTPException(409, "This application was withdrawn")
     if status == "Rejected":
         jobs = (session.client.table("jobs").select("title").eq("id", application.get("job_id"))
                 .eq("company_id", session.company["id"]).limit(1).execute().data or [])
@@ -1193,7 +1213,7 @@ def screen_job_applications(job_id: int, session: RecruiterSession = Depends(_se
     if not jobs:
         raise HTTPException(404, "Job not found")
     applications = (session.client.table("public_applications").select("*").eq("job_id", job_id)
-                    .eq("company_id", session.company["id"]).neq("status", "Rejected").execute().data or [])
+                    .eq("company_id", session.company["id"]).neq("status", "Rejected").neq("status", "Withdrawn").execute().data or [])
     screened_rows = (session.client.table("screening_history").select("email,filename,profile_json,score_json")
                      .eq("job_id", job_id).eq("company_id", session.company["id"]).execute().data or [])
     screened_keys = {(str(row.get("email") or "").lower(), str(row.get("filename") or ""))
