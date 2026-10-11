@@ -256,3 +256,57 @@ html body #app .insight-studio .primary:active:not(:disabled),html body #app .fl
 @keyframes icd-response-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes icd-panel-enter{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){html body #app .insight-studio *,html body #app .floating-ai *,html body #app .floating-ai-panel,html body #app .floating-ai-panel *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Immersive intelligence studio; intentionally scoped to AI Insights. */
+html body #app .workspace-page.page-insights .insight-studio{position:relative;isolation:isolate;overflow:hidden;padding:24px;border-radius:28px;background:#082c33;border:1px solid #35636a;box-shadow:0 24px 60px #082c3320;color:#e4f2f2}
+html body #app .studio-topbar{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:20px;border-bottom:1px solid #75bec42b}
+html body #app .studio-topbar>span{font-size:11px;font-weight:700;letter-spacing:2px;color:#a7dcdf}
+html body #app .studio-topbar button{border:1px solid #54838a!important;background:#143e46!important;color:#d2eff0!important;border-radius:30px!important;padding:9px 14px!important;min-height:36px;font-size:12px!important;box-shadow:none!important}
+html body #app .studio-aurora{position:absolute;pointer-events:none;z-index:-1;inset:0;background:radial-gradient(ellipse at 20% 30%,#2ca5aa20,transparent 50%),radial-gradient(ellipse at 80% 65%,#f4c77410,transparent 45%);animation:studio-aurora-drift 18s ease-in-out infinite alternate}
+html body #app .workspace-page.page-insights .insight-studio .insight-hero{background:transparent!important;border:0!important;border-radius:0!important;min-height:360px;grid-template-columns:1fr 1fr!important;padding:32px 12px!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-hero:before{opacity:.5;background-size:34px 34px;animation:studio-grid-drift 24s linear infinite}
+html body #app .workspace-page.page-insights .insight-studio .insight-hero h2{font-size:clamp(30px,3.5vw,50px)!important;max-width:560px}
+html body #app .workspace-page.page-insights .insight-studio .insight-reactor{height:300px}
+html body #app .reactor-halo{position:absolute;width:245px;height:245px;border-radius:50%;background:radial-gradient(circle,#5bd2d51a,transparent 65%);box-shadow:0 0 60px #49b9c014;animation:studio-halo-breathe 5s ease-in-out infinite}
+html body #app .reactor-floor{position:absolute;bottom:10px;width:230px;height:70px;border-radius:50%;border:1px solid #8ed8db50;background:repeating-radial-gradient(ellipse,#62c7cc18 0 1px,transparent 2px 17px);transform:rotateX(50deg);animation:studio-floor-breathe 5s ease-in-out infinite}
+html body #app .reactor-coordinate{position:absolute;font-size:9px;letter-spacing:1.8px;color:#b3d6d9!important;padding:6px 9px;border:1px solid #79c8cf36;background:#103b42;border-radius:5px}
+html body #app .coordinate-a{top:10px;left:10px}.coordinate-b{right:0;bottom:0}
+html body #app .workspace-page.page-insights .insight-studio .insight-grid{position:relative;gap:18px;margin-top:0!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console{background:#103940!important;border:1px solid #37636b!important;box-shadow:none!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console h3{color:#e5f4f4!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console .kicker{color:#f0c776!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console dt{color:#94bfc4!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console dd{color:#e0eded!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console dl>div{border-color:#45666b!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-console small{color:#adc8cc!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-signal i{background:#86d6db!important}
+html body #app .workspace-page.page-insights .insight-studio .ask-panel{background:#0f343c!important;border:1px solid #3b6d75!important;box-shadow:inset 0 1px 0 #a6e8e91c!important;position:relative}
+html body #app .workspace-page.page-insights .insight-studio .ask-panel label{color:#f0f8f8!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-assistant-label{color:#9ed9df!important}
+html body #app .workspace-page.page-insights .insight-studio textarea{background:#092b32!important;color:#f2f8f8!important;border:1px solid #56848b!important;caret-color:#f1c675}
+html body #app .workspace-page.page-insights .insight-studio textarea::placeholder{color:#a6c1c5!important;opacity:1!important}
+html body #app .workspace-page.page-insights .insight-studio textarea:focus{border-color:#94e0e2!important;box-shadow:0 0 0 3px #84d5da22!important}
+html body #app .workspace-page.page-insights .insight-studio #generate-insight{background:#9de0e2!important;color:#073940!important;box-shadow:0 5px 24px #55c1ca1a!important;border-color:#9de0e2!important}
+html body #app .workspace-page.page-insights .insight-studio #generate-insight:disabled{opacity:.75}
+html body #app .workspace-page.page-insights .insight-studio .insight-answer{background:#f7fbfb!important;color:#203f45!important;border-radius:16px!important;padding:22px!important;border:0!important}
+html body #app .workspace-page.page-insights .insight-studio .insight-answer h3{color:#123d45!important}
+html body #app .workspace-page.page-insights .insight-studio[data-stage=thinking] .ask-panel:after{content:'';position:absolute;left:22px;right:22px;top:0;height:2px;background:linear-gradient(90deg,transparent,#a9ecee,transparent);transform-origin:left;animation:studio-processing 2.5s ease-in-out infinite}
+html body #app .workspace-page.page-insights .insight-studio[data-stage=thinking] .reactor-halo{animation-duration:2s}
+html body #app .workspace-page.page-insights .insight-studio[data-stage=answering] .reactor-halo{animation:studio-answer-pulse 1.5s ease-out 2}
+@keyframes studio-aurora-drift{to{opacity:.4}}
+@keyframes studio-grid-drift{to{transform:translateY(34px)}}
+@keyframes studio-halo-breathe{50%{transform:scale(1.15);opacity:.55}}
+@keyframes studio-floor-breathe{50%{opacity:.4;transform:rotateX(50deg) scale(.9)}}
+@keyframes studio-processing{0%,100%{transform:scaleX(.2);opacity:.35}50%{transform:scaleX(1);opacity:1}}
+@keyframes studio-answer-pulse{to{transform:scale(1.4);opacity:0}}
+html body #app .workspace-page.page-insights .insight-studio.motion-paused *,html body #app .workspace-page.page-insights .insight-studio.motion-paused *:before,html body #app .workspace-page.page-insights .insight-studio.motion-paused *:after{animation-play-state:paused!important}
+@media(max-width:700px){html body #app .workspace-page.page-insights .insight-studio{padding:14px;border-radius:20px}html body #app .studio-topbar{gap:10px}html body #app .studio-topbar>span{font-size:9px;letter-spacing:1px}html body #app .studio-topbar button{font-size:11px!important;padding:8px 10px!important}html body #app .workspace-page.page-insights .insight-studio .insight-hero{grid-template-columns:1fr!important;padding:24px 6px!important}html body #app .workspace-page.page-insights .insight-studio .insight-reactor{height:270px}html body #app .workspace-page.page-insights .insight-studio .ask-panel{padding:16px!important}html body #app .workspace-page.page-insights .insight-studio .insight-answer{padding:16px!important}}
+@media(prefers-reduced-motion:reduce){html body #app .workspace-page.page-insights .insight-studio *,html body #app .workspace-page.page-insights .insight-studio *:before,html body #app .workspace-page.page-insights .insight-studio *:after{animation:none!important;transition:none!important}}
+
+html body #app .workspace-page.page-insights .insight-studio .reactor-coordinate{color:#b3d6d9!important} html body #app .workspace-page.page-insights .insight-studio .insight-live-label{color:#f1cb80!important}
+
+html body #app .insight-studio #insight-question{background:#092b32!important;color:#f2f8f8!important;-webkit-text-fill-color:#f2f8f8!important;border-color:#56848b!important}
+html body #app .insight-studio #insight-question::placeholder{color:#a6c1c5!important;-webkit-text-fill-color:#a6c1c5!important}
+html body #app .insight-studio #generate-insight{color:#073940!important;-webkit-text-fill-color:#073940!important}
+html body #app .insight-studio .reactor-coordinate{-webkit-text-fill-color:#b3d6d9!important}
+html body #app .insight-studio .insight-live-label{-webkit-text-fill-color:#f1cb80!important}
