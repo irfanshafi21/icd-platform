@@ -70,6 +70,7 @@ async function setup(browser, width, mode) {
     let result = {};
     let status = 200;
     if(api.startsWith('/api/notifications/')){if(method==='PUT')notificationReads[api]=[...new Set([...(notificationReads[api]||[]),...payload.items])];result={items:notificationReads[api]||[]};}
+    else if(api==='/api/public/assistant') result={answer:'Generated ICD product explanation for: '+payload.question};
     else if (api === '/api/privacy-requests') {if(method==='POST')privacyRequests.push({id:'request-1',...payload,status:'received',created_at:new Date().toISOString()}); result=method==='POST'?privacyRequests.at(-1):{owner:mode==='privacy-owner',requests:privacyRequests};}
     else if(api==='/api/owner/privacy-requests/request-1'){Object.assign(privacyRequests[0],payload);result=privacyRequests[0];}
     else if (api === '/api/interview-deliveries') result = [{id: 1, interview_id: 32, status: 'sent', updated_at: '2026-09-18T12:00:00Z'}];
@@ -234,7 +235,12 @@ let origin;
       assert.equal(await page.locator('.error-destinations a').last().getAttribute('href'),'/?recruiter=1');
       await snap(page,width,'not-found');await page.locator('#not-found-home').click();await page.locator('.landing').waitFor();
       check(width,'404 logo loads and recovery link returns home',true);
-      await page.goto(origin); await snap(page, width, 'landing'); await page.locator('.public-guide-toggle').click(); await page.locator('[data-guide-topic="2"]').click(); assert((await page.locator('#public-guide .assistant').innerText()).includes('owner review')); await page.locator('#public-guide-question').fill('write a poem about space'); await page.locator('#public-guide form button').click(); assert((await page.locator('#public-guide .assistant').innerText()).includes('Please ask about')); await snap(page,width,'public-guide'); await page.locator('#public-guide header button').click(); await page.locator('[data-hf-stage="1"]').click(); assert.equal(await page.locator('[data-hf-stage="1"]').getAttribute('aria-pressed'),'true'); assert.equal(await page.locator('.hf-demo-muted').count(),2); await page.locator('[data-hf-stage=all]').click(); await page.locator('.hf-faq summary').first().click(); assert.equal(await page.locator('.hf-faq details').first().getAttribute('open'),''); check(width,'landing sample stages and FAQ respond',true);
+      await page.goto(origin); await snap(page, width, 'landing'); await page.locator('.public-guide-toggle').click(); assert(await page.locator('[data-guide-topic]').count()===0);
+    assert(await page.locator('#public-guide .assistant').count()===0);
+    await page.locator('#public-guide-question').fill('How does ICD screening work?');
+    await page.locator('#public-guide form button').click();
+    await page.waitForFunction(()=>document.querySelector('#public-guide .assistant')?.textContent.includes('Generated ICD'));
+    await snap(page,width,'public-guide'); await page.locator('#public-guide header button').click(); await page.locator('[data-hf-stage="1"]').click(); assert.equal(await page.locator('[data-hf-stage="1"]').getAttribute('aria-pressed'),'true'); assert.equal(await page.locator('.hf-demo-muted').count(),2); await page.locator('[data-hf-stage=all]').click(); await page.locator('.hf-faq summary').first().click(); assert.equal(await page.locator('.hf-faq details').first().getAttribute('open'),''); check(width,'landing sample stages and FAQ respond',true);
       await page.locator('.landing-cta .recruiter-go').scrollIntoViewIfNeeded();
       await page.locator('.landing-cta .recruiter-go').click();
       await page.locator('.recruiter-access').waitFor();

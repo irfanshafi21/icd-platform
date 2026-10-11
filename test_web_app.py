@@ -13,6 +13,23 @@ class WebAppTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
 
+    def test_public_assistant_generation_validation_and_throttle(self):
+        import web_app
+        web_app._public_assistant_requests.clear()
+        with patch("web_app.ask_product_assistant", return_value="Generated explanation") as generate:
+            self.assertEqual(self.client.post('/api/public/assistant', json={'question':' '}).status_code,400)
+            self.assertEqual(self.client.post('/api/public/assistant', json={'question':'x'*1501}).status_code,422)
+            reply=self.client.post('/api/public/assistant', json={'question':' How does ICD work? '})
+            self.assertEqual(reply.json(),{'answer':'Generated explanation'})
+            generate.assert_called_once_with('How does ICD work?')
+            self.assertEqual(self.client.post('/api/public/assistant', json={'question':'Again'}).status_code,429)
+        web_app._public_assistant_requests.clear()
+        with patch("web_app.ask_product_assistant", side_effect=RuntimeError('private provider detail')):
+            reply=self.client.post('/api/public/assistant', json={'question':'What is ICD?'})
+            self.assertEqual(reply.status_code,503)
+            self.assertNotIn('private provider detail',reply.text)
+        web_app._public_assistant_requests.clear()
+
     def test_notification_preferences_require_the_matching_session(self):
         for role in ("candidate", "recruiter"):
             self.assertEqual(self.client.get("/api/notifications/" + role).status_code, 401)

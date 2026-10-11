@@ -37,7 +37,7 @@ from pydantic import BaseModel, Field
 from postgrest.types import ReturnMethod
 from supabase import Client, create_client
 
-from ai_engine import ask_assistant, ask_candidate_assistant, check_api_key, generate_interview_questions, parse_and_score
+from ai_engine import ask_product_assistant, ask_assistant, ask_candidate_assistant, check_api_key, generate_interview_questions, parse_and_score
 from resume_parser import assess_extraction_confidence, extract_text_from_bytes, heuristic_resume_check
 from email_utils import is_configured as email_is_configured, send_email_with_pdf, send_plain_email
 from inbox_intake import is_configured as inbox_is_configured, fetch_new_resumes
@@ -777,6 +777,32 @@ def _publish_candidate_update(candidate: dict, session: RecruiterSession, *, sta
 
 class CandidateHelpPayload(BaseModel):
     question: str = Field(min_length=1, max_length=1500)
+
+
+_public_assistant_requests: dict[str, float] = {}
+
+
+@app.post("/api/public/assistant")
+def public_assistant(payload: CandidateHelpPayload, request: Request):
+    question = payload.question.strip()
+    if not question:
+        raise HTTPException(400, "Enter a question about ICD")
+    key = request.client.host if request.client else "unknown"
+    with _sessions_lock:
+        now = time.monotonic()
+        expired = [k for k, stamp in _public_assistant_requests.items() if now - stamp > 60]
+        for k in expired:
+            del _public_assistant_requests[k]
+        if now - _public_assistant_requests.get(key, float("-inf")) < 5:
+            raise HTTPException(429, "Please wait a few seconds before asking again")
+        if len(_public_assistant_requests) >= 1000:
+            raise HTTPException(429, "The assistant is busy. Please try again shortly.")
+        _public_assistant_requests[key] = now
+    try:
+        return {"answer": ask_product_assistant(question)}
+    except Exception as exc:
+        logger.warning("Public assistant unavailable", exc_info=True)
+        raise HTTPException(503, "The assistant is unavailable. Please try again shortly.") from exc
 
 
 @app.post("/api/candidate/assistant")
