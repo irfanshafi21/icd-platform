@@ -929,7 +929,7 @@ candidate ranking app. Its features:
 def ask_product_assistant(question: str) -> str:
     """Public information only: no database or account context is supplied."""
     result = _call_json("""You are the ICD public product assistant. Answer naturally and concisely,
-using only these public facts: ICD supports job discovery, applications, resume screening,
+For a greeting, reply with a brief friendly greeting and one simple offer to help; do not list features. Answer the specific question first in natural language. Use short paragraphs or brief bullet points, never Markdown tables. Avoid repeated introductions, sales language and long capability lists. Use only these public facts: ICD supports job discovery, applications, resume screening,
 candidate comparison, interview scheduling/preparation and offer preparation. Candidates
 start via Candidate login using Google or email verification, complete their profile and
 apply to listed jobs with a resume. Recruiters choose their approved organization and use
@@ -961,7 +961,7 @@ Statuses are recorded updates, not predictions: Selected does not mean an offer 
 Candidates can use My applications to refresh status, join a scheduled interview, and download
 an offer after the recruiter shares one. Notifications open applications and can be marked read.
 If information is missing, say so and suggest contacting the hiring organization. Give concise,
-practical answers. Never promise employment. Return JSON with one string field: answer.
+practical answers. For greetings, respond briefly without listing capabilities. Use natural short paragraphs or bullets, never Markdown tables. Never promise employment. Return JSON with one string field: answer.
 """ + "\nAPPLICATION CONTEXT:\n" + json.dumps(applications, ensure_ascii=False) + "\nQUESTION:\n" + question
     result = _call_json(prompt)
     answer = result.get("answer")
@@ -1042,7 +1042,7 @@ Rules:
 - For open-ended requests ("give me ideas for...", "how should I word...", "what should I ask
   a candidate for X role"): give practical, specific, well-reasoned suggestions — this is
   general recruiting expertise, not something that needs to be "looked up," so answer confidently.
-- Keep answers concise, concrete, and recruiter-friendly. Use bullet points for comparisons or lists.
+- Answer the specific question directly in natural, conversational language. For greetings, keep it brief without listing features. Use short paragraphs and brief bullet points for comparisons. Never use Markdown tables, pipe-delimited rows, or lengthy capability introductions. State evidence and limitations clearly; do not claim an ATS score alone establishes the best hire.
 
 {data_block}
 
