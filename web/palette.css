@@ -214,3 +214,45 @@ html body #app .insight-studio[data-stage=answering] .insight-answer{animation:i
 @media(max-width:700px){html body #app .insight-studio .insight-hero{grid-template-columns:1fr!important;padding:24px!important}html body #app .insight-reactor{height:210px}html body #app .insight-studio .insight-grid{grid-template-columns:1fr!important}html body #app .insight-console{padding:20px!important}html body #app .insight-console dl{display:none}html body #app .insight-studio .ask-panel{padding:20px!important}}
 @media(prefers-reduced-motion:reduce){html body #app .insight-studio *{animation:none!important;transition:none!important}}
 html body #app .insight-studio .insight-live-label{color:#f1cb80!important}
+
+/* Expressive AI motion: decorative layers never intercept interaction. */
+html body #app .insight-reactor{perspective:650px}
+html body #app .reactor-ring.ring-three{animation:icd-orbit-tilt 14s linear infinite;border-style:dotted}
+html body #app .reactor-ring.ring-one:after,html body #app .reactor-ring.ring-two:after{content:'';position:absolute;width:7px;height:7px;border-radius:50%;background:#f2c36d;top:27px;left:25px;box-shadow:0 0 12px #f2c36d80}
+html body #app .reactor-ring.ring-two:after{background:#89d3d6;width:5px;height:5px;top:20px;left:20px}
+html body #app .reactor-circuits,html body #app .reactor-particles{position:absolute;inset:0;pointer-events:none}
+html body #app .reactor-circuits i{position:absolute;left:0;top:30%;width:25%;height:25px;border-top:1px solid #71c8cf50;border-right:1px solid #71c8cf50;border-radius:0 10px 0 0}
+html body #app .reactor-circuits i:nth-child(2){top:65%;transform:scaleY(-1)}
+html body #app .reactor-circuits i:nth-child(3){left:auto;right:0;transform:scaleX(-1)}
+html body #app .reactor-circuits i:nth-child(4){left:auto;right:0;top:65%;transform:scale(-1)}
+html body #app .reactor-circuits i:after{content:'';position:absolute;top:-2px;left:0;width:5px;height:3px;background:#84d3d5;border-radius:3px;animation:icd-signal-travel 3.5s ease-in-out infinite}
+html body #app .reactor-circuits i:nth-child(2n):after{animation-delay:-1.7s}
+html body #app .reactor-particles i{position:absolute;left:calc(12% + var(--n)*10%);top:calc(15% + var(--n)*8%);width:3px;height:3px;border-radius:50%;background:#b0dedf;opacity:.4;animation:icd-particle-rise 7s ease-in-out infinite;animation-delay:calc(var(--n)*-.8s)}
+html body #app .insight-studio .icd-bot-eyes i,html body #app .floating-ai .icd-bot-eyes i,html body #app .floating-ai-panel .icd-bot-eyes i{transform-origin:center;animation:icd-eye-blink 5.5s ease-in-out infinite}
+html body #app .insight-studio .icd-bot-antenna:after,html body #app .floating-ai .icd-bot-antenna:after{animation:icd-antenna-glow 3s ease-in-out infinite}
+html body #app .insight-studio .insight-mascot .icd-bot-face{animation:icd-robot-look 9s ease-in-out infinite;transform-origin:50% 75%}
+html body #app .insight-studio[data-stage=thinking] .icd-bot-face{animation:icd-robot-think 2s ease-in-out infinite}
+html body #app .insight-studio[data-stage=thinking] .reactor-circuits i:after{animation-duration:1.4s}
+html body #app .insight-studio[data-stage=answering] .icd-bot-face{animation:icd-robot-nod .7s ease-in-out 3}
+html body #app .insight-studio[data-stage=answering] .insight-answer>:not(.ai-answer-byline){animation:icd-response-enter .5s ease-out both}
+html body #app .insight-studio[data-stage=answering] .insight-answer>:nth-child(3){animation-delay:.08s}
+html body #app .insight-studio[data-stage=answering] .insight-answer>:nth-child(4){animation-delay:.16s}
+html body #app .insight-studio[data-stage=answering] .insight-answer>:nth-child(5){animation-delay:.24s}
+html body #app .floating-ai-panel:not([hidden]){animation:icd-panel-enter .32s cubic-bezier(.2,.8,.2,1);transform-origin:bottom right}
+html body #app .floating-ai-panel:has([aria-busy=true]) .icd-bot-face{animation:icd-robot-think 2s ease-in-out infinite}
+html body #app .floating-ai-panel .floating-ai-history>.assistant{animation:icd-response-enter .35s ease-out}
+html body #app .floating-ai:hover .icd-bot-face{transform:rotate(-5deg);transition:transform .2s ease}
+html body #app .insight-studio .primary,html body #app .floating-ai-panel .primary{transition:transform .18s ease,box-shadow .18s ease!important}
+html body #app .insight-studio .primary:hover:not(:disabled),html body #app .floating-ai-panel .primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 7px 20px #08636b30!important}
+html body #app .insight-studio .primary:active:not(:disabled),html body #app .floating-ai-panel .primary:active:not(:disabled){transform:scale(.98)}
+@keyframes icd-orbit-tilt{from{transform:rotateX(58deg) rotateZ(0)}to{transform:rotateX(58deg) rotateZ(360deg)}}
+@keyframes icd-signal-travel{0%{transform:translateX(0);opacity:0}20%{opacity:.8}85%{opacity:.8}100%{left:95%;opacity:0}}
+@keyframes icd-particle-rise{0%,100%{transform:translateY(12px);opacity:.15}50%{transform:translateY(-12px);opacity:.6}}
+@keyframes icd-eye-blink{0%,42%,47%,100%{transform:scaleY(1)}44%,45%{transform:scaleY(.15)}}
+@keyframes icd-antenna-glow{50%{box-shadow:0 0 0 5px #e9b75720,0 0 15px #e9b75760}}
+@keyframes icd-robot-look{0%,35%,100%{transform:rotate(0)}45%,55%{transform:rotate(-4deg)}70%,80%{transform:rotate(3deg)}}
+@keyframes icd-robot-think{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(3deg) translateY(-3px)}}
+@keyframes icd-robot-nod{50%{transform:translateY(4px) rotate(2deg)}}
+@keyframes icd-response-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes icd-panel-enter{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){html body #app .insight-studio *,html body #app .floating-ai *,html body #app .floating-ai-panel,html body #app .floating-ai-panel *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
