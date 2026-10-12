@@ -310,3 +310,23 @@ html body #app .insight-studio #insight-question::placeholder{color:#a6c1c5!impo
 html body #app .insight-studio #generate-insight{color:#073940!important;-webkit-text-fill-color:#073940!important}
 html body #app .insight-studio .reactor-coordinate{-webkit-text-fill-color:#b3d6d9!important}
 html body #app .insight-studio .insight-live-label{-webkit-text-fill-color:#f1cb80!important}
+
+/* Ambient studio choreography, with automatic reduced-motion support. */
+html body #app .studio-topbar .studio-mode{font-size:10px;letter-spacing:1.3px;color:#f1cc87;-webkit-text-fill-color:#f1cc87;border:1px solid #9b83533d;border-radius:30px;padding:8px 12px}
+html body #app .insight-studio .reactor-halo:before,html body #app .insight-studio .reactor-halo:after{content:'';position:absolute;inset:0;border:1px solid #8bdde133;border-radius:50%;animation:icd-sonar 7s ease-out infinite;pointer-events:none}
+html body #app .insight-studio .reactor-halo:after{animation-delay:-3.5s}
+html body #app .insight-studio .reactor-floor{background:repeating-radial-gradient(ellipse,#8ad8db22 0 1px,transparent 2px 14px);box-shadow:0 0 22px #83d6da15;animation:icd-platform-float 6s ease-in-out infinite!important}
+html body #app .insight-studio .reactor-ring.ring-three{animation:icd-orbit-precession 22s linear infinite!important}
+html body #app .insight-studio .reactor-coordinate{animation:icd-coordinate-float 7s ease-in-out infinite}
+html body #app .insight-studio .coordinate-b{animation-delay:-3s}
+html body #app .insight-studio[data-stage=thinking] .reactor-halo:before,html body #app .insight-studio[data-stage=thinking] .reactor-halo:after{animation-duration:3s}
+html body #app .insight-studio[data-stage=thinking] .reactor-particles i{animation-duration:3s}
+html body #app .insight-studio[data-stage=answering] .insight-signal i{animation:robot-wave .8s ease-in-out 4 alternate}
+html body #app .insight-studio[data-stage=answering] .insight-signal i:nth-child(2n){animation-delay:.15s}
+html body #app .insight-studio .icd-bot-feet{animation:icd-bot-shadow 4s ease-in-out infinite}
+@keyframes icd-sonar{0%{transform:scale(.72);opacity:0}20%{opacity:.6}100%{transform:scale(1.15);opacity:0}}
+@keyframes icd-platform-float{0%,100%{transform:rotateX(50deg) scale(.94);opacity:.5}50%{transform:rotateX(58deg) scale(1);opacity:.85}}
+@keyframes icd-orbit-precession{0%{transform:rotateX(58deg) rotateY(-12deg) rotateZ(0)}50%{transform:rotateX(68deg) rotateY(12deg) rotateZ(180deg)}100%{transform:rotateX(58deg) rotateY(-12deg) rotateZ(360deg)}}
+@keyframes icd-coordinate-float{50%{transform:translateY(-4px)}}
+@keyframes icd-bot-shadow{50%{opacity:.5;transform:scaleX(.85)}}
+@media(prefers-reduced-motion:reduce){html body #app .insight-studio *,html body #app .insight-studio *:before,html body #app .insight-studio *:after{animation:none!important;transition:none!important}}
